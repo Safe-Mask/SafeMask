@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeMask - Login</title>
+    <link rel="stylesheet" href="../../css/login.css">
+</head>
+
+<body>
+    <div class="auth-container">
+
+        <div class="auth-card">
+            <div class="auth-logo">
+                <img src="../../images/safemask-logo.png" alt="SafeMask" class="logo-login">
+            </div>
+
+            <h1 class="auth-title">SafeMask</h1>
+
+            <!-- ===== SWITCH BUTTONS ===== -->
+            <div class="auth-switch">
+                <button id="btnLogin" class="active">Entrar</button>
+                <button id="btnRegister">Cadastrar</button>
+            </div>
+
+            <!-- ===== LOGIN FORM ===== -->
+            <form id="loginForm" class="form active">
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" id="login-email" placeholder="seuemail@example.com" required>
+                </div>
+
+                <div class="input-group">
+                    <label>Senha</label>
+                    <input type="password" id="login-senha" placeholder="••••••••" required>
+                </div>
+
+                <button class="auth-btn" id="btn-login" type="submit">Entrar</button>
+            </form>
+
+            <!-- ===== REGISTER FORM ===== -->
+            <form id="registerForm" class="form">
+                <div class="input-group">
+                    <label>Nome Completo</label>
+                    <input type="text" id="cadastro-nome" placeholder="Seu nome" required>
+                </div>
+
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" id="cadastro-email" placeholder="seuemail@example.com" required>
+                </div>
+
+                <div class="input-group">
+                    <label>Senha</label>
+                    <input type="password" id="cadastro-senha" placeholder="••••••••" required>
+                </div>
+
+                <button class="auth-btn" id="btn-cadastrar" type="submit">Cadastrar</button>
+            </form>
+
+        </div>
+    </div>
+
+    <script src="../../js/login.js"></script>
+</body>
+</html>
