@@ -1,0 +1,138 @@
+:root {
+    --primary: #2ecc71;
+    --dark: #1a1a1a;
+    --light: #f4f4f4;
+    --gray: #cccccc;
+}
+
+body {
+    font-family: "Inter", sans-serif;
+    background: linear-gradient(135deg, #e8fff0, #c8ffdd);
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+/* ===== CONTAINER ===== */
+.auth-container {
+    width: 100%;
+    max-width: 420px;
+    padding: 20px;
+}
+
+/* ===== CARD ===== */
+.auth-card {
+    background: white;
+    border-radius: 18px;
+    padding: 30px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}
+
+.auth-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.auth-logo svg {
+    display: block;
+    margin: 0 auto;
+}
+
+.logo-login {
+    width: 120px; 
+    height: auto;
+}
+
+.auth-title {
+    text-align: center;
+    font-size: 2rem;
+    color: var(--primary);
+    margin: 0 0 20px;
+}
+
+/* ===== SWITCH BUTTONS ===== */
+.auth-switch {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+    gap: 10px;
+}
+
+.auth-switch button {
+    padding: 10px 20px;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: 0.3s;
+}
+
+.auth-switch button.active {
+    background: var(--primary);
+    color: white;
+}
+
+/* ===== FORMS ===== */
+.form {
+    display: none;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.form.active {
+    display: flex;
+}
+
+/* ===== INPUTS ===== */
+.input-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.input-group label {
+    font-size: 0.9rem;
+    color: var(--dark);
+    margin-bottom: 5px;
+}
+
+.input-group input {
+    padding: 12px;
+    border: 2px solid var(--gray);
+    border-radius: 10px;
+    font-size: 1rem;
+    outline: none;
+    transition: 0.3s;
+}
+
+.input-group input:focus {
+    border-color: var(--primary);
+}
+
+/* ===== BUTTON ===== */
+.auth-btn {
+    background: var(--primary);
+    color: white;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 1.1rem;
+    transition: 0.3s;
+    margin-top: 10px;
+}
+
+.auth-btn:hover {
+    opacity: 0.9;
+}
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 450px) {
+    .auth-card {
+        padding: 25px 20px;
+    }
+}
