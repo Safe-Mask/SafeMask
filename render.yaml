@@ -1,0 +1,42 @@
+services:
+  - type: web
+    name: safemask-backend
+    runtime: python3
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: DB_HOST
+        fromDatabase:
+          name: safemask-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: safemask-db
+          property: port
+      - key: DB_USER
+        fromDatabase:
+          name: safemask-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: safemask-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: safemask-db
+          property: database
+
+  - type: web
+    name: safemask-frontend
+    runtime: static
+    staticPublishPath: .
+    buildCommand: ""
+    envVars:
+      - key: API_URL
+        value: https://safemask-backend.onrender.com
+
+databases:
+  - name: safemask-db
+    databaseName: safemask
+    user: safemask_user
+    plan: starter
