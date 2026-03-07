@@ -7,7 +7,7 @@ class Documento(Base):
     __tablename__ = "documentos"
 
     doc_id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("usuario.user_id"), nullable=False)
+    user_team_id = Column(Integer, ForeignKey("usuario_equipe.user_team_id"), nullable=False)
     nome_original = Column(String(255), nullable=False)
     extensao = Column(String(20), nullable=False)
     tamanho_bytes = Column(BIGINT, nullable=False)
@@ -16,4 +16,4 @@ class Documento(Base):
     hash_documento = Column(String(255), nullable=False)
     criado_em = Column(TIMESTAMP, server_default=func.now())
 
-    usuario = relationship("Usuario", back_populates="documentos")
+    usuario_equipe = relationship("UsuarioEquipe", back_populates="documentos")
