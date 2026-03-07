@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, TIMESTAMP
+from sqlalchemy import Column, Integer, String, TIMESTAMP, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.database import Base
@@ -12,5 +12,7 @@ class Usuario(Base):
     senha_hash = Column(String(255), nullable=False)
     criado_em = Column(TIMESTAMP, server_default=func.now())
 
-    documentos = relationship("Documento", back_populates="usuario", cascade="all, delete-orphan")
+    # associações diretas
+    equipes_assoc = relationship("UsuarioEquipe", back_populates="usuario", cascade="all, delete-orphan")
+    equipes = relationship("Equipe", secondary="usuario_equipe", back_populates="membros")
 
