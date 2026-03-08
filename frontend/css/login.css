@@ -28,6 +28,22 @@ body {
     border-radius: 18px;
     padding: 30px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    position: relative;
+}
+
+.btn-voltar {
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    text-decoration: none;
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 0.9rem;
+    transition: 0.3s;
+}
+
+.btn-voltar:hover {
+    color: var(--dark);
 }
 
 .auth-logo {
