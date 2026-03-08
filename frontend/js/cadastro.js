@@ -1,7 +1,7 @@
 const API_URL = 'http://127.0.0.1:8000/auth';
 
-// Validar email em tempo real
-document.getElementById('cadastro-email').addEventListener('input', async (e) => {
+// Validar email ao sair do campo
+document.getElementById('cadastro-email').addEventListener('blur', async (e) => {
     const email = e.target.value;
     const validationMsg = document.getElementById('email-validation');
     const emailInput = e.target;
@@ -165,7 +165,7 @@ document.getElementById('registerForm').addEventListener('submit', async (event)
             alert('Cadastro realizado com sucesso. Você foi logado automaticamente.');
             localStorage.setItem('token', data.access_token);
 
-            window.location.href = '../../index.html';
+            window.location.href = '../../../index.html';
         } else {
             alert(data.detail || 'Erro ao realizar o cadastro.');
         }

@@ -129,6 +129,68 @@ body {
     border-color: var(--primary);
 }
 
+.input-group input.valid {
+    border-color: #27ae60;
+    background-color: rgba(39, 174, 96, 0.05);
+}
+
+.input-group input.invalid {
+    border-color: #e74c3c;
+    background-color: rgba(231, 76, 60, 0.05);
+}
+
+.validation-message {
+    font-size: 0.75rem;
+    margin-top: 5px;
+    display: none;
+    font-weight: 500;
+}
+
+.validation-message.valid {
+    color: #27ae60;
+    display: block;
+}
+
+.validation-message.invalid {
+    color: #e74c3c;
+    display: block;
+}
+
+.password-strength {
+    margin-top: 8px;
+    font-size: 0.75rem;
+}
+
+.strength-bar {
+    height: 4px;
+    background: #e0e0e0;
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: 5px;
+}
+
+.strength-fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 2px;
+    transition: width 0.3s, background-color 0.3s;
+}
+
+.strength-fill.weak {
+    width: 33%;
+    background-color: #e74c3c;
+}
+
+.strength-fill.medium {
+    width: 66%;
+    background-color: #f39c12;
+}
+
+.strength-fill.strong {
+    width: 100%;
+    background-color: #27ae60;
+}
+
 /* ===== BUTTON ===== */
 .auth-btn {
     background: var(--primary);
