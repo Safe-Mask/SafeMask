@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SafeMask - Login</title>
+    <title>SafeMask - Cadastro</title>
     <link rel="stylesheet" href="../../css/login.css">
 </head>
 
@@ -17,29 +17,33 @@
 
             <h1 class="auth-title">SafeMask</h1>
 
-            <!-- ===== LOGIN FORM ===== -->
-            <form id="loginForm" class="form active">
+            <!-- ===== REGISTER FORM ===== -->
+            <form id="registerForm" class="form active">
+                <div class="input-group">
+                    <label>Nome Completo</label>
+                    <input type="text" id="cadastro-nome" placeholder="Seu nome" required>
+                </div>
+
                 <div class="input-group">
                     <label>Email</label>
-                    <input type="email" id="login-email" placeholder="seuemail@example.com" required>
+                    <input type="email" id="cadastro-email" placeholder="seuemail@example.com" required>
                 </div>
 
                 <div class="input-group">
                     <label>Senha</label>
-                    <input type="password" id="login-senha" placeholder="••••••••" required>
+                    <input type="password" id="cadastro-senha" placeholder="••••••••" required>
                 </div>
 
-                <button class="auth-btn" id="btn-login" type="submit">Entrar</button>
+                <button class="auth-btn" id="btn-cadastrar" type="submit">Cadastrar</button>
             </form>
 
             <div class="auth-links">
-                <a href="#" class="forgot-password">Esqueceu sua senha?</a>
-                <p>Ainda não tem conta? <a href="cadastro.html">Cadastre-se</a></p>
+                <p>Já tem conta? <a href="login.html">Faça login</a></p>
             </div>
 
         </div>
     </div>
 
-    <script src="../../js/login.js"></script>
+    <script src="../../js/cadastro.js"></script>
 </body>
 </html>

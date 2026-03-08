@@ -9,7 +9,7 @@ class UsuarioEquipe(Base):
     user_team_id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("usuario.user_id", ondelete="CASCADE"), nullable=False)
     team_id = Column(Integer, ForeignKey("equipe.team_id", ondelete="CASCADE"), nullable=False)
-    cargo = Column(String(50), nullable=False)
+    cargo_id = Column(Integer, ForeignKey("cargo.cargo_id"), nullable=False)
     criado_em = Column(TIMESTAMP, server_default=func.now())
 
     usuario = relationship("Usuario", back_populates="equipes_assoc")

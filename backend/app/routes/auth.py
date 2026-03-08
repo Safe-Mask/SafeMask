@@ -4,6 +4,9 @@ from sqlalchemy.orm import Session
 
 from app.schemas.usuario import UsuarioLogin, UsuarioCreate
 from app.models.usuario import Usuario
+from app.models.team import Equipe
+from app.models.usuario_equipe import UsuarioEquipe
+from app.models.cargo import Cargo
 from app.core.security import criar_token_jwt, verificar_senha, hash_senha
 from app.database import get_db
 
@@ -45,4 +48,34 @@ async def cadastrar(usuario: UsuarioCreate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(db_usuario)
 
-    return {"mensagem": "Usuário criado com sucesso.", "id": db_usuario.user_id}
+    # Criar equipe 'Minha equipe'
+    db_equipe = Equipe(
+        nome="Minha equipe",
+        criado_em=datetime.utcnow()
+    )
+    db.add(db_equipe)
+    db.commit()
+    db.refresh(db_equipe)
+
+    # Obter cargo 'lider'
+    cargo_lider = db.query(Cargo).filter(Cargo.nome == "lider").first()
+    if not cargo_lider:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Cargo 'lider' não encontrado.",
+        )
+
+    # Associar usuário à equipe como lider
+    db_usuario_equipe = UsuarioEquipe(
+        user_id=db_usuario.user_id,
+        team_id=db_equipe.team_id,
+        cargo_id=cargo_lider.cargo_id,
+        criado_em=datetime.utcnow()
+    )
+    db.add(db_usuario_equipe)
+    db.commit()
+
+    # Gerar token JWT para login automático
+    token = criar_token_jwt({"sub": db_usuario.email, "nome": db_usuario.nome})
+
+    return {"mensagem": "Usuário criado com sucesso.", "id": db_usuario.user_id, "access_token": token, "token_type": "bearer"}
