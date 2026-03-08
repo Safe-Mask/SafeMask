@@ -79,3 +79,9 @@ async def cadastrar(usuario: UsuarioCreate, db: Session = Depends(get_db)):
     token = criar_token_jwt({"sub": db_usuario.email, "nome": db_usuario.nome})
 
     return {"mensagem": "Usuário criado com sucesso.", "id": db_usuario.user_id, "access_token": token, "token_type": "bearer"}
+
+# Rota para verificar se email já existe
+@router.get("/verificar-email/{email}")
+async def verificar_email(email: str, db: Session = Depends(get_db)):
+    usuario_existe = db.query(Usuario).filter(Usuario.email == email).first()
+    return {"existe": usuario_existe is not None}
