@@ -1,5 +1,23 @@
 const API_URL = 'http://127.0.0.1:8000/auth';
 
+// Validar campo nome obrigatório
+document.getElementById('cadastro-nome').addEventListener('blur', (e) => {
+    const nome = e.target.value;
+    const nomeInput = e.target;
+    const validationMsg = document.getElementById('nome-validation');
+    
+    if (nome.trim() === '') {
+        validationMsg.textContent = 'Nome é obrigatório';
+        validationMsg.classList.remove('valid');
+        validationMsg.classList.add('invalid');
+        nomeInput.classList.remove('valid');
+        nomeInput.classList.add('invalid');
+    } else {
+        validationMsg.textContent = '';
+        nomeInput.classList.remove('invalid');
+    }
+});
+
 // Validar email ao sair do campo
 document.getElementById('cadastro-email').addEventListener('blur', async (e) => {
     const email = e.target.value;
@@ -7,8 +25,11 @@ document.getElementById('cadastro-email').addEventListener('blur', async (e) => 
     const emailInput = e.target;
 
     if (email.trim() === '') {
-        validationMsg.textContent = '';
-        emailInput.classList.remove('valid', 'invalid');
+        validationMsg.textContent = 'Email é obrigatório';
+        validationMsg.classList.remove('valid');
+        validationMsg.classList.add('invalid');
+        emailInput.classList.remove('valid');
+        emailInput.classList.add('invalid');
         return;
     }
 
@@ -46,6 +67,20 @@ document.getElementById('cadastro-email').addEventListener('blur', async (e) => 
 });
 
 // Validar força da senha em tempo real
+document.getElementById('cadastro-senha').addEventListener('blur', (e) => {
+    const senha = e.target.value;
+    const senhaInput = e.target;
+    const validationMsg = document.getElementById('senha-validation');
+
+    if (senha.trim() === '') {
+        validationMsg.textContent = 'Senha é obrigatória';
+        validationMsg.classList.remove('valid');
+        validationMsg.classList.add('invalid');
+        senhaInput.classList.remove('valid');
+        senhaInput.classList.add('invalid');
+    }
+});
+
 document.getElementById('cadastro-senha').addEventListener('input', (e) => {
     const senha = e.target.value;
     const senhaInput = e.target;
