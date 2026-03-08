@@ -130,6 +130,34 @@ body {
     opacity: 0.9;
 }
 
+/* ===== AUTH LINKS ===== */
+.auth-links {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.auth-links p {
+    margin: 10px 0;
+    font-size: 0.9rem;
+    color: var(--dark);
+}
+
+.auth-links a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.auth-links a:hover {
+    text-decoration: underline;
+}
+
+.forgot-password {
+    display: block;
+    margin-bottom: 10px;
+    font-size: 0.9rem;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 450px) {
     .auth-card {
