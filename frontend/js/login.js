@@ -59,7 +59,7 @@ document.getElementById('loginForm').addEventListener('submit', async (event) =>
             alert('Login realizado com sucesso.');
             localStorage.setItem('token', data.access_token);
 
-            window.location.href = '../../index.html';
+            window.location.href = '../../../index.html';
         } else {
             alert(data.detail || 'Erro ao fazer login.');
         }
