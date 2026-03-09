@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.schemas.usuario import UsuarioLogin, UsuarioCreate
 from app.models.usuario import Usuario
-from app.models.team import Equipe
+from app.models.equipe import Equipe
 from app.models.usuario_equipe import UsuarioEquipe
 from app.models.cargo import Cargo
 from app.core.security import criar_token_jwt, verificar_senha, hash_senha

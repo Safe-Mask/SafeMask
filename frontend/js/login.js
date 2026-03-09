@@ -58,8 +58,10 @@ document.getElementById('loginForm').addEventListener('submit', async (event) =>
         if (response.ok) {
             alert('Login realizado com sucesso.');
             localStorage.setItem('token', data.access_token);
+            const userName = email.includes('@') ? email.split('@')[0] : email;
+            localStorage.setItem('userName', userName);
 
-            window.location.href = '../../../index.html';
+            window.location.href = '../dashboard.html';
         } else {
             alert(data.detail || 'Erro ao fazer login.');
         }

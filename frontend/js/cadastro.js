@@ -200,7 +200,7 @@ document.getElementById('registerForm').addEventListener('submit', async (event)
             alert('Cadastro realizado com sucesso. Você foi logado automaticamente.');
             localStorage.setItem('token', data.access_token);
 
-            window.location.href = '../../../index.html';
+            window.location.href = '../dashboard.html';
         } else {
             alert(data.detail || 'Erro ao realizar o cadastro.');
         }
