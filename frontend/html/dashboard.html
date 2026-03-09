@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeMask - Dashboard</title>
+    <link rel="stylesheet" href="../css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="../images/safemask-logo-transparente.png" alt="SafeMask" class="brand-logo">
+                <div>
+                    <p class="brand-kicker">Painel</p>
+                    <h1>SafeMask</h1>
+                </div>
+            </div>
+
+            <nav class="menu">
+                <p class="menu-title">Documentos</p>
+                <a href="#" class="menu-link active" data-section="equipes-principais">Visao Geral</a>
+                <a href="#" class="menu-link" data-section="upload-documento">Novo Upload</a>
+                <a href="#" class="menu-link" data-section="docs-enviados">Documentos Enviados</a>
+                <a href="#" class="menu-link" data-section="docs-censurados">Documentos Censurados</a>
+                <a href="#" class="menu-link" data-section="historico">Historico</a>
+
+                <p class="menu-title">Equipes</p>
+                <a href="#" class="menu-link" data-section="gerenciar-equipes">Gerenciar Equipes</a>
+                <a href="#" class="menu-link" data-section="ver-equipes">Ver Equipes</a>
+                <a href="#" class="menu-link" data-section="acessar-equipe">Acessar Equipe</a>
+
+                <p class="menu-title">Acessos</p>
+                <a href="#" class="menu-link" data-section="usuarios">Usuarios da Equipe</a>
+                <a href="#" class="menu-link" data-section="permissoes">Permissoes</a>
+                <a href="#" class="menu-link" data-section="configuracoes">Configuracoes</a>
+            </nav>
+        </aside>
+
+        <div class="main-wrap">
+            <header class="topbar">
+                <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
+                <div>
+                    <h2>Dashboard do Usuario</h2>
+                    <p class="subtitle">Acompanhe equipes, uploads e indicadores de seguranca</p>
+                </div>
+
+                <button class="cta-censor" id="btnCensurarDocumento">Censurar Documento</button>
+
+                <div class="user-menu" id="userMenu">
+                    <button class="user-trigger" id="userTrigger" aria-haspopup="true" aria-expanded="false">
+                        <span class="user-icon" aria-hidden="true">U</span>
+                        <span id="userName">Usuario</span>
+                    </button>
+                    <div class="dropdown" id="userDropdown">
+                        <button class="dropdown-item" id="logoutBtn">Logout</button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="content" id="dashboardContent">
+                <section class="metrics">
+                    <article class="metric-card metric-priority">
+                        <p>Documentos Censurados</p>
+                        <h3 id="metricDocsCensurados">0</h3>
+                        <span class="metric-delta up" id="metricTaxaCensura">0% de censura aplicada</span>
+                    </article>
+                    <article class="metric-card">
+                        <p>Documentos Processados</p>
+                        <h3 id="metricTotalDocs">0</h3>
+                        <span class="metric-delta up">documentos no sistema</span>
+                    </article>
+                    <article class="metric-card">
+                        <p>Total de Equipes</p>
+                        <h3 id="metricTotalEquipes">0</h3>
+                        <span class="metric-delta up">equipes com acesso</span>
+                    </article>
+                    <article class="metric-card">
+                        <p>Nivel Medio de Seguranca</p>
+                        <h3 id="metricNivelSeguranca">0</h3>
+                        <span class="metric-delta up" id="metricNivelAlto">0 docs com nivel alto</span>
+                    </article>
+                </section>
+
+                <section class="grid-panels">
+                    <article class="panel" id="equipes-principais">
+                        <div class="panel-header">
+                            <h3>Equipes Principais</h3>
+                            <a href="#" class="panel-action">Ver todas</a>
+                        </div>
+                        <ul class="team-list" id="teamList">
+                            <li>
+                                <strong>Nenhuma equipe encontrada</strong>
+                                <span>cadastre uma equipe para iniciar</span>
+                            </li>
+                        </ul>
+                    </article>
+
+                    <article class="panel" id="docs-enviados">
+                        <div class="panel-header">
+                            <h3>Documentos Recentes</h3>
+                            <a href="#" class="panel-action">Abrir historico</a>
+                        </div>
+                        <ul class="doc-list" id="docList">
+                            <li>
+                                <div>
+                                    <strong>Nenhum documento recente</strong>
+                                    <p>os uploads aparecerao aqui</p>
+                                </div>
+                                <span class="status wait">Vazio</span>
+                            </li>
+                        </ul>
+                    </article>
+
+                    <article class="panel chart-panel">
+                        <div class="panel-header">
+                            <h3>Uploads por Equipe</h3>
+                        </div>
+                        <div class="bar-chart" id="barChartTeams">
+                            <p class="empty-message">Sem dados para exibir.</p>
+                        </div>
+                    </article>
+
+                    <article class="panel chart-panel donut-wrap">
+                        <div class="panel-header">
+                            <h3>Estado dos Processamentos</h3>
+                        </div>
+                        <div class="donut" id="processingDonut"></div>
+                        <ul class="legend" id="processingLegend">
+                            <li><span class="dot done"></span> Censurados: 0%</li>
+                            <li><span class="dot review"></span> Nivel alto: 0%</li>
+                            <li><span class="dot queue"></span> Demais docs: 0%</li>
+                        </ul>
+                    </article>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="../js/dashboard.js"></script>
+</body>
+</html>
