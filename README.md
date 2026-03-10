@@ -454,6 +454,16 @@ Para suporte, abra uma issue no GitHub ou entre em contato através da landing p
 
 ---
 
+## 👥 Equipe Scrum
+
+- **Marcelo Honda Kobayashi** - Product Owner
+- **Lucas Vieira Porto** - Developer Team
+- **Dimitri Cinnanti** - Scrum Master
+- **Paulo Henrique Paniago** - Developer Team
+- **Gabriel Bernardo Alves** - Developer Team
+
+---
+
 <div align="center">
 
 **Desenvolvido com 🔒 e ❤️ para proteção de dados**
