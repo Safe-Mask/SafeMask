@@ -2,6 +2,8 @@
 
 # 🔒 SafeMask
 
+> Projeto acadêmico desenvolvido no **CEUB (Centro Universitário de Brasília)** para a disciplina **Projeto Integrador III**.
+
 **Proteção Inteligente de Dados Sensíveis com IA**
 
 Detecte e censure automaticamente informações confidenciais em documentos, garantindo conformidade total com a LGPD e segurança de dados.
