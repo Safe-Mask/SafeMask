@@ -42,6 +42,7 @@ Detecte e censure automaticamente informações confidenciais em documentos, gar
 SafeMask é uma plataforma full-stack especializada em proteção de dados sensíveis que permite:
 
 - **Usuários**: Registrar-se, fazer login seguro e gerenciar seus documentos
+- **Equipes**: Criar, entrar e gerenciar suas equipes
 - **Processamento de Documentos**: Upload e armazenamento seguro de arquivos com múltiplos níveis de segurança
 - **Detecção de Dados Sensíveis**: Identificação automática de informações confidenciais (CPF, CNJ, emails, etc.)
 - **Censura Automática**: Mascaramento inteligente de dados sensíveis em documentos
@@ -73,7 +74,6 @@ SafeMask é uma plataforma full-stack especializada em proteção de dados sens�
 
 ### Database
 - **PostgreSQL 15** (Banco de dados relacional)
-- **SQLAlchemy ORM** (Mapeamento objeto-relacional)
 
 ---
 
@@ -125,7 +125,6 @@ SafeMask/
 - Python >= 3.9
 - pip >= 21.0
 - PostgreSQL >= 15 (local ou em container)
-- Node.js (opcional, para gerenciar dependências do frontend)
 
 ### Passo 1: Clone o repositório
 
