@@ -1,8 +1,8 @@
 <div align="center">
 
 <p align="center">
-   <img src="frontend/images/safemask-logo-transparente.png" alt="SafeMask" width="72" />
-   <strong>SafeMask</strong>
+   <img src="frontend/images/safemask-logo-transparente.png" alt="SafeMask" width="72" /><br>
+   <h1>SafeMask</h1>
 </p>
 
 > Projeto acadêmico desenvolvido no **CEUB (Centro Universitário de Brasília)** para a disciplina **Projeto Integrador III**.
