@@ -133,16 +133,61 @@ git clone https://github.com/yourusername/SafeMask.git
 cd SafeMask
 ```
 
+---
+
+### 🐳 Opção A: Docker (Recomendado para Linux terminal / Aula BigData)
+
+A forma mais simples de rodar o projeto é usando Docker e Docker Compose.
+
+**Pré-requisitos:**
+- [Docker](https://docs.docker.com/get-docker/) >= 20.x
+- [Docker Compose](https://docs.docker.com/compose/install/) >= 2.x
+
+**Passos:**
+
+```bash
+# 1. Configure as variáveis de ambiente
+cp .env.example .env
+# Edite o .env se quiser alterar senhas ou chave secreta
+
+# 2. Suba todos os serviços (backend + banco de dados)
+docker compose up --build
+
+# Para rodar em segundo plano (modo detached):
+docker compose up --build -d
+```
+
+Backend disponível em: `http://localhost:8000`
+
+Documentação interativa da API: `http://localhost:8000/docs`
+
+**Comandos úteis:**
+
+```bash
+# Ver logs
+docker compose logs -f
+
+# Parar os serviços
+docker compose down
+
+# Remover volumes (apaga dados do banco)
+docker compose down -v
+```
+
+---
+
+### 💻 Opção B: Instalação Local (sem Docker)
+
 ### Passo 2: Inicie o PostgreSQL
 
-**Opção A: Usando Docker**
+**Usando Docker (somente banco):**
 ```bash
 docker run --name safemask-postgres -e POSTGRES_PASSWORD=password \
   -e POSTGRES_USER=user -e POSTGRES_DB=safemask_db \
   -p 5432:5432 -d postgres:15
 ```
 
-**Opção B: PostgreSQL Local**
+**PostgreSQL Local:**
 Certifique-se de que o PostgreSQL está instalado e rodando.
 
 ### Passo 3: Configure o Backend
@@ -187,7 +232,24 @@ Frontend disponível em: `http://localhost:8080`
 
 ### Variáveis de Ambiente
 
-**Backend (.env)**
+Copie o arquivo de exemplo e ajuste conforme necessário:
+
+```bash
+cp .env.example .env
+```
+
+**Arquivo `.env` (para Docker Compose ou backend local):**
+```env
+# Database
+DB_USER=postgres
+DB_PASSWORD=your-secure-password-here
+DB_NAME=safemask
+
+# JWT
+SECRET_KEY=your-secret-key-here
+```
+
+**Backend local (`.env` dentro de `backend/`):**
 ```env
 # Database
 DATABASE_URL="postgresql://user:password@localhost:5432/safemask_db?sslmode=require"
