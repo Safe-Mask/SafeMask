@@ -473,7 +473,7 @@ Abra uma issue no GitHub para suporte.
 
 - **[Marcelo Honda Kobayashi](https://github.com/MarceloKobayashi)** - Product Owner
 - **[Lucas Vieira Porto](https://github.com/Lucas-vporto)** - Developer
-- **[Dimitri Cinnanti](https://github.com/Cinnanti44)** - Scrum Master
+- **[Dimitri Cinnanti](https://github.com/DimitriSCinnanti)** - Scrum Master
 - **[Paulo Henrique Paniago](https://github.com/Paulohspaniago)** - Developer
 - **[Gabriel Bernardo Alves](https://github.com/Alves56)** - Developer
 - **Victor Oleskovicz** - Developer
