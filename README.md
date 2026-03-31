@@ -471,11 +471,11 @@ Abra uma issue no GitHub para suporte.
 
 ## 👥 Equipe Scrum
 
-- **Marcelo Honda Kobayashi** - Product Owner
-- **Lucas Vieira Porto** - Developer
-- **Dimitri Cinnanti** - Scrum Master
-- **Paulo Henrique Paniago** - Developer
-- **Gabriel Bernardo Alves** - Developer
+- **[Marcelo Honda Kobayashi](https://github.com/MarceloKobayashi)** - Product Owner
+- **[Lucas Vieira Porto](https://github.com/Lucas-vporto)** - Developer
+- **[Dimitri Cinnanti](https://github.com/Cinnanti44)** - Scrum Master
+- **[Paulo Henrique Paniago](https://github.com/Paulohspaniago)** - Developer
+- **[Gabriel Bernardo Alves](https://github.com/Alves56)** - Developer
 - **Victor Oleskovicz** - Developer
 
 ---
