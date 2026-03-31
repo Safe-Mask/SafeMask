@@ -11,14 +11,13 @@
 
 Detecte e censure automaticamente informações confidenciais em documentos, garantindo conformidade total com a LGPD e segurança de dados.
 
-[![Python](https://img.shields.io/badge/Python-3.9-blue?logo=python&logoColor=white)](https://www.python.org/)
+[![Python](https://img.shields.io/badge/Python-3.12-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009485?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-FF6F20?logo=python&logoColor=white)](https://www.sqlalchemy.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-4169E1?logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Neon](https://img.shields.io/badge/Neon-Database-92E7DD?logo=postgresql&logoColor=white)](https://neon.tech/)
+[![Vercel](https://img.shields.io/badge/Vercel-Deploy-000000?logo=vercel&logoColor=white)](https://vercel.com/)
 [![JWT](https://img.shields.io/badge/JWT-Auth-000000?logo=json-web-tokens&logoColor=white)](https://jwt.io/)
-[![HTML5](https://img.shields.io/badge/HTML5-E34C26?logo=html5&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTML)
-[![CSS3](https://img.shields.io/badge/CSS3-1572B6?logo=css3&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/CSS)
-[![JavaScript](https://img.shields.io/badge/JavaScript-F7DF1E?logo=javascript&logoColor=black)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
 
 </div>
 
@@ -43,13 +42,11 @@ SafeMask é uma plataforma full-stack especializada em proteção de dados sens�
 
 - **Usuários**: Registrar-se, fazer login seguro e gerenciar seus documentos
 - **Equipes**: Criar, entrar e gerenciar suas equipes
-- **Processamento de Documentos**: Upload e armazenamento seguro de arquivos com múltiplos níveis de segurança
-- **Detecção de Dados Sensíveis**: Identificação automática de informações confidenciais (CPF, CNJ, emails, etc.)
-- **Censura Automática**: Mascaramento inteligente de dados sensíveis em documentos
-- **Integridade de Dados**: Hash de documentos para verificação de integridade
-- **Criptografia**: Armazenamento seguro com chaves criptográficas
-- **Autenticação JWT**: Sistema de autenticação robusto com tokens JWT e bcrypt
-- **Conformidade LGPD**: Garantia de proteção de dados pessoais conforme legislação vigente
+- **Processamento de Documentos**: Upload e armazenamento seguro de arquivos
+- **Detecção de Dados Sensíveis**: Identificação automática de informações confidenciais
+- **Censura Automática**: Mascaramento inteligente de dados sensíveis
+- **Autenticação JWT**: Sistema robusto com tokens JWT e bcrypt
+- **Conformidade LGPD**: Proteção de dados pessoais conforme legislação
 
 ---
 
@@ -57,23 +54,21 @@ SafeMask é uma plataforma full-stack especializada em proteção de dados sens�
 
 ### Backend
 - **FastAPI 0.115** (Framework web assíncrono)
-- **Python 3.9+** (Linguagem principal)
+- **Python 3.12** (Linguagem principal)
 - **SQLAlchemy 2.0** (ORM)
-- **PostgreSQL 15** (Banco de dados)
-- **JWT** (JSON Web Tokens - Autenticação)
-- **Passlib + Bcrypt** (Hash e verificação de senhas)
+- **PostgreSQL** (via Neon - serverless)
+- **JWT + Bcrypt** (Autenticação e criptografia)
 - **Pydantic 2.0** (Validação de dados)
-- **python-jose** (Suporte a JWT)
-- **CORS Middleware** (Controle de origem cruzada)
 
 ### Frontend
 - **HTML5** (Estrutura)
 - **CSS3** (Estilização responsiva)
-- **JavaScript Vanilla** (Interatividade e requisições à API)
-- **Modern Web APIs** (Fetch, LocalStorage, etc.)
+- **JavaScript Vanilla** (Interatividade)
 
-### Database
-- **PostgreSQL 15** (Banco de dados relacional)
+### Deployment
+- **Neon** (PostgreSQL serverless - Database)
+- **Vercel** (Frontend estático)
+- **Render** (Backend FastAPI)
 
 ---
 
@@ -85,35 +80,40 @@ SafeMask/
 │   ├── app/
 │   │   ├── core/
 │   │   │   ├── auth.py              # Autenticação
-│   │   │   ├── security.py          # Funções de segurança JWT e criptografia
-│   │   │   └── current_user.py      # Usuário atual autenticado
+│   │   │   ├── security.py          # JWT e criptografia
+│   │   │   └── current_user.py      # Usuário autenticado
 │   │   ├── models/
-│   │   │   ├── __init__.py
-│   │   │   ├── usuario.py           # Modelo de usuário
-│   │   │   └── documentos.py        # Modelo de documento
+│   │   │   ├── usuario.py
+│   │   │   ├── documentos.py
+│   │   │   └── __init__.py
 │   │   ├── routes/
-│   │   │   └── auth.py              # Rotas de autenticação
+│   │   │   └── auth.py
 │   │   ├── schemas/
-│   │   │   ├── usuario.py           # Schema Pydantic para usuário
-│   │   │   └── documento.py         # Schema Pydantic para documento
-│   │   ├── database.py              # Configuração do banco de dados
-│   │   └── main.py                  # Aplicação FastAPI principal
-│   └── requirements.txt              # Dependências Python
+│   │   │   ├── usuario.py
+│   │   │   └── documento.py
+│   │   ├── database.py
+│   │   └── main.py
+│   ├── .env                         # Variáveis de ambiente (não versione)
+│   ├── requirements.txt
+│   └── venv/                        # Ambiente virtual
 │
 ├── frontend/
 │   ├── css/
-│   │   ├── styles.css               # Estilos da landing page
-│   │   └── login.css                # Estilos do sistema de autenticação
+│   │   ├── styles.css
+│   │   └── login.css
 │   ├── html/
 │   │   └── auth/
-│   │       └── login.html           # Página de login/cadastro
+│   │       └── login.html
 │   ├── js/
-│   │   ├── script.js                # Scripts gerais
-│   │   └── login.js                 # Lógica de autenticação
-│   ├── images/                      # Assets e imagens
-│   └── index.html                   # Landing page principal
+│   │   ├── login.js
+│   │   ├── dashboard.js
+│   │   └── script.js
+│   ├── images/
+│   └── index.html
 │
-└── render.yaml                       # Configuração para deploy no Render
+├── .gitignore
+├── render.yaml
+└── README.md
 ```
 
 ---
@@ -122,9 +122,10 @@ SafeMask/
 
 ### Pré-requisitos
 
-- Python >= 3.9
-- pip >= 21.0
-- PostgreSQL >= 15 (local ou em container)
+- **Python** >= 3.9
+- **pip** >= 21.0
+- Conta no **[Neon](https://neon.tech/)** (PostgreSQL serverless)
+- Conta no **[Vercel](https://vercel.com/)** (para deploy do frontend)
 
 ### Passo 1: Clone o repositório
 
@@ -133,88 +134,107 @@ git clone https://github.com/yourusername/SafeMask.git
 cd SafeMask
 ```
 
-### Passo 2: Inicie o PostgreSQL
+### Passo 2: Configure o Banco de Dados
 
-**Opção A: Usando Docker**
+**Opção A: Neon (Recomendado para Produção)**
+
+1. Acesse [https://neon.tech/](https://neon.tech/)
+2. Crie uma conta gratuita
+3. Crie um novo projeto
+4. Copie a **Connection String**: `postgresql://user:password@host/database?sslmode=require`
+
+**Opção B: PostgreSQL Local (para Desenvolvimento)**
+
 ```bash
-docker run --name safemask-postgres -e POSTGRES_PASSWORD=password \
-  -e POSTGRES_USER=user -e POSTGRES_DB=safemask_db \
+# Com Docker:
+docker run --name safemask-postgres \
+  -e POSTGRES_PASSWORD=password \
+  -e POSTGRES_USER=user \
+  -e POSTGRES_DB=safemask_db \
   -p 5432:5432 -d postgres:15
-```
 
-**Opção B: PostgreSQL Local**
-Certifique-se de que o PostgreSQL está instalado e rodando.
+# Ou instale PostgreSQL localmente
+```
 
 ### Passo 3: Configure o Backend
 
 ```bash
 cd backend
 
-# Crie um ambiente virtual
+# Crie ambiente virtual
 python -m venv venv
 
-# Ative o ambiente virtual
-# No Windows:
+# Ative o ambiente
+# Windows:
 venv\Scripts\activate
-# No macOS/Linux:
+# macOS/Linux:
 source venv/bin/activate
 
-# Instale as dependências
+# Instale dependências
 pip install -r requirements.txt
 
-# Configure as variáveis de ambiente
-echo "DATABASE_URL=postgresql://user:password@localhost:5432/safemask_db" > .env
-echo "SECRET_KEY=sua-chave-secreta-super-segura-aqui" >> .env
+# Crie arquivo .env
+# Windows:
+type nul > .env
+# macOS/Linux:
+touch .env
+```
 
-# Inicie o servidor de desenvolvimento
+**Configure o .env com estas 2 variáveis apenas:**
+
+```env
+DATABASE_URL=postgresql://seu_usuario:sua_senha@seu_host/seu_banco?sslmode=require
+SECRET_KEY=gere-uma-chave-aleatoria-forte-aqui
+```
+
+**Para gerar uma SECRET_KEY segura:**
+
+```bash
+python -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+**Exemplo com Neon:**
+
+```env
+DATABASE_URL=postgresql://neon_user:abc123@ep-cool-cloud-123456.neon.tech/safemask_db?sslmode=require
+SECRET_KEY=kX9pL2mN4oJ8vZ5qR3tU6w7eY1aBcD9fGhIkL0mNoPqRsTuVwXyZ
+```
+
+**Teste o Backend:**
+
+```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Backend disponível em: `http://localhost:8000`
-
-Documentação interativa da API: `http://localhost:8000/docs`
+- API em: `http://localhost:8000`
+- Swagger Docs: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
 
 ### Passo 4: Configure o Frontend
 
 ```bash
-# Abra index.html em um servidor local ou navegador
-cd frontend
-# Se tiver Python instalado, pode servir com:
+cd ../frontend
+
+# Inicie servidor local
 python -m http.server 8080
+
+# Ou use Live Server do VS Code (F5)
 ```
 
-Frontend disponível em: `http://localhost:8080`
-
-### Variáveis de Ambiente
-
-**Backend (.env)**
-```env
-# Database
-DATABASE_URL="postgresql://user:password@localhost:5432/safemask_db?sslmode=require"
-
-# JWT
-SECRET_KEY="sua-chave-super-secreta-mude-isso-em-producao"
-ALGORITHM="HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES=120
-
-# Server
-PORT=8000
-NODE_ENV=development
-
-# CORS
-CORS_ORIGIN="http://localhost:8080"
-```
+Frontend em: `http://localhost:8080`
 
 ---
 
 ## 📚 API Endpoints
 
 ### Base URL
+
 ```
 http://localhost:8000
 ```
 
 ### Documentação Interativa
+
 ```
 http://localhost:8000/docs  (Swagger UI)
 ```
@@ -223,11 +243,12 @@ http://localhost:8000/docs  (Swagger UI)
 
 ```http
 POST   /auth/login              # Login do usuário
-POST   /auth/cadastro           # Cadastro de novo usuário
-GET    /auth/me                 # Dados do usuário autenticado
+POST   /auth/cadastro           # Cadastro novo
+GET    /auth/me                 # Dados do usuário
 ```
 
 **Login Request:**
+
 ```json
 {
   "email": "usuario@example.com",
@@ -236,6 +257,7 @@ GET    /auth/me                 # Dados do usuário autenticado
 ```
 
 **Login Response:**
+
 ```json
 {
   "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
@@ -243,22 +265,12 @@ GET    /auth/me                 # Dados do usuário autenticado
 }
 ```
 
-**Cadastro Request:**
-```json
-{
-  "nome": "João da Silva",
-  "email": "joao@example.com",
-  "senha_hash": "senha123"
-}
-```
-
-### Documentos (A Implementar)
+### Documentos
 
 ```http
-GET    /documentos              # Listar documentos do usuário
+GET    /documentos              # Listar documentos
 GET    /documentos/:id          # Detalhes do documento
-POST   /documentos              # Upload de novo documento
-PATCH  /documentos/:id          # Atualizar documento
+POST   /documentos              # Upload novo
 DELETE /documentos/:id          # Deletar documento
 ```
 
@@ -266,50 +278,31 @@ DELETE /documentos/:id          # Deletar documento
 
 ## 💻 Desenvolvimento
 
-### Backend
+### Backend com Reload Automático
 
 ```bash
-# Ativar ambiente virtual
-source venv/bin/activate  # Linux/macOS
+cd backend
+venv\Scripts\activate  # Windows
 # ou
-venv\Scripts\activate     # Windows
+source venv/bin/activate  # macOS/Linux
 
-# Instalar dependências
-pip install -r requirements.txt
-
-# Desenvolvimento com reload automático
 uvicorn app.main:app --reload
-
-# Debug
-python -m uvicorn app.main:app --reload --log-level debug
-
-# Testar
-pytest  # quando testes forem adicionados
-
-# Atualizar dependências
-pip freeze > requirements.txt
 ```
 
-### Frontend
+### Frontend com Live Server
 
 ```bash
-# Desenvolvimento local
 cd frontend
-python -m http.server 8080  # Serve na porta 8080
-
-# Ou use Live Server no VS Code
-# ou qualquer outro servidor local
+python -m http.server 8080
 ```
 
 ### Database Operations
 
 ```bash
-# Dentro do backend com venv ativado
-
-# Acessar shell interativo do SQLAlchemy
+# No terminal da pasta backend (venv ativado)
 python
 
-# dentro do python:
+# Dentro do Python:
 from app.database import engine
 from app.models.usuario import Usuario
 from sqlalchemy.orm import sessionmaker
@@ -317,45 +310,137 @@ from sqlalchemy.orm import sessionmaker
 SessionLocal = sessionmaker(bind=engine)
 session = SessionLocal()
 
-# Consultar usuários
+# Consultar
 usuarios = session.query(Usuario).all()
+for u in usuarios:
+    print(u.email)
 ```
+
+---
+
 ## 🔐 Segurança
 
-### Melhores Práticas Implementadas
+### Implementado
 
-- ✅ **Hash de Senhas**: Bcrypt com passlib
-- ✅ **JWT**: Tokens com expiração
-- ✅ **CORS**: Middleware configurado
-- ✅ **SQL Injection**: Prevenido com ORM
-- ✅ **Criptografia de Documentos**: Chaves criptográficas por documento
-- ✅ **Integridade**: Hash SHA dos documentos
+- ✅ Hash de Senhas: Bcrypt + passlib
+- ✅ JWT: Tokens com expiração de 120 minutos
+- ✅ CORS: Middleware configurado
+- ✅ SQL Injection: Prevenido com ORM (SQLAlchemy)
 
 ### Recomendações para Produção
 
-1. **Secret Key**: Gere uma chave aleatória forte
-   ```python
-   import secrets
-   print(secrets.token_urlsafe(32))
+1. **Gere SECRET_KEY forte**
+   ```bash
+   python -c "import secrets; print(secrets.token_urlsafe(32))"
    ```
 
-2. **HTTPS**: Sempre use HTTPS em produção
+2. **Use HTTPS sempre**
 
-3. **Rate Limiting**: Implemente limitação de taxa para login
+3. **Implemente Rate Limiting** para login
 
-4. **Logs**: Configure logging adequado
+4. **Configure logs** adequados
 
-5. **Backups**: Faça backup regular do banco
+5. **Faça backups** regulares do banco
+
+6. **Mantenha dependências atualizadas**
+   ```bash
+   pip install --upgrade -r requirements.txt
+   ```
+
+---
+
+## 🚀 Deploy
+
+### Frontend (Vercel)
+
+**Pré-requisitos:**
+- Conta em [Vercel.com](https://vercel.com/)
+- Repositório GitHub
+
+**Passos:**
+
+1. **Push para GitHub**
+   ```bash
+   git push origin main
+   ```
+
+2. **Acesse Vercel Dashboard**
+   - [https://vercel.com/dashboard](https://vercel.com/dashboard)
+   - Clique em "New Project"
+   - Selecione seu repositório SafeMask
+
+3. **Configure Deploy**
+   - **Framework**: "Other"
+   - **Root Directory**: `./frontend`
+   - **Build Command**: deixe em branco
+   - **Output Directory**: `./`
+
+4. **Variables (opcional)**
+   ```
+   REACT_APP_API_URL=https://seu-backend-url.com
+   ```
+
+5. **Deploy!**
+   - Seu frontend está em: `https://safemask.vercel.app`
+
+**Atualizações automáticas:** Qualquer push para `main` redeploya.
+
+### Backend (Render.com - Recomendado)
+
+**Pré-requisitos:**
+- Conta em [Render.com](https://render.com/)
+- Repositório GitHub
+
+**Passos:**
+
+1. **Criar Web Service**
+   - Dashboard → "New +" → "Web Service"
+   - Conectar GitHub
+
+2. **Configurar Build**
+   ```
+   Name: safemask-backend
+   Runtime: Python 3
+   Build Command: pip install -r backend/requirements.txt
+   Start Command: cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000
+   ```
+
+3. **Environment Variables**
+   ```
+   DATABASE_URL=postgresql://seu_usuario:senha@host/banco?sslmode=require
+   SECRET_KEY=sua-chave-secreta-super-segura
+   ```
+
+4. **Deploy**
+   - Backend em: `https://safemask-backend.onrender.com`
+
+### Conectar Frontend ao Backend
+
+Após deploy, atualize `frontend/js/` com a URL do backend:
+
+```javascript
+// Desenvolvimento
+const API_URL = "http://localhost:8000";
+
+// Produção (Render)
+const API_URL = "https://safemask-backend.onrender.com";
+```
+
+Ou usar variável de ambiente:
+
+```javascript
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+```
 
 ---
 
 ## 📋 Conformidade LGPD
 
-SafeMask foi desenvolvido com conformidade à Lei Geral de Proteção de Dados (LGPD):
+SafeMask foi desenvolvido seguindo os princípios da LGPD:
 
 - **Confidencialidade**: Criptografia de dados sensíveis
-- **Transparência**: Usuários sabem quais dados são armazenados
-- **Consentimento**: Registro de consentimento em cadastro
+- **Transparência**: Usuários sabem quais dados são coletados
+- **Consentimento**: Registro de consentimento no cadastro
 - **Direito ao Esquecimento**: Exclusão de dados de usuários
 - **Portabilidade**: Exportação de dados do usuário
 - **Segurança**: Proteção contra acessos não autorizados
@@ -364,36 +449,34 @@ SafeMask foi desenvolvido com conformidade à Lei Geral de Proteção de Dados (
 
 ## 🤝 Contribuindo
 
-Contribuições são bem-vindas! Por favor:
-
-1. Faça um Fork do projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
+1. Faça um Fork
+2. Crie uma branch (`git checkout -b feature/MinhaFeature`)
+3. Commit (`git commit -m 'Add MinhaFeature'`)
+4. Push (`git push origin feature/MinhaFeature`)
 5. Abra um Pull Request
 
 ---
 
 ## 📝 Licença
 
-MIT License - veja [LICENSE](LICENSE) para detalhes.
+MIT License - veja [LICENSE](LICENSE)
 
 ---
 
 ## 📞 Suporte
 
-Para suporte, abra uma issue no GitHub ou entre em contato através da landing page.
+Abra uma issue no GitHub para suporte.
 
 ---
 
 ## 👥 Equipe Scrum
 
 - **Marcelo Honda Kobayashi** - Product Owner
-- **Lucas Vieira Porto** - Developer Team
+- **Lucas Vieira Porto** - Developer
 - **Dimitri Cinnanti** - Scrum Master
-- **Paulo Henrique Paniago** - Developer Team
-- **Gabriel Bernardo Alves** - Developer Team
-- **Victor Oleskovicz** - 
+- **Paulo Henrique Paniago** - Developer
+- **Gabriel Bernardo Alves** - Developer
+- **Victor Oleskovicz** - Developer
 
 ---
 
