@@ -14,49 +14,63 @@ DATABASE_URL = f"postgresql://{usuario}:{senha}@localhost:5432/{banco}"
 engine = create_engine(DATABASE_URL)
 Base = declarative_base()
 
-class User(Base):
-    __tablename__ = 'users'
+class Usuario(Base):
+    __tablename__ = "usuario"
 
-    id = Column(Integer, primary_key = True)
-    username = Column(String(50), unique=True, nullable=False)
-    email = Column(String(100), unique=True, nullable=False)
-    password_hash = Column(String(200), nullable=False)
-    acess_level = Column(Integer, default=0)
-    documents = relationship("Document", back_populates="owner")
+    user_id = Column(Integer, primary_key=True, index=True)
+    nome = Column(String(120), nullable=False)
+    email = Column(String(129), unique=True, nullable=False)
+    senha_hash = Column(String(255), nullable=False)
+    criado_em = Column(TIMESTAMP, server_default=func.now())
 
-class Document(Base):
-    __tablename__ = 'documents'
+    # Relacionamento com UsuarioEquipe
+    equipes_assoc = relationship("UsuarioEquipe", back_populates="usuario", cascade="all, delete-orphan")
 
-    id= Column(Integer, primary_key=True)
-    filename = Column(String(200), nullable=False)
-    filepath = Column(String(500), nullable=False)
-    upload_date = Column(DateTime, default=datetime.datetime.utcnow)
-    file_hash = Column(String(64), nullable=True)
-    owner_id = Column(Integer, ForeignKey('users.id'))
-    owner = relationship("User", back_populates="documents")
+
+class Documento(Base):
+    __tablename__ = "documentos"
+
+    doc_id = Column(Integer, primary_key=True, index=True)
+    user_team_id = Column(Integer, ForeignKey("usuario_equipe.user_team_id"), nullable=False)
+    nome_original = Column(String(255), nullable=False)
+    extensao = Column(String(20), nullable=False)
+    tamanho_bytes = Column(BIGINT, nullable=False)
+    caminho_storage = Column(String(500), nullable=False) # Ex: "/home/lucas/pdfs/123.pdf" ou "s3://meu-bucket/123.pdf"
+    nivel_seguranca = Column(Integer, nullable=False)
+    chave_criptografica = Column(String(255), nullable=False)
+    hash_documento = Column(String(255), nullable=False)
+    criado_em = Column(TIMESTAMP, server_default=func.now())
+
+    ativo = Column(Boolean, default=True, nullable=False) # Soft Delete
+    status_processamento = Column(String(50), default="PENDENTE") # PENDENTE, PROCESSANDO, CONCLUIDO, ERRO
+
+    usuario_equipe = relationship("UsuarioEquipe", back_populates="documentos")
+    dados_sensiveis = relationship("DadoSensivel", back_populates="documento", cascade="all, delete-orphan")
+
+class DadoSensivel(Base):
+    __tablename__ = "dado_sensivel"
+
+    sensivel_id = Column(Integer, primary_key=True, index=True)
+    doc_id = Column(Integer, ForeignKey("documentos.doc_id", ondelete="CASCADE"), nullable=False)
     
-    # Relacionamento: Um documento tem vários trechos sensíveis
-    sensitive_data = relationship("SensitiveData", back_populates="document")
+    tipo_entidade = Column(String(50), nullable=False) # Ex: CPF, CNPJ, NOME_PESSOA
+    conteudo_hash = Column(Text, nullable=False) # O texto original criptografado (Bcrypt)
+    pagina = Column(Integer, nullable=False) # Em qual página a tarja vai ficar
+    coordenadas = Column(JSON, nullable=False) # [x0, y0, x1, y1] - Onde desenhar a tarja
+    nivel_requerido = Column(Integer, default=4) # Nível do Cargo necessário para ver sem a tarja
 
+    documento = relationship("Documento", back_populates="dados_sensiveis")
 
-class SensitiveData(Base) :
-    __tablename__ = 'sensitive_data_map'
+class LogAuditoria(Base):
+    __tablename__ = "log_auditoria"
 
-    id = Column(Integer,primary_key=True)
-    document_id = Column(Integer, ForeignKey('documents.id'))
-
-    # Oq é ? cpf, nome, salario ...
-    entity_type = Column(String(50))
-    original_content_encrypted = Column(Text, nullable=False)
-    page = Column(Integer, nullable=False, default=0)
-    #Cordenadas onde os dados sensiveis estão no documento
-    coordinates = Column(JSON, nullable=False)
-
-    required_level = Column(Integer, default=4)
-
-    document = relationship("Document", back_populates="sensitive_data")
-
-
+    log_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("usuario.user_id"), nullable=False)
+    doc_id = Column(Integer, ForeignKey("documentos.doc_id"), nullable=True) # Pode ser null se a ação for só "LOGIN"
+    
+    acao = Column(String(100), nullable=False) # Ex: "VISUALIZOU_COM_TARJA", "BAIXOU_ORIGINAL", "DELETOU_DOC"
+    ip_origem = Column(String(45), nullable=False) # Endereço IP de quem fez a requisição
+    data_hora = Column(TIMESTAMP, server_default=func.now())
 ################
 ### Execução ###
 ################ 
