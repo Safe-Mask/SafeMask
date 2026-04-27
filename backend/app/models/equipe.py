@@ -7,7 +7,7 @@ class Equipe(Base):
     __tablename__ = "equipe"
 
     team_id = Column(Integer, primary_key=True, index=True)
-    nome = Column(String(120), nullable=False, unique=True)
+    nome = Column(String(120), nullable=False)
     criado_em = Column(TIMESTAMP, server_default=func.now())
 
     # Relacionamento com UsuarioEquipe

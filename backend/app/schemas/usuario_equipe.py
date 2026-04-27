@@ -4,7 +4,7 @@ from datetime import datetime
 class UsuarioEquipeBase(BaseModel):
     user_id: int
     team_id: int
-    cargo: str
+    cargo_id: int
 
 class UsuarioEquipeCreate(UsuarioEquipeBase):
     model_config = ConfigDict(from_attributes=True)
