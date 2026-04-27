@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
@@ -39,6 +39,22 @@ def get_db():
 
 def criar_tabelas():
     Base.metadata.create_all(bind=engine)
+
+
+def garantir_schema_equipes():
+    inspector = inspect(engine)
+    if "equipe" not in inspector.get_table_names():
+        return
+
+    colunas = {coluna["name"] for coluna in inspector.get_columns("equipe")}
+    if "descricao" in colunas:
+        return
+
+    with engine.begin() as conn:
+        if engine.dialect.name == "postgresql":
+            conn.execute(text("ALTER TABLE equipe ADD COLUMN IF NOT EXISTS descricao TEXT"))
+        elif engine.dialect.name == "sqlite":
+            conn.execute(text("ALTER TABLE equipe ADD COLUMN descricao TEXT"))
 
 
 if __name__ == "__main__":

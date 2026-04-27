@@ -195,9 +195,15 @@ function applyMetrics(metrics) {
     metricNivelSeguranca.textContent = metrics.media_nivel_seguranca ?? 0;
     metricNivelAlto.textContent = `${metrics.documentos_nivel_alto ?? 0} docs com nivel alto`;
 
-    highlightTotalCensurados.textContent = metrics.documentos_censurados ?? 0;
-    highlightTaxaCensura.textContent = `${metrics.taxa_censura ?? 0}%`;
-    highlightNivelAlto.textContent = metrics.documentos_nivel_alto ?? 0;
+    if (highlightTotalCensurados) {
+        highlightTotalCensurados.textContent = metrics.documentos_censurados ?? 0;
+    }
+    if (highlightTaxaCensura) {
+        highlightTaxaCensura.textContent = `${metrics.taxa_censura ?? 0}%`;
+    }
+    if (highlightNivelAlto) {
+        highlightNivelAlto.textContent = metrics.documentos_nivel_alto ?? 0;
+    }
 }
 
 async function loadDashboardData() {
@@ -267,9 +273,13 @@ btnCensurarDocumento.addEventListener('click', () => {
 // Marca visualmente a secao selecionada no menu lateral.
 menuLinks.forEach((link) => {
     link.addEventListener('click', (event) => {
-        event.preventDefault();
-        menuLinks.forEach((item) => item.classList.remove('active'));
-        link.classList.add('active');
+        const href = link.getAttribute('href') || '';
+
+        if (!href || href === '#') {
+            event.preventDefault();
+            menuLinks.forEach((item) => item.classList.remove('active'));
+            link.classList.add('active');
+        }
 
         if (window.innerWidth <= 860) {
             sidebar.classList.remove('open');
