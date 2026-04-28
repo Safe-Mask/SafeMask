@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeMask - Documentos Censurados</title>
+    <link rel="stylesheet" href="../../css/dashboard.css">
+    <link rel="stylesheet" href="../../css/documentos/censurados.css">
+</head>
+<body>
+    <div class="dashboard-shell censored-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="../../images/safemask-logo-transparente.png" alt="SafeMask" class="brand-logo">
+                <div>
+                    <p class="brand-kicker">Painel</p>
+                    <h1>SafeMask</h1>
+                </div>
+            </div>
+
+            <nav class="menu">
+                <p class="menu-title">Documentos</p>
+                <a href="../dashboard.html" class="menu-link">Visao Geral</a>
+                <a href="censurar.html" class="menu-link">Novo Upload</a>
+                <a href="censurados.html" class="menu-link active">Documentos Censurados</a>
+                <a href="../dashboard.html#historico" class="menu-link">Histórico</a>
+
+                <p class="menu-title">Equipes</p>
+                <a href="../equipes/equipes.html" class="menu-link">Gerenciar Equipes</a>
+                <a href="../equipes/detalhe.html" class="menu-link">Acessar Equipe</a>
+
+                <p class="menu-title">Acessos</p>
+                <a href="../dashboard.html#usuarios" class="menu-link">Usuarios da Equipe</a>
+                <a href="../dashboard.html#permissoes" class="menu-link">Permissoes</a>
+                <a href="../dashboard.html#configuracoes" class="menu-link">Configuracoes</a>
+            </nav>
+        </aside>
+
+        <div class="main-wrap">
+            <header class="topbar">
+                <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
+                <div>
+                    <h2>Documentos Censurados</h2>
+                    <p class="subtitle">Veja todos os documentos censurados vinculados ao seu usuário, com preview, equipe e chave criptografica</p>
+                </div>
+
+                <button class="cta-censor" id="goToUploadBtn">Novo Upload</button>
+
+                <div class="user-menu" id="userMenu">
+                    <button class="user-trigger" id="userTrigger" aria-haspopup="true" aria-expanded="false">
+                        <span class="user-icon" aria-hidden="true">U</span>
+                        <span id="userName">Usuario</span>
+                    </button>
+                    <div class="dropdown" id="userDropdown">
+                        <button class="dropdown-item" id="logoutBtn">Logout</button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="content censored-content">
+                <section class="panel hero-panel">
+                    <div class="panel-header">
+                        <div>
+                            <p class="panel-kicker">Fluxo concluido</p>
+                            <h3>Documentos censurados do usuário</h3>
+                            <p class="panel-subtitle">A lista abaixo é carregada com base no seu id de usuário e mostra a equipe, a data de censura e o acesso aos detalhes de cada documento.</p>
+                        </div>
+                        <div class="flow-pills">
+                            <span class="pill ok" id="docsCountPill">0 documentos</span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="censored-layout">
+                    <article class="panel docs-list-panel">
+                        <div class="panel-header">
+                            <h3>Lista de documentos</h3>
+                            <span class="panel-action" id="currentUserLabel">Usuário</span>
+                        </div>
+                        <div id="docsEmptyState" class="empty-state small">
+                            <strong>Carregando documentos</strong>
+                            <span>Aguarde enquanto buscamos os itens vinculados ao seu usuário.</span>
+                        </div>
+                        <div class="docs-list" id="docsList"></div>
+                    </article>
+
+                    <article class="panel details-panel">
+                        <div class="panel-header">
+                            <h3>Detalhes do documento</h3>
+                            <span class="panel-action">preview e chave</span>
+                        </div>
+
+                        <div class="detail-empty" id="detailEmptyState">
+                            <strong>Selecione um documento</strong>
+                            <p>Escolha um item na lista para ver a preview do documento censurado e a chave criptografica correspondente.</p>
+                        </div>
+
+                        <div class="detail-shell" id="detailShell" hidden>
+                            <div class="detail-meta">
+                                <div>
+                                    <span class="highlight-label">Documento</span>
+                                    <strong id="detailTitle">-</strong>
+                                </div>
+                                <div>
+                                    <span class="highlight-label">Equipe</span>
+                                    <strong id="detailTeam">-</strong>
+                                </div>
+                                <div>
+                                    <span class="highlight-label">Data de censura</span>
+                                    <strong id="detailDate">-</strong>
+                                </div>
+                            </div>
+
+                            <div class="preview-frame-wrap">
+                                <iframe id="detailPreviewFrame" title="Preview do documento censurado"></iframe>
+                                <div class="preview-fallback" id="detailPreviewFallback">
+                                    <strong>Preview indisponível</strong>
+                                    <p>Quando o arquivo puder ser renderizado, ele aparecerá aqui. Enquanto isso, você ainda pode conferir os metadados e a chave criptografica.</p>
+                                </div>
+                            </div>
+
+                            <div class="detail-grid">
+                                <div class="detail-card">
+                                    <span class="highlight-label">Nível de segurança</span>
+                                    <strong id="detailSecurity">-</strong>
+                                </div>
+                                <div class="detail-card">
+                                    <span class="highlight-label">Chave criptografica</span>
+                                    <code id="detailCryptoKey">-</code>
+                                </div>
+                            </div>
+
+                            <div class="modal-actions detail-actions">
+                                <button type="button" class="ghost-button" id="undoRedactionBtn">Descensurar</button>
+                                <button type="button" class="ghost-button" id="closeDetailsBtn">Fechar detalhes</button>
+                            </div>
+                        </div>
+                    </article>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="../../js/documentos/censurados.js"></script>
+</body>
+</html>

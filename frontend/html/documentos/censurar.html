@@ -22,8 +22,7 @@
                 <p class="menu-title">Documentos</p>
                 <a href="../dashboard.html" class="menu-link">Visao Geral</a>
                 <a href="censurar.html" class="menu-link active" data-section="upload-documento">Novo Upload</a>
-                <a href="../dashboard.html#docs-enviados" class="menu-link" data-section="docs-enviados">Documentos Enviados</a>
-                <a href="../dashboard.html#docs-censurados" class="menu-link" data-section="docs-censurados">Documentos Censurados</a>
+                <a href="censurados.html" class="menu-link" data-section="docs-censurados">Documentos Censurados</a>
                 <a href="../dashboard.html#historico" class="menu-link" data-section="historico">Historico</a>
 
                 <p class="menu-title">Equipes</p>
@@ -63,19 +62,19 @@
                     <div class="panel-header">
                         <div>
                             <p class="panel-kicker">Fluxo privado</p>
-                            <h3>Upload seguro para gerar a versao censurada</h3>
-                            <p class="panel-subtitle">O arquivo original nao fica armazenado em claro. O sistema vai trabalhar apenas com a versao temporaria e persistir o resultado criptografado.</p>
+                            <h3>Envie o documento e avance para a censura</h3>
+                            <p class="panel-subtitle">O arquivo original nao fica armazenado em claro. O sistema trabalha primeiro com o envio seguro e, depois, libera a etapa de revisao, equipes e salvamento.</p>
                         </div>
                         <div class="flow-pills">
                             <span class="pill ok">1. Envio</span>
-                            <span class="pill wait">2. Revisao</span>
+                            <span class="pill wait">2. Preview</span>
                             <span class="pill wait">3. Equipes</span>
                             <span class="pill wait">4. Salvamento</span>
                         </div>
                     </div>
                 </section>
 
-                <section class="censor-layout">
+                <section class="panel upload-stage" id="uploadStep">
                     <article class="panel upload-panel">
                         <div class="panel-header">
                             <h3>Enviar documento</h3>
@@ -84,110 +83,175 @@
 
                         <label class="dropzone" id="dropzone">
                             <input type="file" id="documentInput" accept=".pdf,.png,.jpg,.jpeg,.tiff" hidden>
-                            <div class="dropzone-icon">⬆</div>
-                            <strong>Arraste o arquivo aqui</strong>
-                            <span>ou clique para selecionar do seu computador</span>
-                            <small>O upload sera tratado como temporario ate a geracao da versao criptografada.</small>
+                            <div class="dropzone-prompt" id="dropzonePrompt">
+                                <div class="dropzone-icon">⬆</div>
+                                <strong>Arraste o arquivo aqui</strong>
+                                <span>ou clique para selecionar do seu computador</span>
+                                <small>O upload sera tratado como temporario ate a geracao da versao criptografada.</small>
+                            </div>
+                            <div class="file-summary dropzone-summary" id="fileSummary">
+                                <div class="empty-state small">
+                                    <strong>Nenhum arquivo selecionado</strong>
+                                    <span>Escolha um documento para iniciar o fluxo de censura.</span>
+                                </div>
+                            </div>
                             <button type="button" class="ghost-button" id="pickFileBtn">Escolher arquivo</button>
                         </label>
 
-                        <div class="file-summary" id="fileSummary">
-                            <div class="empty-state small">
-                                <strong>Nenhum arquivo selecionado</strong>
-                                <span>Escolha um documento para iniciar o fluxo de censura.</span>
-                            </div>
-                        </div>
-                    </article>
-
-                    <article class="panel preview-panel">
-                        <div class="panel-header">
-                            <h3>Preview do documento</h3>
-                            <span class="panel-action">layout visual</span>
-                        </div>
-
-                        <div class="document-preview">
-                            <div class="page-frame">
-                                <div class="page-topbar">
-                                    <span class="page-tag" id="previewFileName">Arquivo nao carregado</span>
-                                    <span class="page-tag muted">Pagina 1</span>
-                                </div>
-
-                                <div class="mock-document">
-                                    <div class="mock-line short"></div>
-                                    <div class="mock-line"></div>
-                                    <div class="mock-line"></div>
-                                    <div class="mock-highlight highlight-one"></div>
-                                    <div class="mock-line wide"></div>
-                                    <div class="mock-highlight highlight-two"></div>
-                                    <div class="mock-line"></div>
-                                    <div class="mock-line short"></div>
-                                </div>
-                            </div>
-
-                            <div class="preview-footer">
-                                <div>
-                                    <span class="highlight-label">Estado</span>
-                                    <strong>Pronto para revisao manual</strong>
-                                </div>
-                                <p>Quando a IA for integrada, os dados sensiveis detectados vao aparecer aqui como marcacoes editaveis.</p>
-                            </div>
-                        </div>
-                    </article>
-
-                    <article class="panel team-panel">
-                        <div class="panel-header">
-                            <h3>Equipes para associar</h3>
-                            <span class="panel-action">multiselecao</span>
-                        </div>
-                        <p class="panel-subtitle">Selecione todas as equipes que devem receber acesso a este documento censurado e criptografado.</p>
-
-                        <div class="team-picker" id="teamPicker"></div>
-
-                        <div class="selection-summary">
-                            <strong id="selectedTeamsCount">0 equipes selecionadas</strong>
-                            <p id="selectedTeamsNames">Escolha as equipes para este documento fazer parte.</p>
-                        </div>
-                    </article>
-
-                    <article class="panel save-panel">
-                        <div class="panel-header">
-                            <h3>Salvar documento censurado</h3>
-                            <span class="panel-action">armazenamento criptografado</span>
-                        </div>
-
-                        <div class="save-form">
-                            <label class="field field-full">
-                                <span>Nome final do documento</span>
-                                <input type="text" id="docTitleInput" placeholder="Documento_Censurado.pdf">
-                            </label>
-
-                            <label class="field field-full">
-                                <span>Nivel de seguranca</span>
-                                <select id="securityLevelInput">
-                                    <option value="1">Basico</option>
-                                    <option value="2">Protecao media</option>
-                                    <option value="3" selected>Protecao alta</option>
-                                    <option value="4">Protecao maxima</option>
-                                </select>
-                            </label>
-
-                            <label class="field field-full">
-                                <span>Observacoes internas</span>
-                                <textarea id="docNotesInput" rows="4" placeholder="Detalhe o que deve ser preservado, redigido ou revisado antes de salvar."></textarea>
-                            </label>
-                        </div>
-
-                        <div class="security-note">
-                            <strong>Regra de privacidade</strong>
-                            <p>Somente a versao censurada e criptografada deve ser persistida. O original nao deve ficar salvo em claro.</p>
-                        </div>
-
-                        <div class="modal-actions">
-                            <button type="button" class="ghost-button" id="cancelUploadBtn">Cancelar</button>
-                            <button type="button" class="cta-censor" id="saveCensoredDocBtn">Salvar documento censurado</button>
+                        <div class="modal-actions upload-actions">
+                            <button type="button" class="ghost-button" id="goToDashboardBtnInline">Cancelar</button>
+                            <button type="button" class="cta-censor" id="censorStartBtn" disabled>Censurar</button>
                         </div>
                     </article>
                 </section>
+
+                <section class="panel loading-stage" id="loadingStep" hidden>
+                    <article class="loading-card">
+                        <div class="loading-header">
+                            <div>
+                                <p class="panel-kicker">Processando</p>
+                                <h3>Aplicando censura no documento</h3>
+                                <p class="panel-subtitle">Estamos analisando o arquivo, marcando os trechos sensíveis e preparando a versão protegida para revisão.</p>
+                            </div>
+                            <span class="pill wait" id="loadingStepLabel">0%</span>
+                        </div>
+
+                        <div class="loading-scanner">
+                            <div class="loading-page">
+                                <div class="loading-page-top">
+                                    <span class="page-tag" id="loadingFileName">Arquivo carregado</span>
+                                    <span class="page-tag muted">Censura em andamento</span>
+                                </div>
+
+                                <div class="loading-document">
+                                    <div class="mock-line short"></div>
+                                    <div class="mock-line"></div>
+                                    <div class="mock-line"></div>
+                                    <div class="mock-highlight loading-highlight highlight-one"></div>
+                                    <div class="mock-line wide"></div>
+                                    <div class="mock-highlight loading-highlight highlight-two"></div>
+                                    <div class="mock-line"></div>
+                                    <div class="mock-line short"></div>
+                                    <div class="loading-scanline"></div>
+                                </div>
+                            </div>
+
+                            <div class="loading-status">
+                                <div class="loading-badge active">1. Envio validado</div>
+                                <div class="loading-badge active">2. Varredura de texto</div>
+                                <div class="loading-badge" id="loadingBadgeRedaction">3. Tarjas e marcações</div>
+                                <div class="loading-badge" id="loadingBadgeTeams">4. Preparando equipes</div>
+                            </div>
+                        </div>
+                    </article>
+                </section>
+
+                <section class="censor-review" id="reviewStep" hidden>
+                    <div class="review-layout">
+                        <article class="panel preview-panel">
+                            <div class="panel-header">
+                                <h3>Preview do documento</h3>
+                                <span class="panel-action">layout visual</span>
+                            </div>
+
+                            <div class="document-preview">
+                                <div class="page-frame">
+                                    <div class="page-topbar">
+                                        <span class="page-tag" id="previewFileName">Arquivo nao carregado</span>
+                                        <span class="page-tag muted">Pagina 1</span>
+                                    </div>
+
+                                    <div class="mock-document">
+                                        <div class="mock-line short"></div>
+                                        <div class="mock-line"></div>
+                                        <div class="mock-line"></div>
+                                        <div class="mock-highlight highlight-one"></div>
+                                        <div class="mock-line wide"></div>
+                                        <div class="mock-highlight highlight-two"></div>
+                                        <div class="mock-line"></div>
+                                        <div class="mock-line short"></div>
+                                    </div>
+                                </div>
+
+                                <div class="preview-footer">
+                                    <div>
+                                        <span class="highlight-label">Estado</span>
+                                        <strong>Pronto para revisao manual</strong>
+                                    </div>
+                                    <p>Quando a IA for integrada, os dados sensiveis detectados vao aparecer aqui como marcacoes editaveis.</p>
+                                </div>
+
+                                <div class="file-summary" id="fileSummaryReview">
+                                    <div class="empty-state small">
+                                        <strong>Nenhum arquivo selecionado</strong>
+                                        <span>Escolha um documento para iniciar o fluxo de censura.</span>
+                                    </div>
+                                </div>
+
+                                <div class="modal-actions">
+                                    <button type="button" class="ghost-button" id="cancelUploadBtn">Selecionar outro arquivo</button>
+                                </div>
+                            </div>
+                        </article>
+
+                        <div class="review-sidebar">
+                            <article class="panel team-panel">
+                                <div class="panel-header">
+                                    <h3>Equipes para associar</h3>
+                                    <span class="panel-action">multiselecao</span>
+                                </div>
+                                <p class="panel-subtitle">Selecione as equipes que devem receber acesso ao documento censurado.</p>
+
+                                <div class="team-picker" id="teamPicker"></div>
+
+                                <div class="selection-summary">
+                                    <strong id="selectedTeamsCount">0 equipes selecionadas</strong>
+                                    <p id="selectedTeamsNames">Escolha as equipes para este documento fazer parte.</p>
+                                </div>
+                            </article>
+
+                            <article class="panel save-panel">
+                                <div class="panel-header">
+                                    <h3>Salvar documento censurado</h3>
+                                    <span class="panel-action">armazenamento criptografado</span>
+                                </div>
+
+                                <div class="save-form">
+                                    <label class="field field-full">
+                                        <span>Nome final do documento</span>
+                                        <input type="text" id="docTitleInput" placeholder="Documento_Censurado.pdf">
+                                    </label>
+
+                                    <label class="field field-full">
+                                        <span>Nivel de seguranca</span>
+                                        <select id="securityLevelInput">
+                                            <option value="1">Basico</option>
+                                            <option value="2">Protecao media</option>
+                                            <option value="3" selected>Protecao alta</option>
+                                            <option value="4">Protecao maxima</option>
+                                        </select>
+                                    </label>
+
+                                    <label class="field field-full">
+                                        <span>Observacoes internas</span>
+                                        <textarea id="docNotesInput" rows="4" placeholder="Detalhe o que deve ser preservado, redigido ou revisado antes de salvar."></textarea>
+                                    </label>
+                                </div>
+
+                                <div class="security-note">
+                                    <strong>Regra de privacidade</strong>
+                                    <p>Somente a versao censurada e criptografada deve ser persistida. O original nao deve ficar salvo em claro.</p>
+                                </div>
+
+                                <div class="modal-actions">
+                                    <button type="button" class="ghost-button" id="cancelReviewBtn">Voltar</button>
+                                    <button type="button" class="cta-censor" id="saveCensoredDocBtn">Salvar documento censurado</button>
+                                </div>
+                            </article>
+                        </div>
+                    </div>
+                </section>
+
             </main>
         </div>
     </div>
