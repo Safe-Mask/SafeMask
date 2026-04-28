@@ -261,13 +261,7 @@ menuToggle.addEventListener('click', () => {
 });
 
 btnCensurarDocumento.addEventListener('click', () => {
-    docsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    menuLinks.forEach((item) => item.classList.remove('active'));
-    const docsMenuItem = document.querySelector('.menu-link[data-section="upload-documento"]');
-    if (docsMenuItem) {
-        docsMenuItem.classList.add('active');
-    }
+    window.location.href = 'documentos/censurar.html';
 });
 
 // Marca visualmente a secao selecionada no menu lateral.

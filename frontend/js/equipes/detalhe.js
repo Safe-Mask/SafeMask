@@ -68,8 +68,7 @@ function getTeamId() {
 }
 
 function openDocumentModal() {
-    documentModal.classList.add('open');
-    documentModal.setAttribute('aria-hidden', 'false');
+    window.location.href = '../documentos/censurar.html';
 }
 
 function closeDocumentFlow() {
@@ -219,8 +218,7 @@ documentModal.addEventListener('click', (event) => {
 });
 
 confirmDocumentModal.addEventListener('click', () => {
-    closeDocumentFlow();
-    alert('Fluxo de adicao de documento ainda sera ligado ao backend.');
+    window.location.href = '../documentos/censurar.html';
 });
 
 loadTeam();
