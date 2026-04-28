@@ -7,5 +7,6 @@ passlib==1.7.4
 pydantic==2.11.0
 python-dotenv==1.1.0
 python-jose==3.4.0
+python-multipart==0.0.27
 SQLAlchemy==2.0.40
 uvicorn==0.34.0
