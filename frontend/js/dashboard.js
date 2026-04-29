@@ -8,7 +8,7 @@ const menuToggle = document.getElementById('menuToggle');
 const btnCensurarDocumento = document.getElementById('btnCensurarDocumento');
 const sidebar = document.getElementById('sidebar');
 const menuLinks = document.querySelectorAll('.menu-link');
-const API_URL = 'http://127.0.0.1:8000/dashboard/overview';
+const API_URL = 'https://safemask-3.onrender.com/dashboard/overview';
 
 const metricTotalEquipes = document.getElementById('metricTotalEquipes');
 const metricTotalDocs = document.getElementById('metricTotalDocs');
@@ -248,7 +248,7 @@ async function loadDashboardData() {
             <li>
                 <div>
                     <strong>Erro ao carregar dados</strong>
-                    <p>verifique se o backend esta ativo em http://127.0.0.1:8000</p>
+                    <p>verifique se o backend esta ativo em https://safemask-3.onrender.com</p>
                 </div>
                 <span class="status alert">Erro</span>
             </li>
