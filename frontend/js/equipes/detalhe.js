@@ -22,7 +22,7 @@ const detailTotalMembers = document.getElementById('detailTotalMembers');
 const detailTotalDocs = document.getElementById('detailTotalDocs');
 const detailMemberList = document.getElementById('detailMemberList');
 
-const API_BASE = 'http://127.0.0.1:8000/equipes';
+const API_BASE = 'https://safemask-3.onrender.com/equipes';
 const storedName = localStorage.getItem('userName') || 'Usuario';
 userNameElement.textContent = storedName;
 userIcon.textContent = storedName.charAt(0).toUpperCase();

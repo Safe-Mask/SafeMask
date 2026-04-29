@@ -1,4 +1,4 @@
-const API_URL = 'http://127.0.0.1:8000/auth';
+const API_URL = 'https://safemask-3.onrender.com/auth';
 
 // Validar campos obrigatórios no login
 document.getElementById('login-email').addEventListener('blur', (e) => {

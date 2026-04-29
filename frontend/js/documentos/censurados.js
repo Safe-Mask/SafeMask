@@ -28,7 +28,7 @@ const loadingFileName = document.getElementById('loadingFileName');
 const loadingBadgeRedaction = document.getElementById('loadingBadgeRedaction');
 const loadingBadgeTeams = document.getElementById('loadingBadgeTeams');
 
-const API_DOCUMENTS = 'http://127.0.0.1:8000/documentos/censurados';
+const API_DOCUMENTS = 'https://safemask-3.onrender.com/documentos/censurados';
 
 const storedName = localStorage.getItem('userName') || 'Usuario';
 userNameElement.textContent = storedName;
@@ -174,7 +174,7 @@ function renderDocumentDetails(documento) {
     if (documento.preview_url) {
         const token = localStorage.getItem('token');
         if (token) {
-            fetch(`http://127.0.0.1:8000${documento.preview_url}`, {
+            fetch(`https://safemask-3.onrender.com${documento.preview_url}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
