@@ -23,15 +23,26 @@ Detecte e censure automaticamente informações confidenciais em documentos, gar
 
 ---
 
-## 📖 Índice
+## � Acesso Rápido
 
+| Serviço | URL | Status |
+|---------|-----|--------|
+| 🌐 **Frontend (Vercel)** | [https://safemask.vercel.app](https://safemask.vercel.app) | ✅ Online |
+| 🔙 **Backend (Render)** | [https://safemask-backend.onrender.com](https://safemask-backend.onrender.com) | ✅ Online |
+| 🗄️ **API Docs** | [https://safemask-backend.onrender.com/docs](https://safemask-backend.onrender.com/docs) | ✅ Online |
+| 💾 **Database (Neon)** | PostgreSQL Serverless | ✅ Conectado |
+
+---
+
+## �📖 Índice
+
+- [Acesso Rápido](#-acesso-rápido)
 - [Visão Geral](#-visão-geral)
 - [Stack Tecnológico](#-stack-tecnológico)
 - [Estrutura do Projeto](#-estrutura-do-projeto)
-- [Instalação](#-instalação)
+- [Instalação Local](#-instalação-local)
 - [API Endpoints](#-api-endpoints)
 - [Desenvolvimento](#-desenvolvimento)
-- [Deploy](#-deploy)
 - [Conformidade LGPD](#-conformidade-lgpd)
 
 ---
@@ -118,14 +129,15 @@ SafeMask/
 
 ---
 
-## 🚀 Instalação
+## 🚀 Instalação Local
+
+> ℹ️ **O projeto já está em produção!** Use esta seção apenas para desenvolvimento local.
 
 ### Pré-requisitos
 
 - **Python** >= 3.9
 - **pip** >= 21.0
-- Conta no **[Neon](https://neon.tech/)** (PostgreSQL serverless)
-- Conta no **[Vercel](https://vercel.com/)** (para deploy do frontend)
+- PostgreSQL local ou Neon database (opcional para dev)
 
 ### Passo 1: Clone o repositório
 
@@ -229,12 +241,25 @@ Frontend em: `http://localhost:8080`
 
 ### Base URL
 
+**Produção:**
+```
+https://safemask-backend.onrender.com
+```
+
+**Desenvolvimento Local:**
 ```
 http://localhost:8000
 ```
 
 ### Documentação Interativa
 
+**Produção:**
+```
+https://safemask-backend.onrender.com/docs  (Swagger UI)
+https://safemask-backend.onrender.com/redoc (ReDoc)
+```
+
+**Local:**
 ```
 http://localhost:8000/docs  (Swagger UI)
 ```
@@ -349,88 +374,88 @@ for u in usuarios:
 
 ---
 
-## 🚀 Deploy
+## 🚀 Produção - Infraestrutura em Nuvem
 
-### Frontend (Vercel)
+### ✅ Deployments Concluídos
 
-**Pré-requisitos:**
-- Conta em [Vercel.com](https://vercel.com/)
-- Repositório GitHub
+#### 🌐 Frontend - Vercel
+- **Status**: ✅ Em produção
+- **URL**: [https://safemask.vercel.app](https://safemask.vercel.app)
+- **Atualização**: Automática a cada push para `main`
+- **Localização**: `/frontend`
 
-**Passos:**
+#### 🔙 Backend - Render
+- **Status**: ✅ Em produção
+- **URL**: [https://safemask-backend.onrender.com](https://safemask-backend.onrender.com)
+- **Docs**: [https://safemask-backend.onrender.com/docs](https://safemask-backend.onrender.com/docs)
+- **Localização**: `/backend`
+- **Runtime**: Python 3 + FastAPI
 
-1. **Push para GitHub**
-   ```bash
-   git push origin main
-   ```
+#### 💾 Database - Neon
+- **Status**: ✅ Em produção
+- **Tipo**: PostgreSQL Serverless
+- **Conexão**: Automática via `DATABASE_URL`
+- **Backup**: Gerenciado automaticamente pelo Neon
 
-2. **Acesse Vercel Dashboard**
-   - [https://vercel.com/dashboard](https://vercel.com/dashboard)
-   - Clique em "New Project"
-   - Selecione seu repositório SafeMask
+### Fluxo de Deployment
 
-3. **Configure Deploy**
-   - **Framework**: "Other"
-   - **Root Directory**: `./frontend`
-   - **Build Command**: deixe em branco
-   - **Output Directory**: `./`
-
-4. **Variables (opcional)**
-   ```
-   REACT_APP_API_URL=https://seu-backend-url.com
-   ```
-
-5. **Deploy!**
-   - Seu frontend está em: `https://safemask.vercel.app`
-
-**Atualizações automáticas:** Qualquer push para `main` redeploya.
-
-### Backend (Render.com - Recomendado)
-
-**Pré-requisitos:**
-- Conta em [Render.com](https://render.com/)
-- Repositório GitHub
-
-**Passos:**
-
-1. **Criar Web Service**
-   - Dashboard → "New +" → "Web Service"
-   - Conectar GitHub
-
-2. **Configurar Build**
-   ```
-   Name: safemask-backend
-   Runtime: Python 3
-   Build Command: pip install -r backend/requirements.txt
-   Start Command: cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000
-   ```
-
-3. **Environment Variables**
-   ```
-   DATABASE_URL=postgresql://seu_usuario:senha@host/banco?sslmode=require
-   SECRET_KEY=sua-chave-secreta-super-segura
-   ```
-
-4. **Deploy**
-   - Backend em: `https://safemask-backend.onrender.com`
-
-### Conectar Frontend ao Backend
-
-Após deploy, atualize `frontend/js/` com a URL do backend:
-
-```javascript
-// Desenvolvimento
-const API_URL = "http://localhost:8000";
-
-// Produção (Render)
-const API_URL = "https://safemask-backend.onrender.com";
+```
+┌─────────────────────────────────────┐
+│      GitHub - Main Branch           │
+└────────────┬────────────────────────┘
+             │ Push
+        ┌────┴────────────────────┐
+        │                         │
+        ▼                         ▼
+   ┌─────────┐              ┌─────────┐
+   │ Vercel  │              │ Render  │
+   └──┬──────┘              └────┬────┘
+      │                         │
+      ▼                         ▼
+   Frontend              Backend API
+   ✅ Online            ✅ Online
+        │                    │
+        └────────┬───────────┘
+                 ▼
+            ┌─────────┐
+            │  Neon   │
+            │PostgreSQL
+            └─────────┘
+            ✅ Online
 ```
 
-Ou usar variável de ambiente:
+### Variáveis de Ambiente (Render Backend)
 
-```javascript
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
+```env
+# Database
+DATABASE_URL=postgresql://user:password@ep-xyz.neon.tech/safemask_db?sslmode=require
+
+# Segurança
+SECRET_KEY=chave-segura-gerada-aleatoriamente
+
+# CORS
+CORSORI=https://safemask.vercel.app
 ```
+
+### Monitoramento
+
+- **Vercel Dashboard**: [vercel.com/dashboard](https://vercel.com/dashboard)
+- **Render Dashboard**: [render.com/dashboard](https://render.com/dashboard)
+- **Neon Console**: [console.neon.tech](https://console.neon.tech)
+
+### Troubleshooting
+
+**Backend não responde?**
+- Verifique em [render.com/dashboard](https://render.com/dashboard)
+- Logs: Render → Logs
+
+**Erro de conexão com banco?**
+- Verifique DATABASE_URL no Render
+- Teste conexão: [Neon Console](https://console.neon.tech)
+
+**Frontend não carrega?**
+- Limpe cache: Ctrl+Shift+R
+- Verifique [vercel.com/dashboard](https://vercel.com/dashboard)
 
 ---
 
