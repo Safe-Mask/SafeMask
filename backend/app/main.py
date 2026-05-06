@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware import Middleware
 
 from app.routes import auth, dashboard, equipes, documentos
-from app.database import engine, Base, garantir_schema_equipes
+from app.database import engine, Base, garantir_schema_equipes, garantir_indices
 
 middleware = [
     Middleware(
@@ -25,6 +25,7 @@ app = FastAPI(
 
 Base.metadata.create_all(bind=engine)
 garantir_schema_equipes()
+garantir_indices()
 
 app.include_router(auth.router)
 app.include_router(dashboard.router)
