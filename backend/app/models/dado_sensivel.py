@@ -9,7 +9,7 @@ class DadoSensivel(Base):
     __tablename__ = "dado_sensivel"
 
     sensivel_id = Column(Integer, primary_key=True, index=True)
-    doc_id = Column(Integer, ForeignKey("documentos.doc_id", ondelete="CASCADE"), nullable=False)
+    doc_id = Column(Integer, ForeignKey("documentos.doc_id", ondelete="CASCADE"), nullable=False, index=True)
     tipo_entidade = Column(String(50), nullable=False)
     conteudo_hash = Column(Text, nullable=False)
     pagina = Column(Integer, nullable=False)

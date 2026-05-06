@@ -7,7 +7,7 @@ class Documento(Base):
     __tablename__ = "documentos"
 
     doc_id = Column(Integer, primary_key=True, index=True)
-    user_team_id = Column(Integer, ForeignKey("usuario_equipe.user_team_id", ondelete="CASCADE"), nullable=False)
+    user_team_id = Column(Integer, ForeignKey("usuario_equipe.user_team_id", ondelete="CASCADE"), nullable=False, index=True)
     nome_original = Column(String(255), nullable=False)
     extensao = Column(String(20), nullable=False)
     tamanho_bytes = Column(BIGINT, nullable=False)
