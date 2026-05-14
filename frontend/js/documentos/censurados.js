@@ -29,6 +29,7 @@ const loadingBadgeRedaction = document.getElementById('loadingBadgeRedaction');
 const loadingBadgeTeams = document.getElementById('loadingBadgeTeams');
 
 const API_DOCUMENTS = 'https://safemask-3.onrender.com/documentos/censurados';
+const initialDocId = Number(new URLSearchParams(window.location.search).get('doc_id'));
 
 const storedName = localStorage.getItem('userName') || 'Usuario';
 userNameElement.textContent = storedName;
@@ -262,7 +263,8 @@ async function loadDocuments() {
         renderDocumentsList();
 
         if (state.documentos.length) {
-            const detalheInicial = await loadDocumentDetails(state.documentos[0].doc_id);
+            const initialDocument = state.documentos.find((documento) => Number(documento.doc_id) === initialDocId) || state.documentos[0];
+            const detalheInicial = await loadDocumentDetails(initialDocument.doc_id);
             renderDocumentDetails(detalheInicial);
         }
     } catch (error) {

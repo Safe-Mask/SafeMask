@@ -6,12 +6,6 @@ const userNameElement = document.getElementById('userName');
 const userIcon = document.querySelector('.user-icon');
 const menuToggle = document.getElementById('menuToggle');
 const sidebar = document.getElementById('sidebar');
-const btnAddDocument = document.getElementById('btnAddDocument');
-const btnOpenDocumentModal = document.getElementById('btnOpenDocumentModal');
-const documentModal = document.getElementById('documentModal');
-const closeDocumentModal = document.getElementById('closeDocumentModal');
-const cancelDocumentModal = document.getElementById('cancelDocumentModal');
-const confirmDocumentModal = document.getElementById('confirmDocumentModal');
 
 const teamNameHeader = document.getElementById('teamNameHeader');
 const teamSubtitle = document.getElementById('teamSubtitle');
@@ -21,6 +15,8 @@ const detailCreatedAt = document.getElementById('detailCreatedAt');
 const detailTotalMembers = document.getElementById('detailTotalMembers');
 const detailTotalDocs = document.getElementById('detailTotalDocs');
 const detailMemberList = document.getElementById('detailMemberList');
+const detailDocumentList = document.getElementById('detailDocumentList');
+const teamDocsCount = document.getElementById('teamDocsCount');
 
 const API_BASE = 'https://safemask-3.onrender.com/equipes';
 const storedName = localStorage.getItem('userName') || 'Usuario';
@@ -61,19 +57,33 @@ function formatDate(value) {
     return date.toLocaleString('pt-BR');
 }
 
+function formatBytes(bytes) {
+    if (!Number.isFinite(bytes) || bytes <= 0) {
+        return '0 KB';
+    }
+
+    const units = ['B', 'KB', 'MB', 'GB'];
+    let size = bytes;
+    let unitIndex = 0;
+
+    while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex += 1;
+    }
+
+    return `${size.toFixed(size >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function documentAccessLabel(canAccess) {
+    return canAccess
+        ? { label: 'Com acesso', css: 'ok', action: 'Descensurar' }
+        : { label: 'Sem acesso', css: 'alert', action: 'Bloqueado' };
+}
+
 function getTeamId() {
     const params = new URLSearchParams(window.location.search);
     const teamId = Number(params.get('team_id'));
     return Number.isFinite(teamId) ? teamId : null;
-}
-
-function openDocumentModal() {
-    window.location.href = '../documentos/censurar.html';
-}
-
-function closeDocumentFlow() {
-    documentModal.classList.remove('open');
-    documentModal.setAttribute('aria-hidden', 'true');
 }
 
 function renderTeam(team) {
@@ -91,6 +101,13 @@ function renderTeam(team) {
                 <span>A equipe nao pode ser exibida.</span>
             </li>
         `;
+        detailDocumentList.innerHTML = `
+            <li class="empty-state">
+                <strong>Sem documentos</strong>
+                <span>Os documentos desta equipe nao puderam ser exibidos.</span>
+            </li>
+        `;
+        teamDocsCount.textContent = '0 documentos';
         return;
     }
 
@@ -117,20 +134,65 @@ function renderTeam(team) {
                 <span>Essa equipe ainda nao possui integrantes vinculados.</span>
             </li>
         `;
+    } else {
+        detailMemberList.innerHTML = members
+            .map((member) => {
+                const role = roleLabel(member.cargo_nome);
+                return `
+                    <li>
+                        <div class="member-body">
+                            <strong>${escapeHtml(member.nome)}</strong>
+                            <p class="member-email">${escapeHtml(member.email)}</p>
+                            <p>${escapeHtml(role.label)}</p>
+                        </div>
+                        <span class="pill ${role.css} member-role">${escapeHtml(role.label)}</span>
+                    </li>
+                `;
+            })
+            .join('');
+    }
+
+    const documentos = Array.isArray(team.documentos_lista) ? team.documentos_lista : [];
+    teamDocsCount.textContent = `${documentos.length} documento(s)`;
+
+    if (!documentos.length) {
+        detailDocumentList.innerHTML = `
+            <li class="empty-state">
+                <strong>Nenhum documento encontrado</strong>
+                <span>Esta equipe ainda nao possui documentos cadastrados.</span>
+            </li>
+        `;
         return;
     }
 
-    detailMemberList.innerHTML = members
-        .map((member) => {
-            const role = roleLabel(member.cargo_nome);
+    detailDocumentList.innerHTML = documentos
+        .map((documento) => {
+            const access = documentAccessLabel(Boolean(documento.tem_acesso));
+            const docClasses = `team-doc-item ${documento.tem_acesso ? 'allowed' : 'denied'}`;
+            const actionMarkup = documento.tem_acesso
+                ? `<a class="team-doc-action" href="../documentos/censurados.html?doc_id=${documento.doc_id}">${access.action}</a>`
+                : `<button type="button" class="team-doc-action disabled" disabled>${access.action}</button>`;
+
             return `
-                <li>
-                    <div class="member-body">
-                        <strong>${escapeHtml(member.nome)}</strong>
-                        <p class="member-email">${escapeHtml(member.email)}</p>
-                        <p>${escapeHtml(role.label)}</p>
+                <li class="${docClasses}">
+                    <div class="team-doc-top">
+                        <div>
+                            <strong>${escapeHtml(documento.nome_original)}</strong>
+                            <p>${escapeHtml(documento.autor_nome || 'Autor desconhecido')} · ${escapeHtml(formatDate(documento.criado_em))}</p>
+                        </div>
+                        <span class="pill ${access.css}">${escapeHtml(access.label)}</span>
                     </div>
-                    <span class="pill ${role.css} member-role">${escapeHtml(role.label)}</span>
+
+                    <div class="team-doc-meta">
+                        <span class="pill wait">Extensao ${escapeHtml(documento.extensao || '-')}</span>
+                        <span class="pill wait">${escapeHtml(formatBytes(documento.tamanho_bytes))}</span>
+                        <span class="pill wait">Nivel ${escapeHtml(String(documento.nivel_seguranca ?? '-'))}</span>
+                    </div>
+
+                    <div class="team-doc-footer">
+                        <span>${escapeHtml(documento.status_processamento || 'status indisponivel')}</span>
+                        ${actionMarkup}
+                    </div>
                 </li>
             `;
         })
@@ -204,21 +266,6 @@ logoutBtn.addEventListener('click', () => {
 
 menuToggle.addEventListener('click', () => {
     sidebar.classList.toggle('open');
-});
-
-btnAddDocument.addEventListener('click', openDocumentModal);
-btnOpenDocumentModal.addEventListener('click', openDocumentModal);
-closeDocumentModal.addEventListener('click', closeDocumentFlow);
-cancelDocumentModal.addEventListener('click', closeDocumentFlow);
-
-documentModal.addEventListener('click', (event) => {
-    if (event.target === documentModal) {
-        closeDocumentFlow();
-    }
-});
-
-confirmDocumentModal.addEventListener('click', () => {
-    window.location.href = '../documentos/censurar.html';
 });
 
 loadTeam();
