@@ -134,7 +134,8 @@ function renderDocumentsList() {
                     <span class="doc-tag">Tamanho: ${escapeHtml(formatBytes(documento.tamanho_bytes))}</span>
                 </div>
                 <div class="doc-actions">
-                    <button type="button" class="cta-censor" data-action="details" data-doc-id="${documento.doc_id}">Ver detalhes</button>
+                    <button type="button" class="cta-censor" data-action="redact" data-doc-id="${documento.doc_id}">Ver Arquivo Original</button>
+                    <button type="button" class="ghost-button" data-action="details" data-doc-id="${documento.doc_id}">Detalhes</button>
                 </div>
             </article>
         `)
@@ -306,6 +307,13 @@ goToUploadBtn.addEventListener('click', () => {
 });
 
 docsList.addEventListener('click', (event) => {
+    const redactionButton = event.target.closest('[data-action="redact"]');
+    if (redactionButton) {
+        const docId = Number(redactionButton.dataset.docId);
+        window.location.href = `descensura.html?doc_id=${docId}`;
+        return;
+    }
+
     const button = event.target.closest('[data-action="details"]');
     if (!button) {
         return;

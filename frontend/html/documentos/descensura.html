@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeMask - Descensura</title>
+    <link rel="stylesheet" href="../../css/dashboard.css">
+    <link rel="stylesheet" href="../../css/documentos/censurados.css">
+    <link rel="stylesheet" href="../../css/documentos/descensura.css">
+</head>
+<body>
+    <div class="dashboard-shell descensura-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="../../images/safemask-logo-transparente.png" alt="SafeMask" class="brand-logo">
+                <div>
+                    <p class="brand-kicker">Painel</p>
+                    <h1>SafeMask</h1>
+                </div>
+            </div>
+
+            <nav class="menu">
+                <p class="menu-title">Documentos</p>
+                <a href="../dashboard.html" class="menu-link">Visao Geral</a>
+                <a href="censurar.html" class="menu-link">Novo Upload</a>
+                <a href="censurados.html" class="menu-link">Documentos Censurados</a>
+                <a href="descensura.html" class="menu-link active">Descensura</a>
+
+                <p class="menu-title">Equipes</p>
+                <a href="../equipes/equipes.html" class="menu-link">Gerenciar Equipes</a>
+                <a href="../equipes/detalhe.html" class="menu-link">Acessar Equipe</a>
+            </nav>
+        </aside>
+
+        <div class="main-wrap">
+            <header class="topbar">
+                <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
+                <div>
+                    <h2>Descensura de Documento</h2>
+                    <p class="subtitle">Revise o documento autorizado antes de seguir com o fluxo de descensura</p>
+                </div>
+
+                <button class="cta-censor" id="backToDocumentsBtn">Voltar</button>
+
+                <div class="user-menu" id="userMenu">
+                    <button class="user-trigger" id="userTrigger" aria-haspopup="true" aria-expanded="false">
+                        <span class="user-icon" aria-hidden="true">U</span>
+                        <span id="userName">Usuario</span>
+                    </button>
+                    <div class="dropdown" id="userDropdown">
+                        <button class="dropdown-item" id="logoutBtn">Logout</button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="content descensura-content">
+                <section class="panel descensura-hero">
+                    <div class="panel-header">
+                        <div>
+                            <p class="panel-kicker">Documento autorizado</p>
+                            <h3 id="docTitle">Carregando documento</h3>
+                            <p class="panel-subtitle" id="docSubtitle">Buscando os dados do documento selecionado.</p>
+                        </div>
+                        <span class="pill ok" id="docAccessLabel">Com acesso</span>
+                    </div>
+                </section>
+
+                <section class="descensura-layout">
+                    <article class="panel descensura-preview-panel">
+                        <div class="panel-header">
+                            <h3>Preview</h3>
+                            <span class="panel-action" id="docTeamLabel">Equipe</span>
+                        </div>
+
+                        <div class="preview-frame-wrap">
+                            <iframe id="docPreviewFrame" title="Preview do documento"></iframe>
+                            <div class="preview-fallback" id="docPreviewFallback">
+                                <strong>Carregando preview</strong>
+                                <p>O documento autorizado está sendo preparado para visualização.</p>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="panel descensura-detail-panel">
+                        <div class="panel-header">
+                            <h3>Informações</h3>
+                            <span class="panel-action">descensura</span>
+                        </div>
+
+                        <div class="descensura-meta" id="docMeta">
+                            <div>
+                                <span class="highlight-label">Equipe</span>
+                                <strong id="metaTeam">-</strong>
+                            </div>
+                            <div>
+                                <span class="highlight-label">Autor</span>
+                                <strong id="metaAuthor">-</strong>
+                            </div>
+                            <div>
+                                <span class="highlight-label">Criação</span>
+                                <strong id="metaDate">-</strong>
+                            </div>
+                            <div>
+                                <span class="highlight-label">Tamanho</span>
+                                <strong id="metaSize">-</strong>
+                            </div>
+                            <div>
+                                <span class="highlight-label">Nível</span>
+                                <strong id="metaLevel">-</strong>
+                            </div>
+                            <div>
+                                <span class="highlight-label">Status</span>
+                                <strong id="metaStatus">-</strong>
+                            </div>
+                        </div>
+
+                        <div class="detail-card crypto-card">
+                            <span class="highlight-label">Chave criptografica</span>
+                            <code id="metaKey">-</code>
+                        </div>
+
+                        <div class="modal-actions detail-actions">
+                            <button type="button" class="ghost-button" id="openCensoredBtn">Abrir documento censurado</button>
+                            <button type="button" class="cta-censor" id="startRedactionBtn">Iniciar descensura</button>
+                        </div>
+                    </article>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="../../js/documentos/descensura.js"></script>
+</body>
+</html>

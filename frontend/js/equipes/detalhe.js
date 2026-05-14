@@ -80,6 +80,10 @@ function documentAccessLabel(canAccess) {
         : { label: 'Sem acesso', css: 'alert', action: 'Bloqueado' };
 }
 
+function openDocumentRedaction(docId) {
+    window.location.href = `../documentos/descensura.html?doc_id=${docId}`;
+}
+
 function getTeamId() {
     const params = new URLSearchParams(window.location.search);
     const teamId = Number(params.get('team_id'));
@@ -170,7 +174,7 @@ function renderTeam(team) {
             const access = documentAccessLabel(Boolean(documento.tem_acesso));
             const docClasses = `team-doc-item ${documento.tem_acesso ? 'allowed' : 'denied'}`;
             const actionMarkup = documento.tem_acesso
-                ? `<a class="team-doc-action" href="../documentos/censurados.html?doc_id=${documento.doc_id}">${access.action}</a>`
+                ? `<button type="button" class="team-doc-action" data-doc-redaction="${documento.doc_id}">${access.action}</button>`
                 : `<button type="button" class="team-doc-action disabled" disabled>${access.action}</button>`;
 
             return `
@@ -198,6 +202,31 @@ function renderTeam(team) {
         })
         .join('');
 }
+
+detailDocumentList.addEventListener('click', (event) => {
+    const target = event.target.closest('[data-doc-redaction]');
+    if (target) {
+        openDocumentRedaction(target.dataset.docRedaction);
+        return;
+    }
+
+    const docCard = event.target.closest('.team-doc-item');
+    if (!docCard) {
+        return;
+    }
+
+    const docId = docCard.querySelector('[data-doc-redaction]')?.dataset.docRedaction || null;
+    const isAllowed = docCard.classList.contains('allowed');
+
+    if (!isAllowed) {
+        alert('Você não tem permissão para descensurar este documento.');
+        return;
+    }
+
+    if (docId) {
+        openDocumentRedaction(docId);
+    }
+});
 
 async function loadTeam() {
     const token = localStorage.getItem('token');
