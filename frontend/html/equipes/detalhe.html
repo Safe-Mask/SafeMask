@@ -44,8 +44,6 @@
                     <p class="subtitle" id="teamSubtitle">Carregando informacoes da equipe selecionada</p>
                 </div>
 
-                <button class="cta-censor" id="btnAddDocument">Adicionar Documento</button>
-
                 <div class="user-menu" id="userMenu">
                     <button class="user-trigger" id="userTrigger" aria-haspopup="true" aria-expanded="false">
                         <span class="user-icon" aria-hidden="true">U</span>
@@ -97,55 +95,23 @@
                         </ul>
                     </article>
 
-                    <article class="panel">
+                    <article class="panel team-docs-panel">
                         <div class="panel-header">
-                            <h3>Adicionar Documento</h3>
-                        </div>
-                        <p class="panel-subtitle">Use o botao acima para iniciar o fluxo de envio e associar o documento a esta equipe.</p>
-                        <div class="doc-actions">
-                            <button type="button" class="cta-censor" id="btnOpenDocumentModal">Adicionar Documento à Equipe</button>
-                            <a href="../dashboard.html" class="panel-action">Ir para dashboard</a>
-                        </div>
-                        <div class="info-stack">
                             <div>
-                                <span class="highlight-label">Status do fluxo</span>
-                                <strong>Pronto para integracao</strong>
-                                <p>O botao pode ser ligado ao processo de upload quando o endpoint de documentos estiver disponível.</p>
+                                <h3>Documentos da Equipe</h3>
+                                <p class="panel-subtitle">Verde significa que o usuário pode descensurar; vermelho significa que o documento está fora do seu alcance direto.</p>
                             </div>
+                            <span class="panel-action" id="teamDocsCount">0 documentos</span>
                         </div>
+                        <ul class="team-doc-list" id="detailDocumentList">
+                            <li class="empty-state">
+                                <strong>Carregando documentos</strong>
+                                <span>Aguarde enquanto buscamos os documentos desta equipe.</span>
+                            </li>
+                        </ul>
                     </article>
                 </section>
             </main>
-        </div>
-    </div>
-
-    <div class="modal-overlay" id="documentModal" aria-hidden="true">
-        <div class="modal-card compact-modal">
-            <div class="modal-header">
-                <div>
-                    <h3>Adicionar Documento</h3>
-                    <p>Fluxo visual pronto para associar o documento a esta equipe.</p>
-                </div>
-                <button type="button" class="icon-button" id="closeDocumentModal" aria-label="Fechar modal">×</button>
-            </div>
-
-            <div class="modal-form">
-                <div class="form-grid">
-                    <label class="field field-full">
-                        <span>Arquivo</span>
-                        <input type="file" id="documentFileInput">
-                    </label>
-                    <label class="field field-full">
-                        <span>Descricao opcional</span>
-                        <textarea id="documentDescriptionInput" rows="4" placeholder="Anote o objetivo do documento"></textarea>
-                    </label>
-                </div>
-
-                <div class="modal-actions">
-                    <button type="button" class="ghost-button" id="cancelDocumentModal">Cancelar</button>
-                    <button type="button" class="cta-censor" id="confirmDocumentModal">Adicionar documento</button>
-                </div>
-            </div>
         </div>
     </div>
 

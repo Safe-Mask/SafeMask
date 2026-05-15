@@ -93,6 +93,18 @@ def _load_team_detail(db: Session, current_user: Usuario, team_id: int):
     if not team_row:
         return None
 
+    user_team_ids = [
+        row.user_team_id
+        for row in (
+            db.query(UsuarioEquipe.user_team_id)
+            .filter(
+                UsuarioEquipe.team_id == team_id,
+                UsuarioEquipe.user_id == current_user.user_id,
+            )
+            .all()
+        )
+    ]
+
     members = (
         db.query(
             UsuarioEquipe.user_team_id,
@@ -107,6 +119,27 @@ def _load_team_detail(db: Session, current_user: Usuario, team_id: int):
         .join(Cargo, Cargo.cargo_id == UsuarioEquipe.cargo_id)
         .filter(UsuarioEquipe.team_id == team_id)
         .order_by(Cargo.nivel.desc(), Usuario.nome)
+        .all()
+    )
+
+    documentos_rows = (
+        db.query(
+            Documento.doc_id,
+            Documento.nome_original,
+            Documento.extensao,
+            Documento.tamanho_bytes,
+            Documento.nivel_seguranca,
+            Documento.status_processamento,
+            Documento.criado_em,
+            Documento.user_team_id,
+            Usuario.nome.label("autor_nome"),
+            Cargo.nome.label("cargo_nome"),
+        )
+        .join(UsuarioEquipe, UsuarioEquipe.user_team_id == Documento.user_team_id)
+        .join(Usuario, Usuario.user_id == UsuarioEquipe.user_id)
+        .join(Cargo, Cargo.cargo_id == UsuarioEquipe.cargo_id)
+        .filter(UsuarioEquipe.team_id == team_id)
+        .order_by(Documento.criado_em.desc(), Documento.doc_id.desc())
         .all()
     )
 
@@ -126,6 +159,23 @@ def _load_team_detail(db: Session, current_user: Usuario, team_id: int):
         "membros": len(members),
         "documentos": int(documentos),
         "membros_lista": [_serialize_member(member) for member in members],
+        "documentos_lista": [
+            {
+                "doc_id": row.doc_id,
+                "nome_original": row.nome_original,
+                "extensao": row.extensao,
+                "tamanho_bytes": int(row.tamanho_bytes or 0),
+                "nivel_seguranca": row.nivel_seguranca,
+                "status_processamento": row.status_processamento,
+                "criado_em": row.criado_em.isoformat() if row.criado_em else None,
+                "autor_nome": row.autor_nome,
+                "cargo_nome": row.cargo_nome,
+                "user_team_id": row.user_team_id,
+                "tem_acesso": row.user_team_id in user_team_ids,
+                "preview_url": f"/documentos/censurados/{row.doc_id}/arquivo" if row.user_team_id in user_team_ids else None,
+            }
+            for row in documentos_rows
+        ],
     }
 
 
