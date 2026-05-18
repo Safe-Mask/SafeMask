@@ -3,11 +3,13 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.schemas.usuario import UsuarioLogin, UsuarioCreate
+from app.schemas.auth import RecuperarSenhaRequest
 from app.models.usuario import Usuario
 from app.models.equipe import Equipe
 from app.models.usuario_equipe import UsuarioEquipe
 from app.models.cargo import Cargo
 from app.core.security import criar_token_jwt, verificar_senha, hash_senha
+from app.core.email import enviar_email_recuperacao
 from app.database import get_db
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
@@ -85,3 +87,29 @@ async def cadastrar(usuario: UsuarioCreate, db: Session = Depends(get_db)):
 async def verificar_email(email: str, db: Session = Depends(get_db)):
     usuario_existe = db.query(Usuario).filter(Usuario.email == email).first()
     return {"existe": usuario_existe is not None}
+
+
+@router.post("/recuperar-senha")
+async def recuperar_senha(dados: RecuperarSenhaRequest, db: Session = Depends(get_db)):
+    usuario = db.query(Usuario).filter(Usuario.email == dados.email).first()
+
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Email não encontrado.",
+        )
+
+    try:
+        enviar_email_recuperacao(usuario.email, usuario.nome)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Não foi possível enviar o email de recuperação.",
+        ) from exc
+
+    return {"mensagem": "Se o email estiver cadastrado, as instruções de recuperação foram enviadas."}
