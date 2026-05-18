@@ -236,6 +236,20 @@ body {
     font-size: 0.9rem;
 }
 
+.auth-helper-text {
+    margin: 0 0 18px;
+    color: #4f5b66;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    text-align: center;
+}
+
+.auth-feedback {
+    min-height: 1.25rem;
+    margin-top: 8px;
+    text-align: center;
+}
+
 /* ===== RESPONSIVE ===== */
 @media (max-width: 450px) {
     .auth-card {

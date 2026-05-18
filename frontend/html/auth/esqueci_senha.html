@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeMask - Recuperar Senha</title>
+    <link rel="stylesheet" href="../../css/login.css">
+    <link rel="stylesheet" href="../../css/loading.css">
+</head>
+
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <a href="login.html" class="btn-voltar">← Voltar</a>
+
+            <div class="auth-logo">
+                <img src="../../images/safemask-logo.png" alt="SafeMask" class="logo-login">
+            </div>
+
+            <h1 class="auth-title">Recuperar senha</h1>
+            <p class="auth-helper-text">Informe o email cadastrado para que a equipe SafeMask envie as instruções de recuperação.</p>
+
+            <form id="forgotPasswordForm" class="form active">
+                <div class="input-group">
+                    <label>Email</label>
+                    <input type="email" id="recovery-email" placeholder="seuemail@example.com" required>
+                    <span id="recovery-email-validation" class="validation-message"></span>
+                </div>
+
+                <button class="auth-btn" id="btn-recovery" type="submit">Enviar email</button>
+                <span id="recovery-feedback" class="validation-message auth-feedback"></span>
+            </form>
+
+            <div class="auth-links">
+                <p>Lembrou sua senha? <a href="login.html">Voltar ao login</a></p>
+            </div>
+        </div>
+    </div>
+
+    <div class="loading-screen" id="loadingScreen"></div>
+
+    <script src="../../js/loading.js"></script>
+    <script src="../../js/auth/esqueci_senha.js"></script>
+</body>
+</html>
