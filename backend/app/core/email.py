@@ -1,43 +1,27 @@
-import os
-import smtplib
+import json
 import logging
+import os
+import urllib.error
+import urllib.request
 from email.message import EmailMessage
 
 logger = logging.getLogger(__name__)
 
-SMTP_HOST = os.getenv("SMTP_HOST")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_USER = (os.getenv("SMTP_USER") or "").strip() or None
-SMTP_PASSWORD = (os.getenv("SMTP_PASSWORD") or "").replace(" ", "").strip() or None
-SMTP_FROM = (os.getenv("SMTP_FROM") or SMTP_USER or "").strip()
-SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() in {"1", "true", "yes", "on"}
-SMTP_USE_SSL = os.getenv("SMTP_USE_SSL", "false").lower() in {"1", "true", "yes", "on"}
-SUPPORT_EMAIL = (os.getenv("SUPPORT_EMAIL") or SMTP_FROM).strip()
-FRONTEND_URL = os.getenv("FRONTEND_URL", "")
+RESEND_API_KEY = (os.getenv("RESEND_API_KEY") or "").strip() or None
+RESEND_FROM = "SafeMask <anzen.na.masuku@gmail.com>"
+RESEND_API_URL = "https://api.resend.com/emails"
 
-# Log non-sensitive SMTP configuration at import time to help debugging in deployed
-# environments (do not log passwords).
-logger.info(
-    "SMTP config: host=%s port=%s user=%s from=%s TLS=%s SSL=%s",
-    SMTP_HOST,
-    SMTP_PORT,
-    "set" if SMTP_USER else "unset",
-    SMTP_FROM,
-    SMTP_USE_TLS,
-    SMTP_USE_SSL,
-)
+logger.info("Email config: resend=%s from=%s", "set" if RESEND_API_KEY else "unset", RESEND_FROM)
 
 
 def enviar_email_recuperacao(destinatario: str, nome: str) -> None:
-    if not SMTP_HOST or not SMTP_FROM:
-        raise ValueError("Configuração de email incompleta. Verifique SMTP_HOST e SMTP_FROM.")
+    if not RESEND_API_KEY:
+        raise ValueError("Configuração do Resend incompleta.")
 
     mensagem = EmailMessage()
     mensagem["Subject"] = "SafeMask - Recuperação de senha"
-    mensagem["From"] = SMTP_FROM
+    mensagem["From"] = RESEND_FROM
     mensagem["To"] = destinatario
-    if SUPPORT_EMAIL:
-        mensagem["Reply-To"] = SUPPORT_EMAIL
 
     linhas = [
         f"Olá, {nome}.",
@@ -46,31 +30,40 @@ def enviar_email_recuperacao(destinatario: str, nome: str) -> None:
         "Se foi você, responda este email ou entre em contato com o suporte para seguir com a recuperação.",
     ]
 
-    if FRONTEND_URL:
-        linhas.extend(["", f"Acesse o sistema em: {FRONTEND_URL}"])
-
-    if SUPPORT_EMAIL:
-        linhas.extend(["", f"Suporte: {SUPPORT_EMAIL}"])
-
     mensagem.set_content("\n".join(linhas))
 
+    payload = {
+        "from": RESEND_FROM,
+        "to": [destinatario],
+        "subject": mensagem["Subject"],
+        "text": mensagem.get_content(),
+    }
+
+    request = urllib.request.Request(
+        RESEND_API_URL,
+        data=json.dumps(payload).encode("utf-8"),
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {RESEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+    )
+
     try:
-        if SMTP_USE_SSL:
-            with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=20) as servidor:
-                if SMTP_USER:
-                    servidor.login(SMTP_USER, SMTP_PASSWORD or "")
-                servidor.send_message(mensagem)
-        else:
-            with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=20) as servidor:
-                if SMTP_USE_TLS:
-                    servidor.starttls()
-                if SMTP_USER:
-                    servidor.login(SMTP_USER, SMTP_PASSWORD or "")
-                servidor.send_message(mensagem)
+        with urllib.request.urlopen(request, timeout=20) as response:
+            status_code = getattr(response, "status", response.getcode())
+            if status_code >= 400:
+                raise RuntimeError(f"Resend retornou status HTTP {status_code}.")
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace") if exc.fp else ""
+        logger.exception(
+            "Falha ao enviar email de recuperação via Resend (status=%s). Resposta: %s",
+            exc.code,
+            body,
+        )
+        raise
     except Exception:
         logger.exception(
-            "Falha ao enviar email de recuperação (host=%s port=%s). Verifique variáveis de ambiente e conectividade de rede.",
-            SMTP_HOST,
-            SMTP_PORT,
+            "Falha ao enviar email de recuperação via Resend. Verifique conectividade de rede e a API key.",
         )
         raise
