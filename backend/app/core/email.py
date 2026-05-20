@@ -1,47 +1,29 @@
 import os
-import smtplib
 import logging
-from email.message import EmailMessage
+import sib_api_v3_sdk
+from sib_api_v3_sdk.rest import ApiException
 
 logger = logging.getLogger(__name__)
 
 
-def _get_smtp_config() -> dict:
-    """Read SMTP config fresh from environment on every call."""
-    smtp_user = (os.getenv("SMTP_USER") or "").strip() or None
-    smtp_from = (os.getenv("SMTP_FROM") or smtp_user or "").strip()
-    return {
-        "host": os.getenv("SMTP_HOST"),
-        "port": int(os.getenv("SMTP_PORT", "587")),
-        "user": smtp_user,
-        "password": (os.getenv("SMTP_PASSWORD") or "").replace(" ", "").strip() or None,
-        "from": smtp_from,
-        "use_tls": os.getenv("SMTP_USE_TLS", "true").lower() in {"1", "true", "yes", "on"},
-        "use_ssl": os.getenv("SMTP_USE_SSL", "false").lower() in {"1", "true", "yes", "on"},
-        "support_email": (os.getenv("SUPPORT_EMAIL") or smtp_from).strip(),
-        "frontend_url": os.getenv("FRONTEND_URL", ""),
-    }
-
-
 def enviar_email_recuperacao(destinatario: str, nome: str) -> None:
-    cfg = _get_smtp_config()
+    api_key = os.getenv("BREVO_API_KEY")
+    smtp_from = os.getenv("SMTP_FROM")
+    smtp_from_name = os.getenv("SMTP_FROM_NAME", "SafeMask")
+    support_email = os.getenv("SUPPORT_EMAIL") or smtp_from
+    frontend_url = os.getenv("FRONTEND_URL", "")
 
-    logger.info(
-        "SMTP config: host=%s port=%s user=%s from=%s TLS=%s SSL=%s",
-        cfg["host"], cfg["port"],
-        "set" if cfg["user"] else "unset",
-        cfg["from"], cfg["use_tls"], cfg["use_ssl"],
+    if not api_key:
+        raise ValueError("BREVO_API_KEY não configurado.")
+    if not smtp_from:
+        raise ValueError("SMTP_FROM não configurado.")
+
+    configuration = sib_api_v3_sdk.Configuration()
+    configuration.api_key["api-key"] = api_key
+
+    api_instance = sib_api_v3_sdk.TransactionalEmailsApi(
+        sib_api_v3_sdk.ApiClient(configuration)
     )
-
-    if not cfg["host"] or not cfg["from"]:
-        raise ValueError("Configuração de email incompleta. Verifique SMTP_HOST e SMTP_FROM.")
-
-    mensagem = EmailMessage()
-    mensagem["Subject"] = "SafeMask - Recuperação de senha"
-    mensagem["From"] = cfg["from"]
-    mensagem["To"] = destinatario
-    if cfg["support_email"]:
-        mensagem["Reply-To"] = cfg["support_email"]
 
     linhas = [
         f"Olá, {nome}.",
@@ -49,29 +31,22 @@ def enviar_email_recuperacao(destinatario: str, nome: str) -> None:
         "Recebemos uma solicitação de recuperação de senha para a sua conta SafeMask.",
         "Se foi você, responda este email ou entre em contato com o suporte para seguir com a recuperação.",
     ]
-    if cfg["frontend_url"]:
-        linhas.extend(["", f"Acesse o sistema em: {cfg['frontend_url']}"])
-    if cfg["support_email"]:
-        linhas.extend(["", f"Suporte: {cfg['support_email']}"])
+    if frontend_url:
+        linhas.extend(["", f"Acesse o sistema em: {frontend_url}"])
+    if support_email:
+        linhas.extend(["", f"Suporte: {support_email}"])
 
-    mensagem.set_content("\n".join(linhas))
+    email = sib_api_v3_sdk.SendSmtpEmail(
+        to=[{"email": destinatario}],
+        sender={"email": smtp_from, "name": smtp_from_name},
+        reply_to={"email": support_email},
+        subject="SafeMask - Recuperação de senha",
+        text_content="\n".join(linhas),
+    )
 
     try:
-        if cfg["use_ssl"]:
-            with smtplib.SMTP_SSL(cfg["host"], cfg["port"], timeout=20) as servidor:
-                if cfg["user"]:
-                    servidor.login(cfg["user"], cfg["password"] or "")
-                servidor.send_message(mensagem)
-        else:
-            with smtplib.SMTP(cfg["host"], cfg["port"], timeout=20) as servidor:
-                if cfg["use_tls"]:
-                    servidor.starttls()
-                if cfg["user"]:
-                    servidor.login(cfg["user"], cfg["password"] or "")
-                servidor.send_message(mensagem)
-    except Exception:
-        logger.exception(
-            "Falha ao enviar email de recuperação (host=%s port=%s).",
-            cfg["host"], cfg["port"],
-        )
+        api_instance.send_transac_email(email)
+        logger.info("Email de recuperação enviado para %s", destinatario)
+    except ApiException:
+        logger.exception("Falha ao enviar email via Brevo para %s", destinatario)
         raise
