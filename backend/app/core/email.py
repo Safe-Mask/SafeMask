@@ -11,7 +11,7 @@ def enviar_email_recuperacao(destinatario: str, nome: str, token: str) -> None:
     smtp_from = os.getenv("SMTP_FROM")
     smtp_from_name = os.getenv("SMTP_FROM_NAME", "SafeMask")
     support_email = os.getenv("SUPPORT_EMAIL") or smtp_from
-    frontend_url = os.getenv("FRONTEND_URL", "")
+    frontend_url = 'http://safemask-frontend.vercel.app'  # URL do frontend para o link de recuperação
 
     if not api_key:
         raise ValueError("BREVO_API_KEY não configurado.")
