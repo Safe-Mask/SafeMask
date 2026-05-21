@@ -6,7 +6,7 @@ from sib_api_v3_sdk.rest import ApiException
 logger = logging.getLogger(__name__)
 
 
-def enviar_email_recuperacao(destinatario: str, nome: str) -> None:
+def enviar_email_recuperacao(destinatario: str, nome: str, token: str) -> None:
     api_key = os.getenv("BREVO_API_KEY")
     smtp_from = os.getenv("SMTP_FROM")
     smtp_from_name = os.getenv("SMTP_FROM_NAME", "SafeMask")
@@ -29,12 +29,20 @@ def enviar_email_recuperacao(destinatario: str, nome: str) -> None:
         f"Olá, {nome}.",
         "",
         "Recebemos uma solicitação de recuperação de senha para a sua conta SafeMask.",
-        "Se foi você, responda este email ou entre em contato com o suporte para seguir com a recuperação.",
+        "Clique no link abaixo para redefinir sua senha. Este link expira em 30 minutos.",
+        "",
     ]
+
+    # Monta o link de redefinição apontando para o frontend com token e email
     if frontend_url:
-        linhas.extend(["", f"Acesse o sistema em: {frontend_url}"])
+        reset_path = f"/html/auth/reset_password.html"
+        link = f"{frontend_url.rstrip('/')}{reset_path}?token={token}&email={destinatario}"
+        linhas.extend([f"Redefinir senha: {link}", ""])
+    else:
+        linhas.extend(["(Frontend não configurado. Contate o suporte.)", ""]) 
+
     if support_email:
-        linhas.extend(["", f"Suporte: {support_email}"])
+        linhas.extend([f"Suporte: {support_email}"])
 
     email = sib_api_v3_sdk.SendSmtpEmail(
         to=[{"email": destinatario}],
