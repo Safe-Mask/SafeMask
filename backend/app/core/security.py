@@ -23,6 +23,14 @@ def criar_token_jwt(data: dict):
 
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
+
+def criar_token_jwt_com_expiry(data: dict, minutes: int):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=minutes)
+    to_encode.update({"exp": expire})
+
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
 def verificar_senha(senha_plana: str, senha_hash: str):
     return pwd_context.verify(senha_plana, senha_hash)
 
