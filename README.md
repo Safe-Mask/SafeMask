@@ -74,7 +74,7 @@ SafeMask é uma plataforma full-stack especializada em proteção de dados sens�
 ### Frontend
 - **HTML5** (Estrutura)
 - **CSS3** (Estilização responsiva)
-- **JavaScript Vanilla** (Interatividade)
+- **JavaScript Vanilla** (Interatividade) 
 
 ### Deployment
 - **Neon** (PostgreSQL serverless - Database)
