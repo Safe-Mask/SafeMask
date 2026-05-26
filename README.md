@@ -87,44 +87,113 @@ SafeMask é uma plataforma full-stack especializada em proteção de dados sens�
 
 ```
 SafeMask/
-├── backend/
-│   ├── app/
-│   │   ├── core/
-│   │   │   ├── auth.py              # Autenticação
-│   │   │   ├── security.py          # JWT e criptografia
-│   │   │   └── current_user.py      # Usuário autenticado
-│   │   ├── models/
-│   │   │   ├── usuario.py
-│   │   │   ├── documentos.py
-│   │   │   └── __init__.py
-│   │   ├── routes/
-│   │   │   └── auth.py
-│   │   ├── schemas/
-│   │   │   ├── usuario.py
-│   │   │   └── documento.py
-│   │   ├── database.py
-│   │   └── main.py
-│   ├── .env                         # Variáveis de ambiente (não versione)
-│   ├── requirements.txt
-│   └── venv/                        # Ambiente virtual
-│
-├── frontend/
-│   ├── css/
-│   │   ├── styles.css
-│   │   └── login.css
-│   ├── html/
-│   │   └── auth/
-│   │       └── login.html
-│   ├── js/
-│   │   ├── login.js
-│   │   ├── dashboard.js
-│   │   └── script.js
-│   ├── images/
-│   └── index.html
-│
-├── .gitignore
+├── index.html
+├── README.md
 ├── render.yaml
-└── README.md
+├── requirements.txt
+├── AI_model/
+│   ├── create_admin.py
+│   ├── models.py
+│   ├── reset_db.py
+│   ├── scanner.py
+│   ├── README.md
+│   ├── requirements.txt
+│   └── app/
+│       ├── database.py
+│       ├── main.py
+│       ├── core/
+│       │   ├── auth.py
+│       │   ├── current_user.py
+│       │   └── security.py
+│       ├── models/
+│       │   ├── __init__.py
+│       │   ├── documentos.py
+│       │   └── usuario.py
+│       ├── routes/
+│       │   └── auth.py
+│       └── schemas/
+│           ├── documento.py
+│           └── usuario.py
+│
+├── backend/
+│   ├── requirements.txt
+│   ├── uploads/
+│   └── app/
+│       ├── database.py
+│       ├── main.py
+│       ├── core/
+│       │   ├── auth.py
+│       │   ├── current_user.py
+│       │   ├── email.py
+│       │   └── security.py
+│       ├── models/
+│       │   ├── __init__.py
+│       │   ├── cargo.py
+│       │   ├── dado_sensivel.py
+│       │   ├── documentos.py
+│       │   ├── equipe.py
+│       │   ├── log_auditoria.py
+│       │   ├── usuario_equipe.py
+│       │   └── usuario.py
+│       ├── routes/
+│       │   ├── auth.py
+│       │   ├── dashboard.py
+│       │   ├── documentos.py
+│       │   └── equipes.py
+│       └── schemas/
+│           ├── auth.py
+│           ├── documento.py
+│           ├── equipe.py
+│           ├── usuario_equipe.py
+│           └── usuario.py
+│
+├── documentation/
+│   ├── Daily Scrum/
+│   └── PDF/
+│
+└── frontend/
+   ├── css/
+   │   ├── dashboard.css
+   │   ├── loading.css
+   │   ├── login.css
+   │   ├── styles.css
+   │   ├── documentos/
+   │   │   ├── censurados.css
+   │   │   ├── censurar.css
+   │   │   └── descensura.css
+   │   └── equipes/
+   │       └── equipes.css
+   ├── html/
+   │   ├── dashboard.html
+   │   ├── auth/
+   │   │   ├── cadastro.html
+   │   │   ├── esqueci_senha.html
+   │   │   ├── login.html
+   │   │   └── reset_password.html
+   │   ├── documentos/
+   │   │   ├── censurados.html
+   │   │   ├── censurar.html
+   │   │   └── descensura.html
+   │   └── equipes/
+   │       ├── detalhe.html
+   │       └── equipes.html
+   ├── images/
+   └── js/
+      ├── cadastro.js
+      ├── dashboard.js
+      ├── loading.js
+      ├── login.js
+      ├── script.js
+      ├── auth/
+      │   ├── esqueci_senha.js
+      │   └── reset_password.js
+      ├── documentos/
+      │   ├── censurados.js
+      │   ├── censurar.js
+      │   └── descensura.js
+      └── equipes/
+         ├── detalhe.js
+         └── equipes.js
 ```
 
 ---
