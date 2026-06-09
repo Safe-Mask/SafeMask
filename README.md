@@ -38,6 +38,7 @@ Detecte e censure automaticamente informações confidenciais em documentos, gar
 
 - [Acesso Rápido](#-acesso-rápido)
 - [Visão Geral](#-visão-geral)
+- [5W do Projeto](#-5w-do-projeto)
 - [Stack Tecnológico](#-stack-tecnológico)
 - [Estrutura do Projeto](#-estrutura-do-projeto)
 - [Instalação Local](#-instalação-local)
@@ -58,6 +59,18 @@ SafeMask é uma plataforma full-stack especializada em proteção de dados sens�
 - **Censura Automática**: Mascaramento inteligente de dados sensíveis
 - **Autenticação JWT**: Sistema robusto com tokens JWT e bcrypt
 - **Conformidade LGPD**: Proteção de dados pessoais conforme legislação
+
+---
+
+## 📌 5W do Projeto
+
+| 5W | Resposta |
+|----|----------|
+| **What (O quê?)** | O SafeMask é uma plataforma web que detecta e censura automaticamente dados sensíveis em documentos usando IA. |
+| **Why (Por quê?)** | Para reduzir riscos de vazamento de informações confidenciais, proteger dados pessoais e apoiar a conformidade com a LGPD. |
+| **Who (Quem?)** | Usuários, equipes e organizações que precisam armazenar, analisar, compartilhar ou tratar documentos com informações sensíveis. |
+| **Where (Onde?)** | Em ambiente web, com frontend hospedado na Vercel, backend FastAPI no Render e banco PostgreSQL serverless na Neon. |
+| **When (Quando?)** | Durante o fluxo de upload, análise, armazenamento e compartilhamento de documentos, especialmente antes de disponibilizar arquivos a terceiros. |
 
 ---
 
