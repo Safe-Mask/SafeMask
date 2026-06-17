@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeMask - Equipes</title>
+    <link rel="stylesheet" href="../../css/dashboard.css">
+    <link rel="stylesheet" href="../../css/equipes/equipes.css">
+</head>
+<body>
+    <div class="dashboard-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="../../images/safemask-logo-transparente.png" alt="SafeMask" class="brand-logo">
+                <div>
+                    <p class="brand-kicker">Painel</p>
+                    <h1>SafeMask</h1>
+                </div>
+            </div>
+
+            <nav class="menu">
+                <p class="menu-title">Documentos</p>
+                <a href="../dashboard.html" class="menu-link">Visao Geral</a>
+                <a href="../documentos/censurar.html" class="menu-link" data-section="upload-documento">Novo Upload</a>
+                <a href="../documentos/censurados.html" class="menu-link" data-section="docs-censurados">Documentos Censurados</a>
+                <a href="#" class="menu-link" data-section="historico">Histórico</a>
+
+                <p class="menu-title">Equipes</p>
+                <a href="equipes.html" class="menu-link active">Gerenciar Equipes</a>
+                <a href="detalhe.html" class="menu-link">Acessar Equipe</a>
+
+                <p class="menu-title">Acessos</p>
+                <a href="#" class="menu-link" data-section="usuarios">Usuarios da Equipe</a>
+                <a href="#" class="menu-link" data-section="permissoes">Permissoes</a>
+                <a href="#" class="menu-link" data-section="configuracoes">Configuracoes</a>
+            </nav>
+        </aside>
+
+        <div class="main-wrap">
+            <header class="topbar">
+                <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
+                <div>
+                    <h2>Gerenciar Equipes</h2>
+                    <p class="subtitle">Crie equipes, adicione membros e navegue pelos detalhes com o mesmo padrao do dashboard</p>
+                </div>
+
+                <button class="cta-censor" id="btnOpenCreateTeam">Adicionar Equipe</button>
+
+                <div class="user-menu" id="userMenu">
+                    <button class="user-trigger" id="userTrigger" aria-haspopup="true" aria-expanded="false">
+                        <span class="user-icon" aria-hidden="true">U</span>
+                        <span id="userName">Usuario</span>
+                    </button>
+                    <div class="dropdown" id="userDropdown">
+                        <button class="dropdown-item" id="logoutBtn">Logout</button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="content">
+                <section class="metrics">
+                    <article class="metric-card metric-priority">
+                        <p>Total de Equipes</p>
+                        <h3 id="metricTotalEquipes">0</h3>
+                        <span class="metric-delta up">equipes vinculadas</span>
+                    </article>
+                    <article class="metric-card">
+                        <p>Membros Vinculados</p>
+                        <h3 id="metricTotalMembros">0</h3>
+                        <span class="metric-delta up">usuarios em suas equipes</span>
+                    </article>
+                    <article class="metric-card">
+                        <p>Documentos nas Equipes</p>
+                        <h3 id="metricTotalDocumentos">0</h3>
+                        <span class="metric-delta up">arquivos relacionados</span>
+                    </article>
+                    <article class="metric-card">
+                        <p>Equipe em Destaque</p>
+                        <h3 id="metricEquipeMaiorNome">0</h3>
+                        <span class="metric-delta up" id="metricEquipeMaior">maior equipe indisponivel</span>
+                    </article>
+                </section>
+
+                <section class="panel team-hero">
+                    <div class="panel-header">
+                        <div>
+                            <h3>Resumo das Equipes</h3>
+                            <p class="panel-subtitle">Clique em uma equipe para abrir a pagina de detalhe com nome, descricao e membros ordenados por cargo.</p>
+                        </div>
+                        <a href="../dashboard.html" class="panel-action">Voltar ao painel</a>
+                    </div>
+
+                    <div class="hero-summary">
+                        <div>
+                            <span class="highlight-label">Equipe com mais membros</span>
+                            <strong id="heroTeamName">Nenhuma equipe</strong>
+                        </div>
+                        <div>
+                            <span class="highlight-label">Quantidade de membros</span>
+                            <strong id="heroTeamMembers">0</strong>
+                        </div>
+                        <div>
+                            <span class="highlight-label">Membros sugeridos</span>
+                            <strong id="heroSuggestedCount">0</strong>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="panel add-team-panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3>Adicionar Equipe</h3>
+                            <p class="panel-subtitle">Nome, descricao e membros ficam prontos antes de salvar.</p>
+                        </div>
+                        <button type="button" class="panel-action-button" id="btnOpenCreateTeamInline">Abrir cadastro</button>
+                    </div>
+                    <p class="add-team-hint">Use o botao para abrir o formulario completo e montar a nova equipe sem sair da pagina.</p>
+                </section>
+
+                <section class="grid-panels equipes-grid">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Suas Equipes</h3>
+                            <span class="panel-action">Abrir detalhes</span>
+                        </div>
+                        <ul class="equipes-list" id="teamList">
+                            <li class="empty-state">
+                                <strong>Nenhuma equipe encontrada</strong>
+                                <span>adicione a primeira equipe para visualizar os detalhes</span>
+                            </li>
+                        </ul>
+                    </article>
+
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Distribuicao por Equipe</h3>
+                            <span class="panel-action">por membros</span>
+                        </div>
+                        <div class="bar-chart" id="teamChart">
+                            <p class="empty-message">Sem dados para exibir.</p>
+                        </div>
+                    </article>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="createTeamModal" aria-hidden="true">
+        <div class="modal-card">
+            <div class="modal-header">
+                <div>
+                    <h3>Adicionar Equipe</h3>
+                    <p>Informe nome, descricao e selecione os membros.</p>
+                </div>
+                <button type="button" class="icon-button" id="closeCreateTeamModal" aria-label="Fechar modal">×</button>
+            </div>
+
+            <form id="createTeamForm" class="modal-form">
+                <div class="form-grid">
+                    <label class="field">
+                        <span>Nome da equipe</span>
+                        <input type="text" id="teamNameInput" maxlength="120" placeholder="Ex.: Operações" required>
+                    </label>
+
+                    <label class="field field-full">
+                        <span>Descricao</span>
+                        <textarea id="teamDescriptionInput" rows="4" maxlength="500" placeholder="Explique o objetivo da equipe"></textarea>
+                    </label>
+                </div>
+
+                <div class="modal-columns">
+                    <section class="candidate-card">
+                        <div class="panel-header">
+                            <h3>Membros sugeridos</h3>
+                            <span class="panel-action">compartilham equipe com voce</span>
+                        </div>
+                        <ul class="candidate-list" id="suggestedMembersList">
+                            <li class="empty-state small">
+                                <strong>Nenhum membro sugerido</strong>
+                                <span>as pessoas aparecerão aqui automaticamente</span>
+                            </li>
+                        </ul>
+                    </section>
+
+                    <section class="candidate-card">
+                        <div class="panel-header">
+                            <h3>Pesquisar usuarios</h3>
+                            <span class="panel-action">sem vinculo com sua equipe</span>
+                        </div>
+                        <label class="field field-search">
+                            <span>Buscar</span>
+                            <input type="search" id="userSearchInput" placeholder="Nome ou e-mail">
+                        </label>
+                        <ul class="candidate-list" id="availableUsersList">
+                            <li class="empty-state small">
+                                <strong>Sem resultados</strong>
+                                <span>digite para encontrar usuarios cadastrados</span>
+                            </li>
+                        </ul>
+                    </section>
+                </div>
+
+                <section class="selected-card">
+                    <div class="panel-header">
+                        <h3>Membros selecionados</h3>
+                        <span class="panel-action" id="selectedMemberCount">0 selecionados</span>
+                    </div>
+                    <div class="selected-pills" id="selectedMembersList">
+                        <span class="empty-chip">Nenhum membro selecionado</span>
+                    </div>
+                </section>
+
+                <div class="modal-actions">
+                    <button type="button" class="ghost-button" id="cancelCreateTeam">Cancelar</button>
+                    <button type="submit" class="cta-censor">Salvar equipe</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        window.SAFE_MASK_TEAM_OVERVIEW = window.SAFE_MASK_TEAM_OVERVIEW || {};
+    </script>
+
+    <script src="../../js/equipes/equipes.js"></script>
+</body>
+</html>

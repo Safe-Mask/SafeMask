@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SafeMask - Login</title>
     <link rel="stylesheet" href="../../css/login.css">
+    <link rel="stylesheet" href="../../css/loading.css">
 </head>
 
 <body>
@@ -37,13 +38,17 @@
             </form>
 
             <div class="auth-links">
-                <a href="#" class="forgot-password">Esqueceu sua senha?</a>
+                <a href="esqueci_senha.html" class="forgot-password">Esqueci minha senha</a>
                 <p>Ainda não tem conta? <a href="cadastro.html">Cadastre-se</a></p>
             </div>
 
         </div>
     </div>
 
+    <!-- ===== LOADING SCREEN ===== -->
+    <div class="loading-screen" id="loadingScreen"></div>
+
+    <script src="../../js/loading.js"></script>
     <script src="../../js/login.js"></script>
 </body>
 </html>

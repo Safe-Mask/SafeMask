@@ -8,7 +8,7 @@ const menuToggle = document.getElementById('menuToggle');
 const btnCensurarDocumento = document.getElementById('btnCensurarDocumento');
 const sidebar = document.getElementById('sidebar');
 const menuLinks = document.querySelectorAll('.menu-link');
-const API_URL = 'http://127.0.0.1:8000/dashboard/overview';
+const API_URL = 'https://safemask-3.onrender.com/dashboard/overview';
 
 const metricTotalEquipes = document.getElementById('metricTotalEquipes');
 const metricTotalDocs = document.getElementById('metricTotalDocs');
@@ -195,9 +195,15 @@ function applyMetrics(metrics) {
     metricNivelSeguranca.textContent = metrics.media_nivel_seguranca ?? 0;
     metricNivelAlto.textContent = `${metrics.documentos_nivel_alto ?? 0} docs com nivel alto`;
 
-    highlightTotalCensurados.textContent = metrics.documentos_censurados ?? 0;
-    highlightTaxaCensura.textContent = `${metrics.taxa_censura ?? 0}%`;
-    highlightNivelAlto.textContent = metrics.documentos_nivel_alto ?? 0;
+    if (highlightTotalCensurados) {
+        highlightTotalCensurados.textContent = metrics.documentos_censurados ?? 0;
+    }
+    if (highlightTaxaCensura) {
+        highlightTaxaCensura.textContent = `${metrics.taxa_censura ?? 0}%`;
+    }
+    if (highlightNivelAlto) {
+        highlightNivelAlto.textContent = metrics.documentos_nivel_alto ?? 0;
+    }
 }
 
 async function loadDashboardData() {
@@ -242,7 +248,7 @@ async function loadDashboardData() {
             <li>
                 <div>
                     <strong>Erro ao carregar dados</strong>
-                    <p>verifique se o backend esta ativo em http://127.0.0.1:8000</p>
+                    <p>verifique se o backend esta ativo em https://safemask-3.onrender.com</p>
                 </div>
                 <span class="status alert">Erro</span>
             </li>
@@ -255,21 +261,19 @@ menuToggle.addEventListener('click', () => {
 });
 
 btnCensurarDocumento.addEventListener('click', () => {
-    docsPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-    menuLinks.forEach((item) => item.classList.remove('active'));
-    const docsMenuItem = document.querySelector('.menu-link[data-section="upload-documento"]');
-    if (docsMenuItem) {
-        docsMenuItem.classList.add('active');
-    }
+    window.location.href = 'documentos/censurar.html';
 });
 
 // Marca visualmente a secao selecionada no menu lateral.
 menuLinks.forEach((link) => {
     link.addEventListener('click', (event) => {
-        event.preventDefault();
-        menuLinks.forEach((item) => item.classList.remove('active'));
-        link.classList.add('active');
+        const href = link.getAttribute('href') || '';
+
+        if (!href || href === '#') {
+            event.preventDefault();
+            menuLinks.forEach((item) => item.classList.remove('active'));
+            link.classList.add('active');
+        }
 
         if (window.innerWidth <= 860) {
             sidebar.classList.remove('open');

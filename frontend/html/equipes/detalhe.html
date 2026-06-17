@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeMask - Detalhe da Equipe</title>
+    <link rel="stylesheet" href="../../css/dashboard.css">
+    <link rel="stylesheet" href="../../css/equipes/equipes.css">
+</head>
+<body>
+    <div class="dashboard-shell">
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <img src="../../images/safemask-logo-transparente.png" alt="SafeMask" class="brand-logo">
+                <div>
+                    <p class="brand-kicker">Painel</p>
+                    <h1>SafeMask</h1>
+                </div>
+            </div>
+
+            <nav class="menu">
+                <p class="menu-title">Documentos</p>
+                <a href="../dashboard.html" class="menu-link">Visao Geral</a>
+                <a href="../documentos/censurar.html" class="menu-link" data-section="upload-documento">Novo Upload</a>
+                <a href="../documentos/censurados.html" class="menu-link" data-section="docs-censurados">Documentos Censurados</a>
+                <a href="#" class="menu-link" data-section="historico">Histórico</a>
+
+                <p class="menu-title">Equipes</p>
+                <a href="equipes.html" class="menu-link">Gerenciar Equipes</a>
+                <a href="detalhe.html" class="menu-link active">Acessar Equipe</a>
+
+                <p class="menu-title">Acessos</p>
+                <a href="#" class="menu-link" data-section="usuarios">Usuarios da Equipe</a>
+                <a href="#" class="menu-link" data-section="permissoes">Permissoes</a>
+                <a href="#" class="menu-link" data-section="configuracoes">Configuracoes</a>
+            </nav>
+        </aside>
+
+        <div class="main-wrap">
+            <header class="topbar">
+                <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
+                <div>
+                    <h2 id="teamNameHeader">Detalhe da Equipe</h2>
+                    <p class="subtitle" id="teamSubtitle">Carregando informacoes da equipe selecionada</p>
+                </div>
+
+                <div class="user-menu" id="userMenu">
+                    <button class="user-trigger" id="userTrigger" aria-haspopup="true" aria-expanded="false">
+                        <span class="user-icon" aria-hidden="true">U</span>
+                        <span id="userName">Usuario</span>
+                    </button>
+                    <div class="dropdown" id="userDropdown">
+                        <button class="dropdown-item" id="logoutBtn">Logout</button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="content">
+                <section class="panel team-detail-panel">
+                    <div class="panel-header">
+                        <div>
+                            <h3 id="detailTeamName">Equipe</h3>
+                            <p class="panel-subtitle" id="detailTeamDescription">Descricao da equipe</p>
+                        </div>
+                        <a href="equipes.html" class="panel-action">Voltar para Equipes</a>
+                    </div>
+
+                    <div class="detail-summary">
+                        <div>
+                            <span class="highlight-label">Criada em</span>
+                            <strong id="detailCreatedAt">-</strong>
+                        </div>
+                        <div>
+                            <span class="highlight-label">Membros</span>
+                            <strong id="detailTotalMembers">0</strong>
+                        </div>
+                        <div>
+                            <span class="highlight-label">Documentos</span>
+                            <strong id="detailTotalDocs">0</strong>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="grid-panels detail-grid">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Membros da Equipe</h3>
+                            <span class="panel-action">ordenados por cargo</span>
+                        </div>
+                        <ul class="member-list detail-member-list" id="detailMemberList">
+                            <li class="empty-state">
+                                <strong>Carregando membros</strong>
+                                <span>Aguarde enquanto buscamos os dados da equipe.</span>
+                            </li>
+                        </ul>
+                    </article>
+
+                    <article class="panel team-docs-panel">
+                        <div class="panel-header">
+                            <div>
+                                <h3>Documentos da Equipe</h3>
+                                <p class="panel-subtitle">Verde significa que o usuário pode descensurar; vermelho significa que o documento está fora do seu alcance direto.</p>
+                            </div>
+                            <span class="panel-action" id="teamDocsCount">0 documentos</span>
+                        </div>
+                        <ul class="team-doc-list" id="detailDocumentList">
+                            <li class="empty-state">
+                                <strong>Carregando documentos</strong>
+                                <span>Aguarde enquanto buscamos os documentos desta equipe.</span>
+                            </li>
+                        </ul>
+                    </article>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="../../js/equipes/detalhe.js"></script>
+</body>
+</html>

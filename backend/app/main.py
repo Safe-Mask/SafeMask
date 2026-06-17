@@ -2,8 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware import Middleware
 
-from app.routes import auth, dashboard
-from app.database import engine, Base
+from app.routes import auth, dashboard, equipes, documentos
+from app.database import engine, Base, garantir_schema_equipes, garantir_indices
 
 middleware = [
     Middleware(
@@ -24,9 +24,13 @@ app = FastAPI(
 )
 
 Base.metadata.create_all(bind=engine)
+garantir_schema_equipes()
+garantir_indices()
 
 app.include_router(auth.router)
 app.include_router(dashboard.router)
+app.include_router(equipes.router)
+app.include_router(documentos.router)
 
 @app.get("/")
 def home():

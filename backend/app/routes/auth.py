@@ -3,11 +3,13 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 
 from app.schemas.usuario import UsuarioLogin, UsuarioCreate
+from app.schemas.auth import RecuperarSenhaRequest
 from app.models.usuario import Usuario
 from app.models.equipe import Equipe
 from app.models.usuario_equipe import UsuarioEquipe
 from app.models.cargo import Cargo
-from app.core.security import criar_token_jwt, verificar_senha, hash_senha
+from app.core.security import criar_token_jwt, verificar_senha, hash_senha, criar_token_jwt_com_expiry
+from app.core.email import enviar_email_recuperacao
 from app.database import get_db
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
@@ -85,3 +87,66 @@ async def cadastrar(usuario: UsuarioCreate, db: Session = Depends(get_db)):
 async def verificar_email(email: str, db: Session = Depends(get_db)):
     usuario_existe = db.query(Usuario).filter(Usuario.email == email).first()
     return {"existe": usuario_existe is not None}
+
+
+@router.post("/recuperar-senha")
+async def recuperar_senha(dados: RecuperarSenhaRequest, db: Session = Depends(get_db)):
+    usuario = db.query(Usuario).filter(Usuario.email == dados.email).first()
+
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Email não encontrado.",
+        )
+
+    try:
+        # Gera token de recuperação com expiry curto (30 minutos)
+        token = criar_token_jwt_com_expiry({"sub": usuario.email}, minutes=30)
+        enviar_email_recuperacao(usuario.email, usuario.nome, token)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Não foi possível enviar o email de recuperação.",
+        ) from exc
+
+    return {"mensagem": "Se o email estiver cadastrado, as instruções de recuperação foram enviadas."}
+
+
+@router.post('/reset-senha')
+async def reset_senha(payload: dict, db: Session = Depends(get_db)):
+    token = payload.get('token')
+    nova_senha = payload.get('senha')
+
+    if not token or not nova_senha:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Token e nova senha são obrigatórios.')
+
+    try:
+        # Decodifica o token para obter o email
+        from jose import jwt
+        from jose.exceptions import ExpiredSignatureError
+        from app.core.security import SECRET_KEY, ALGORITHM
+
+        decoded = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email = decoded.get('sub')
+        if not email:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Token inválido.')
+
+        usuario = db.query(Usuario).filter(Usuario.email == email).first()
+        if not usuario:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail='Usuário não encontrado.')
+
+        # Atualiza a senha
+        usuario.senha_hash = hash_senha(nova_senha)
+        db.add(usuario)
+        db.commit()
+
+        return {'mensagem': 'Senha atualizada com sucesso.'}
+    except ExpiredSignatureError:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Token expirado.')
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Token inválido ou erro ao redefinir a senha.') from exc

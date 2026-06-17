@@ -14,4 +14,5 @@ class Usuario(Base):
 
     # Relacionamento com UsuarioEquipe
     equipes_assoc = relationship("UsuarioEquipe", back_populates="usuario", cascade="all, delete-orphan")
+    logs_auditoria = relationship("LogAuditoria", back_populates="usuario", cascade="all, delete-orphan")
 

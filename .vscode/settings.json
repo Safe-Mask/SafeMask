@@ -3,5 +3,6 @@
     "files.associations": {
         "**/.github/workflows/vercel-merge.yml": "plaintext"
     },
-    "problems.visibility": false
+    "problems.visibility": false,
+    "liveServer.settings.port": 5501
 }

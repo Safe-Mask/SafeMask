@@ -1,4 +1,4 @@
-const API_URL = 'http://127.0.0.1:8000/auth';
+const API_URL = 'https://safemask-3.onrender.com/auth';
 
 // Validar campos obrigatórios no login
 document.getElementById('login-email').addEventListener('blur', (e) => {
@@ -41,31 +41,41 @@ document.getElementById('loginForm').addEventListener('submit', async (event) =>
     const email = document.getElementById('login-email').value;
     const senha = document.getElementById('login-senha').value;
 
+    // Iniciar animação de loading (puzzle)
+    loadingManager.show('Montando seu acesso...');
+
+    // Fazer requisição ao backend em paralelo
+    const requestPromise = fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            email: email,
+            senha_hash: senha
+        })
+    }).then(response => response.json());
+
     try {
-        const response = await fetch(`${API_URL}/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                email: email,
-                senha_hash: senha
-            })
-        });
+        const data = await requestPromise;
 
-        const data = await response.json();
-
-        if (response.ok) {
-            alert('Login realizado com sucesso.');
+        // Verificar resultado do backend enquanto o puzzle ainda se move
+        if (data.access_token) {
+            await loadingManager.assemblePuzzle();
+            await new Promise(resolve => setTimeout(resolve, 800));
+            loadingManager.hide();
             localStorage.setItem('token', data.access_token);
             const userName = email.includes('@') ? email.split('@')[0] : email;
             localStorage.setItem('userName', userName);
-
             window.location.href = '../dashboard.html';
         } else {
+            await loadingManager.failPuzzle();
+            loadingManager.hide();
             alert(data.detail || 'Erro ao fazer login.');
         }
     } catch (error) {
+        await loadingManager.failPuzzle();
+        loadingManager.hide();
         alert('Erro ao se comunicar com o servidor.');
         console.error(error);
     }
