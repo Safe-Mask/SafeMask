@@ -5,7 +5,7 @@
    <h1>SafeMask</h1>
 </p>
 
-> Projeto acadêmico desenvolvido no **CEUB (Centro Universitário de Brasília)** para a disciplina **Projeto Integrador III**.
+> Projeto acadêmico desenvolvido no **CEUB (Centro Universitário de Brasília)** para a disciplina **Projeto Integrador III** do curso **Ciência da Computação** .
 
 **Proteção Inteligente de Dados Sensíveis com IA**
 
