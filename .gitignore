@@ -72,3 +72,9 @@ Thumbs.db
 # Logs
 *.log
 logs/
+
+# Model files (too large for git)
+*.safetensors
+*.pt
+*.bin
+checkpoint-*/

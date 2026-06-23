@@ -12,12 +12,99 @@ from app.models.usuario import Usuario
 from app.models.equipe import Equipe
 from app.models.documentos import Documento
 from app.models.usuario_equipe import UsuarioEquipe
+from scanner.scanner import DocumentScanner
 
 router = APIRouter(prefix="/documentos", tags=["Documentos"])
 
-# Criar diretório de uploads se não existir
+# Criar diretórios de uploads se não existir
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
+ORIGINAIS_DIR = UPLOAD_DIR / "originais"
+CENSURADOS_DIR = UPLOAD_DIR / "censurados"
+ORIGINAIS_DIR.mkdir(parents=True, exist_ok=True)
+CENSURADOS_DIR.mkdir(parents=True, exist_ok=True)
+
+scanner_instance = None
+
+def get_scanner():
+    global scanner_instance
+    if scanner_instance is None:
+        scanner_instance = DocumentScanner()
+    return scanner_instance
+
+
+@router.post("/upload", status_code=status.HTTP_201_CREATED)
+async def upload_documento(
+    file: UploadFile = File(...),
+    titulo: str = Form(...),
+    nivel_seguranca: int = Form(1),
+    team_id: int = Form(...),
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(get_current_user)
+):
+    if not file.filename or not file.filename.lower().endswith('.pdf'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Apenas arquivos PDF sao aceitos."
+        )
+
+    usuario_equipe = db.query(UsuarioEquipe).filter(
+        UsuarioEquipe.user_id == usuario_atual.user_id,
+        UsuarioEquipe.team_id == team_id
+    ).first()
+
+    if not usuario_equipe:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Voce nao faz parte dessa equipe."
+        )
+
+    conteudo = await file.read()
+    if not conteudo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Arquivo vazio."
+        )
+
+    extensao = Path(file.filename).suffix or ".pdf"
+    hash_arquivo = hashlib.sha256(conteudo).hexdigest()
+    nome_arquivo = f"{hash_arquivo}{extensao}"
+    caminho_original = ORIGINAIS_DIR / nome_arquivo
+
+    with open(caminho_original, "wb") as f:
+        f.write(conteudo)
+
+    try:
+        scanner = get_scanner()
+        resultado = scanner.scan_and_save(
+            file_path=str(caminho_original),
+            db=db,
+            user_team_id=usuario_equipe.user_team_id,
+            nome_original=titulo,
+            nivel_seguranca=nivel_seguranca,
+            dir_original=ORIGINAIS_DIR,
+            dir_censurado=CENSURADOS_DIR
+        )
+
+        db.commit()
+
+        return {
+            "mensagem": "Documento processado e censurado com sucesso.",
+            "doc_id": resultado["doc_id"],
+            "hash": resultado["hash"],
+            "total_sensiveis": resultado["total_sensiveis"],
+            "status": resultado["status"]
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger = __import__('logging').getLogger(__name__)
+        logger.error(f"Erro ao processar documento: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao processar documento: {str(e)}"
+        )
+
 
 def normalizar_team_ids(teams: str) -> list[int]:
     import json
@@ -239,7 +326,7 @@ async def salvar_documento_censurado(
         
         # Gerar caminho de armazenamento
         nome_arquivo = f"{hash_arquivo}{extensao}"
-        caminho_arquivo = UPLOAD_DIR / nome_arquivo
+        caminho_arquivo = CENSURADOS_DIR / nome_arquivo
         
         # Salvar arquivo
         with open(caminho_arquivo, "wb") as f:
@@ -274,8 +361,7 @@ async def salvar_documento_censurado(
                 chave_criptografica=chave_cripto,
                 hash_documento=hash_arquivo,
                 caminho_storage=str(caminho_arquivo),
-                status_processamento="completo",
-                criado_em=datetime.utcnow()
+                status_processamento="CONCLUIDO"
             )
             
             db.add(novo_documento)
