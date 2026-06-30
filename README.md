@@ -319,57 +319,6 @@ Frontend em: `http://localhost:8080`
 
 ---
 
-## 📚 API Endpoints
-
-### Base URL
-
-```
-http://localhost:8000
-```
-
-### Documentação Interativa
-
-```
-http://localhost:8000/docs  (Swagger UI)
-```
-
-### Autenticação
-
-```http
-POST   /auth/login              # Login do usuário
-POST   /auth/cadastro           # Cadastro novo
-GET    /auth/me                 # Dados do usuário
-```
-
-**Login Request:**
-
-```json
-{
-  "email": "usuario@example.com",
-  "senha_hash": "senha123"
-}
-```
-
-**Login Response:**
-
-```json
-{
-  "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer"
-}
-```
-
-### Documentos
-
-```http
-GET    /documentos              # Listar documentos
-GET    /documentos/:id          # Detalhes do documento
-POST   /documentos              # Upload novo
-DELETE /documentos/:id          # Deletar documento
-```
-
----
-
 ## 💻 Desenvolvimento
 
 ### Backend com Reload Automático
@@ -570,7 +519,7 @@ Abra uma issue no GitHub para suporte.
 - **[Dimitri Cinnanti](https://github.com/DimitriSCinnanti)** - Scrum Master
 - **[Paulo Henrique Paniago](https://github.com/Paulohspaniago)** - Developer
 - **[Gabriel Bernardo Alves](https://github.com/Alves56)** - Developer
-- **Victor Oleskovicz** - Developer
+- **Victor Oleskovicz** - 
 
 ---
 
