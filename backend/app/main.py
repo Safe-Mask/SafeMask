@@ -35,3 +35,5 @@ app.include_router(documentos.router)
 @app.get("/")
 def home():
     return{"status": "online", "mensagem": "Bem vindo a API"}
+
+    # ggg #
