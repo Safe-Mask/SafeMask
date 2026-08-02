@@ -31,6 +31,7 @@ userNameElement.textContent = storedName;
 userIcon.textContent = storedName.charAt(0).toUpperCase();
 
 let previewObjectUrl = null;
+let podeDescensurar = false;
 
 function escapeHtml(value) {
     return String(value)
@@ -158,6 +159,16 @@ async function loadDocument() {
         metaStatus.textContent = documento.status_processamento || '-';
         metaKey.textContent = documento.chave_criptografica || '-';
 
+        podeDescensurar = Boolean(documento.pode_descensurar);
+        startRedactionBtn.disabled = !podeDescensurar;
+        if (podeDescensurar) {
+            const cargo = documento.cargo_usuario?.nome || 'lider';
+            startRedactionBtn.textContent = 'Baixar versão original';
+            docAccessLabel.textContent = `Com acesso (${cargo})`;
+        } else {
+            startRedactionBtn.textContent = 'Sem permissão para descensura';
+        }
+
         clearPreviewUrl();
         docPreviewFallback.hidden = false;
         docPreviewFallback.innerHTML = `
@@ -225,8 +236,59 @@ openCensoredBtn.addEventListener('click', () => {
     window.location.href = `censurados.html?doc_id=${docId}`;
 });
 
-startRedactionBtn.addEventListener('click', () => {
-    alert('Fluxo de descensura ainda em preparação.');
+startRedactionBtn.addEventListener('click', async () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '../auth/login.html';
+        return;
+    }
+
+    if (!podeDescensurar) {
+        alert('Seu cargo não permite acessar a versão original do documento.');
+        return;
+    }
+
+    try {
+        startRedactionBtn.disabled = true;
+        startRedactionBtn.textContent = 'Baixando...';
+
+        const response = await fetch(`https://safemask-3.onrender.com/documentos/${docId}/original`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+            },
+        });
+
+        if (response.status === 403) {
+            alert('Seu cargo não permite acessar a versão original do documento.');
+            return;
+        }
+
+        if (response.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = '../auth/login.html';
+            return;
+        }
+
+        if (!response.ok) {
+            throw new Error('Falha ao baixar o documento original.');
+        }
+
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${docTitle.textContent}_original.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error(error);
+        alert('Não foi possível baixar a versão original do documento.');
+    } finally {
+        startRedactionBtn.disabled = !podeDescensurar;
+        startRedactionBtn.textContent = podeDescensurar ? 'Baixar versão original' : 'Sem permissão para descensura';
+    }
 });
 
 window.addEventListener('beforeunload', clearPreviewUrl);

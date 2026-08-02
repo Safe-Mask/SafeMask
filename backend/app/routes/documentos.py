@@ -10,14 +10,102 @@ from app.database import get_db
 from app.core.current_user import get_current_user
 from app.models.usuario import Usuario
 from app.models.equipe import Equipe
+from app.models.cargo import Cargo
 from app.models.documentos import Documento
 from app.models.usuario_equipe import UsuarioEquipe
+from scanner.scanner import DocumentScanner
 
 router = APIRouter(prefix="/documentos", tags=["Documentos"])
 
-# Criar diretório de uploads se não existir
+# Criar diretórios de uploads se não existir
 UPLOAD_DIR = Path("uploads")
 UPLOAD_DIR.mkdir(exist_ok=True)
+ORIGINAIS_DIR = UPLOAD_DIR / "originais"
+CENSURADOS_DIR = UPLOAD_DIR / "censurados"
+ORIGINAIS_DIR.mkdir(parents=True, exist_ok=True)
+CENSURADOS_DIR.mkdir(parents=True, exist_ok=True)
+
+scanner_instance = None
+
+def get_scanner():
+    global scanner_instance
+    if scanner_instance is None:
+        scanner_instance = DocumentScanner()
+    return scanner_instance
+
+
+@router.post("/upload", status_code=status.HTTP_201_CREATED)
+async def upload_documento(
+    file: UploadFile = File(...),
+    titulo: str = Form(...),
+    nivel_seguranca: int = Form(1),
+    team_id: int = Form(...),
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(get_current_user)
+):
+    if not file.filename or not file.filename.lower().endswith('.pdf'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Apenas arquivos PDF sao aceitos."
+        )
+
+    usuario_equipe = db.query(UsuarioEquipe).filter(
+        UsuarioEquipe.user_id == usuario_atual.user_id,
+        UsuarioEquipe.team_id == team_id
+    ).first()
+
+    if not usuario_equipe:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Voce nao faz parte dessa equipe."
+        )
+
+    conteudo = await file.read()
+    if not conteudo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Arquivo vazio."
+        )
+
+    extensao = Path(file.filename).suffix or ".pdf"
+    hash_arquivo = hashlib.sha256(conteudo).hexdigest()
+    nome_arquivo = f"{hash_arquivo}{extensao}"
+    caminho_original = ORIGINAIS_DIR / nome_arquivo
+
+    with open(caminho_original, "wb") as f:
+        f.write(conteudo)
+
+    try:
+        scanner = get_scanner()
+        resultado = scanner.scan_and_save(
+            file_path=str(caminho_original),
+            db=db,
+            user_team_id=usuario_equipe.user_team_id,
+            nome_original=titulo,
+            nivel_seguranca=nivel_seguranca,
+            dir_original=ORIGINAIS_DIR,
+            dir_censurado=CENSURADOS_DIR
+        )
+
+        db.commit()
+
+        return {
+            "mensagem": "Documento processado e censurado com sucesso.",
+            "doc_id": resultado["doc_id"],
+            "hash": resultado["hash"],
+            "total_sensiveis": resultado["total_sensiveis"],
+            "status": resultado["status"]
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger = __import__('logging').getLogger(__name__)
+        logger.error(f"Erro ao processar documento: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Erro ao processar documento: {str(e)}"
+        )
+
 
 def normalizar_team_ids(teams: str) -> list[int]:
     import json
@@ -68,6 +156,38 @@ def buscar_documento_autorizado(db: Session, user_id: int, doc_id: int):
         )
         .first()
     )
+
+
+def cargo_usuario_no_documento(db: Session, user_id: int, documento: Documento) -> dict | None:
+    """Retorna cargo (nome/nivel) do usuario dentro da equipe dona do documento."""
+    membro = (
+        db.query(UsuarioEquipe)
+        .filter(UsuarioEquipe.user_team_id == documento.user_team_id)
+        .first()
+    )
+    if not membro:
+        return None
+
+    registro_usuario = (
+        db.query(UsuarioEquipe)
+        .filter(
+            UsuarioEquipe.user_id == user_id,
+            UsuarioEquipe.team_id == membro.team_id,
+        )
+        .first()
+    )
+    if not registro_usuario:
+        return None
+
+    cargo = db.query(Cargo).filter(Cargo.cargo_id == registro_usuario.cargo_id).first()
+    if not cargo:
+        return None
+
+    return {"nome": cargo.nome, "nivel": cargo.nivel}
+
+# Nivel minimo (cargo.nivel) para ter acesso ao documento original (descensura).
+# Escala do banco: lider=3, supervisor=2, membro=1.
+NIVEL_MIN_DESCENSURA = 3
 
 
 @router.get("/censurados")
@@ -142,6 +262,8 @@ def obter_documento_censurado(
     if usuario_equipe:
         equipe = db.query(Equipe).filter(Equipe.team_id == usuario_equipe.team_id).first()
 
+    cargo = cargo_usuario_no_documento(db, usuario_atual.user_id, documento)
+
     return {
         "doc_id": documento.doc_id,
         "nome_original": documento.nome_original,
@@ -157,6 +279,8 @@ def obter_documento_censurado(
             "team_id": equipe.team_id if equipe else None,
             "nome": equipe.nome if equipe else None,
         },
+        "cargo_usuario": cargo,
+        "pode_descensurar": bool(cargo and cargo["nivel"] >= NIVEL_MIN_DESCENSURA),
         "preview_url": f"/documentos/censurados/{documento.doc_id}/arquivo",
     }
 
@@ -191,6 +315,49 @@ def obter_arquivo_documento_censurado(
         media_type=media_type or "application/octet-stream",
         filename=f"{documento.nome_original}{documento.extensao}",
         content_disposition_type="inline",
+    )
+
+
+@router.get("/{doc_id}/original")
+def obter_documento_original(
+    doc_id: int,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(get_current_user)
+):
+    """
+    Retorna o PDF original (sem censura) para usuarios com cargo de nivel
+    suficiente (ex.: lider). Membros recebem 403.
+    """
+    documento = buscar_documento_autorizado(db, usuario_atual.user_id, doc_id)
+
+    if not documento:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Documento não encontrado ou sem acesso.",
+        )
+
+    cargo = cargo_usuario_no_documento(db, usuario_atual.user_id, documento)
+    if not cargo or cargo["nivel"] < NIVEL_MIN_DESCENSURA:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Seu cargo nao permite acessar a versao original do documento.",
+        )
+
+    # O original foi salvo como {hash_arquivo}{extensao} em ORIGINAIS_DIR.
+    candidatos = list(ORIGINAIS_DIR.glob(f"{documento.hash_documento}*"))
+    if not candidatos:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Arquivo original nao encontrado no armazenamento.",
+        )
+
+    caminho = candidatos[0]
+    media_type, _ = mimetypes.guess_type(caminho.name)
+    return FileResponse(
+        path=str(caminho),
+        media_type=media_type or "application/octet-stream",
+        filename=f"{documento.nome_original}_original.pdf",
+        content_disposition_type="attachment",
     )
 
 @router.post("/salvar-censurado", status_code=status.HTTP_201_CREATED)
@@ -239,7 +406,7 @@ async def salvar_documento_censurado(
         
         # Gerar caminho de armazenamento
         nome_arquivo = f"{hash_arquivo}{extensao}"
-        caminho_arquivo = UPLOAD_DIR / nome_arquivo
+        caminho_arquivo = CENSURADOS_DIR / nome_arquivo
         
         # Salvar arquivo
         with open(caminho_arquivo, "wb") as f:
@@ -274,8 +441,7 @@ async def salvar_documento_censurado(
                 chave_criptografica=chave_cripto,
                 hash_documento=hash_arquivo,
                 caminho_storage=str(caminho_arquivo),
-                status_processamento="completo",
-                criado_em=datetime.utcnow()
+                status_processamento="CONCLUIDO"
             )
             
             db.add(novo_documento)

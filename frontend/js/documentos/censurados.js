@@ -332,7 +332,11 @@ docsList.addEventListener('click', (event) => {
 });
 
 undoRedactionBtn.addEventListener('click', () => {
-    alert('Descensurar ainda nao esta disponivel.');
+    if (!state.selectedDoc) {
+        alert('Selecione um documento para descensurar.');
+        return;
+    }
+    window.location.href = `descensura.html?doc_id=${state.selectedDoc.doc_id}`;
 });
 
 closeDetailsBtn.addEventListener('click', () => {
