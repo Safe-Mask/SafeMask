@@ -9,7 +9,12 @@ from dotenv import load_dotenv
 # Carrega as variáveis do arquivo .env
 load_dotenv()
 
-SECRET_KEY = os.getenv("SECRET_KEY", "chave-secreta-padrao")    # chave para assinar
+# Chave para assinar tokens. Em producao SEMPRE defina SECRET_KEY no ambiente.
+def _gerar_secret_key():
+    import secrets
+    return secrets.token_urlsafe(48)
+
+SECRET_KEY = os.getenv("SECRET_KEY") or _gerar_secret_key()
 ALGORITHM = "HS256"     # algoritmo de criptografia
 ACCESS_TOKEN_EXPIRE_MINUTES = 120    # tempo de vida do token
 

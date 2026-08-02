@@ -2,15 +2,10 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
-import os
-from dotenv import load_dotenv
 
 from app.models.usuario import Usuario
 from app.database import get_db
-
-load_dotenv()
-SECRET_KEY = os.getenv("SECRET_KEY", "chave-secreta-padrao")    # chave para assinar
-ALGORITHM = "HS256"
+from app.core.security import SECRET_KEY, ALGORITHM
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
