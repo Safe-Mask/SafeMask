@@ -22,18 +22,29 @@ class DocumentScanner:
         if model_folder is None:
             model_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), "safemask-ner")
 
-        try:
-            logger.info(f"Carregando IA customizada de {model_folder} ...")
-            self.ia = pipeline(
-                "token-classification",
-                model=model_folder,
-                tokenizer=model_folder,
-                aggregation_strategy="simple"
+        self.ia = None
+        modelo_existe = os.path.exists(os.path.join(model_folder, "model.safetensors")) or \
+            os.path.exists(os.path.join(model_folder, "pytorch_model.bin"))
+
+        if not modelo_existe:
+            logger.warning(
+                f"Pesos do modelo NER nao encontrados em {model_folder}. "
+                "Rodando apenas com deteccao por regex."
             )
-            logger.info("IA Carregada com sucesso!")
-        except Exception as e:
-            logger.error(f"Erro ao carregar modelo de {model_folder}: {e}")
-            raise
+        else:
+            try:
+                logger.info(f"Carregando IA customizada de {model_folder} ...")
+                self.ia = pipeline(
+                    "token-classification",
+                    model=model_folder,
+                    tokenizer=model_folder,
+                    aggregation_strategy="simple"
+                )
+                logger.info("IA Carregada com sucesso!")
+            except Exception as e:
+                logger.error(f"Erro ao carregar modelo de {model_folder}: {e}")
+                self.ia = None
+                logger.warning("Rodando apenas com deteccao por regex.")
 
         self.regex_config = {
             "CPF": {"pattern": r'\b\d{3}\.\d{3}\.\d{3}-\d{2}\b', "level": 2},
@@ -184,6 +195,8 @@ class DocumentScanner:
                     pedacos_texto.append(pedaco_atual)
 
                 for pedaco in pedacos_texto:
+                    if not self.ia:
+                        continue
                     entidades_ia = self.ia(pedaco)
 
                     for ent in entidades_ia:
