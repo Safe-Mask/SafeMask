@@ -47,13 +47,13 @@ class DocumentScanner:
                 logger.warning("Rodando apenas com deteccao por regex.")
 
         self.regex_config = {
-            "CPF": {"pattern": r'\b\d{3}\.\d{3}\.\d{3}-\d{2}\b', "level": 2},
-            "CNPJ": {"pattern": r'\b\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}\b', "level": 0},
-            "EMAIL": {"pattern": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', "level": 1},
+            "CPF": {"pattern": r'\b\d{3}\.\d{3}\.\d{3}-\d{2}\b', "level": 3},
+            "CNPJ": {"pattern": r'\b\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}\b', "level": 1},
+            "EMAIL": {"pattern": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', "level": 2},
             "TELEFONE": {"pattern": r'\(?\d{2}\)?\s?9?\d{4}-?\d{4}', "level": 2},
-            "RG": {"pattern": r'\b\d{1,2}\.?\d{3}\.?\d{3}-?[A-Za-z0-9]{1,2}(?:/[A-Z]{2})?\b|\b\d{7,9}\b', "level": 2},
+            "RG": {"pattern": r'\b\d{1,2}\.?\d{3}\.?\d{3}-?[A-Za-z0-9]{1,2}(?:/[A-Z]{2})?\b|\b\d{7,9}\b', "level": 3},
             "PROCESSO": {"pattern": r'\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b|\b\d{3}/\d\.\d{2}\.\d{7}-\d\b', "level": 1},
-            "DATA_NASC": {"pattern": r'\b\d{2}/\d{2}/\d{4}\b', "level": 1}
+            "DATA_NASC": {"pattern": r'\b\d{2}/\d{2}/\d{4}\b', "level": 2}
         }
 
     def _salvar_dado(self, db, doc_id, page, page_num, texto_secreto, entity_type, level, usando_ocr=False, ocr_data=None):
@@ -177,7 +177,7 @@ class DocumentScanner:
                                     draw = ImageDraw.Draw(img_pagina.original)
                                     draw.rectangle(c, fill="black")
                                 else:
-                                    img_pagina.draw_rect(c, fill="black", stroke=None)
+                                    self._desenhar_caixa_pil(img_pagina, c)
 
                 texto_limpo = texto
                 for segredo in segredos_encontrados:
@@ -212,24 +212,17 @@ class DocumentScanner:
                         palavra_exata = pedaco[inicio:fim].strip().strip(".,;:!?()[]")
 
                         ENTIDADES_NER = {
-                            'PESSOA': (1, 'PESSOA'),
-                            'ORGANIZACAO': (0, 'EMPRESA'),
-                            'LOCAL': (0, 'LOCAL'),
-                            'ENDERECO': (1, 'ENDERECO'),
+                            'PESSOA': (2, 'PESSOA'),
+                            'ORGANIZACAO': (1, 'EMPRESA'),
+                            'LOCAL': (1, 'LOCAL'),
+                            'ENDERECO': (2, 'ENDERECO'),
                             'NUMERO_PROCESSO': (1, 'PROCESSO'),
-                            'LEGISLACAO': (0, 'LEGISLACAO'),
+                            'LEGISLACAO': (1, 'LEGISLACAO'),
                         }
 
                         if tipo_ia in ENTIDADES_NER and len(palavra_exata) > 2:
                             nivel, tipo_banco = ENTIDADES_NER[tipo_ia]
                             if palavra_exata not in segredos_encontrados:
-                                if tipo_ia == 'PESSOA':
-                                    nivel = 1
-                                    tipo_banco = 'PESSOA'
-                                else:
-                                    nivel = 0
-                                    tipo_banco = 'EMPRESA'
-
                                 count, coords = self._salvar_dado(
                                     db, novo_doc.doc_id, page, page_num,
                                     palavra_exata, tipo_banco, nivel,
@@ -243,7 +236,7 @@ class DocumentScanner:
                                         draw = ImageDraw.Draw(img_pagina.original)
                                         draw.rectangle(c, fill="black")
                                     else:
-                                        img_pagina.draw_rect(c, fill="black", stroke=None)
+                                        self._desenhar_caixa_pil(img_pagina, c)
 
                 if usando_ocr:
                     paginas_para_pdf.append(img_pagina.original.convert("RGB"))
@@ -282,3 +275,56 @@ class DocumentScanner:
             "total_sensiveis": sensitive_count,
             "status": novo_doc.status_processamento
         }
+
+    def _desenhar_caixa_pil(self, img_pagina, coord: list):
+        """Desenha uma caixa preta sobre uma coordenada (PDF points) usando PIL.
+
+        O pdfplumber.drawing (wand/ImageMagick) pode estar ausente e nao desenhar
+        nada silenciosamente; aqui convertemos as coords para pixels da imagem
+        renderizada e desenhamos com ImageDraw (PIL).
+        """
+        x0, top, x1, bottom = coord
+        px0, ptop = img_pagina._reproject((x0, top))
+        px1, pbottom = img_pagina._reproject((x1, bottom))
+        ImageDraw.Draw(img_pagina.original).rectangle(
+            [px0, ptop, px1, pbottom], fill="black"
+        )
+
+    def gerar_pdf_parcial(self, file_path: str, itens_para_cobrir: dict,
+                          dir_destino: Path, nome_saida: str) -> Path:
+        """Regera um PDF a partir do documento original, desenhando caixas pretas
+        apenas sobre os itens que devem permanecer cobertos (descensura parcial).
+
+        itens_para_cobrir: dict {numero_pagina: [coordenadas...]}, onde as
+        coordenadas estao no espaco do PDF (points), iguais as salvas em
+        DadoSensivel.coordenadas para PDFs baseados em texto.
+        """
+        if not os.path.exists(file_path):
+            raise FileNotFoundError(f"Arquivo nao encontrado: {file_path}")
+
+        paginas_para_pdf = []
+        with pdfplumber.open(file_path) as pdf:
+            for page_num, page in enumerate(pdf.pages):
+                img_pagina = page.to_image(resolution=150)
+                coords = itens_para_cobrir.get(page_num, [])
+                for c in coords:
+                    self._desenhar_caixa_pil(img_pagina, c)
+                paginas_para_pdf.append(img_pagina.original.convert("RGB"))
+
+        if not paginas_para_pdf:
+            raise ValueError("Nenhuma pagina disponivel para gerar o PDF parcial.")
+
+        dir_destino.mkdir(parents=True, exist_ok=True)
+        caminho_parcial = dir_destino / nome_saida
+
+        for img in paginas_para_pdf:
+            img.info = {}
+
+        paginas_para_pdf[0].save(
+            str(caminho_parcial),
+            format="PDF",
+            save_all=True,
+            append_images=paginas_para_pdf[1:]
+        )
+        logger.info(f"PDF parcial gerado em: {caminho_parcial}")
+        return caminho_parcial

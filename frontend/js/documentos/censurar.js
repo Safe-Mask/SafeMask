@@ -32,7 +32,8 @@ const loadingStepLabel = document.getElementById('loadingStepLabel');
 const loadingFileName = document.getElementById('loadingFileName');
 const loadingBadgeRedaction = document.getElementById('loadingBadgeRedaction');
 const loadingBadgeTeams = document.getElementById('loadingBadgeTeams');
-const API_DASHBOARD_OVERVIEW = 'https://safemask-3.onrender.com/dashboard/overview';
+const API_UPLOAD = `${API_ROOT}/documentos/upload`;
+const API_DASHBOARD_OVERVIEW = `${API_ROOT}/dashboard/overview`;
 
 const storedName = localStorage.getItem('userName') || 'Usuario';
 userNameElement.textContent = storedName;
@@ -281,6 +282,16 @@ function openFilePicker() {
 
 function handleFileChange(fileList) {
     const file = fileList && fileList[0];
+
+    if (file && !file.name.toLowerCase().endsWith('.pdf')) {
+        alert('Apenas arquivos PDF sao aceitos.');
+        if (documentInput) {
+            documentInput.value = '';
+        }
+        updateFileSummary(null);
+        return;
+    }
+
     updateFileSummary(file || null);
 }
 
@@ -288,9 +299,24 @@ function setDragState(active) {
     dropzone.classList.toggle('dragover', active);
 }
 
-function openReviewStep() {
+async function startUpload() {
     if (!state.currentFile) {
         alert('Selecione um arquivo para continuar.');
+        return;
+    }
+
+    if (!state.selectedTeams.size) {
+        if (state.teams.length) {
+            state.selectedTeams.add(Number(state.teams[0].id));
+        } else {
+            alert('Selecione ao menos uma equipe para vincular o documento.');
+            return;
+        }
+    }
+
+    const token = localStorage.getItem('token');
+    if (!token) {
+        window.location.href = '../auth/login.html';
         return;
     }
 
@@ -298,30 +324,47 @@ function openReviewStep() {
     loadingFileName.textContent = state.currentFile.name;
     setStep('loading');
 
-    const progressMarks = [
-        { delay: 5000, value: '25%', redaction: false, teams: false },
-        { delay: 10000, value: '50%', redaction: true, teams: false },
-        { delay: 17000, value: '85%', redaction: true, teams: true },
-        { delay: 20000, value: '100%', redaction: true, teams: true },
-    ];
+    const formData = new FormData();
+    formData.append('file', state.currentFile);
+    formData.append('titulo', docTitleInput.value);
+    formData.append('nivel_seguranca', securityLevelInput.value);
+    formData.append('teams', JSON.stringify(Array.from(state.selectedTeams).map((teamId) => Number(teamId))));
 
-    progressMarks.forEach((mark) => {
-        setTimeout(() => {
-            if (state.currentStep !== 'loading') {
-                return;
-            }
+    try {
+        loadingStepLabel.textContent = 'Analisando dados sensíveis...';
+        loadingBadgeRedaction.classList.add('active');
 
-            loadingStepLabel.textContent = mark.value;
-            loadingBadgeRedaction.classList.toggle('active', mark.redaction);
-            loadingBadgeTeams.classList.toggle('active', mark.teams);
-        }, mark.delay);
-    });
+        const response = await fetch(API_UPLOAD, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            },
+            body: formData
+        });
 
-    state.loadingTimeoutId = setTimeout(() => {
-        if (state.currentStep === 'loading') {
-            setStep('review');
+        if (response.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = '../auth/login.html';
+            return;
         }
-    }, 20500);
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || 'Erro ao processar documento.');
+        }
+
+        loadingBadgeTeams.classList.add('active');
+        loadingStepLabel.textContent = 'Concluído!';
+
+        setTimeout(() => {
+            window.location.href = `censurados.html?doc_id=${data.doc_id}`;
+        }, 800);
+    } catch (error) {
+        console.error('Erro ao processar documento:', error);
+        alert(`Erro ao processar documento: ${error.message || 'Verifique o console.'}`);
+        setStep('upload');
+    }
 }
 
 userTrigger.addEventListener('click', () => {
@@ -392,74 +435,8 @@ dropzone.addEventListener('drop', (event) => {
     handleFileChange(event.dataTransfer.files);
 });
 
-censorStartBtn.addEventListener('click', openReviewStep);
-
-saveCensoredDocBtn.addEventListener('click', async () => {
-    if (!state.currentFile) {
-        alert('Selecione um arquivo para continuar.');
-        return;
-    }
-
-    if (!state.selectedTeams.size) {
-        alert('Selecione ao menos uma equipe para vincular o documento.');
-        return;
-    }
-
-    saveCensoredDocBtn.disabled = true;
-    saveCensoredDocBtn.textContent = 'Salvando...';
-
-    try {
-        const formData = new FormData();
-        formData.append('file', state.currentFile);
-        formData.append('titulo', docTitleInput.value);
-        formData.append('nivel_seguranca', securityLevelInput.value);
-        formData.append('observacoes', docNotesInput.value);
-        formData.append('teams', JSON.stringify(Array.from(state.selectedTeams).map((teamId) => Number(teamId))));
-
-        const token = localStorage.getItem('token');
-        if (!token) {
-            window.location.href = '../auth/login.html';
-            return;
-        }
-
-        const response = await fetch('https://safemask-3.onrender.com/documentos/salvar-censurado', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
-            body: formData
-        });
-
-        if (response.status === 401) {
-            localStorage.removeItem('token');
-            window.location.href = '../auth/login.html';
-            return;
-        }
-
-        const data = await response.json();
-
-        if (!response.ok) {
-            alert(`Erro ao salvar: ${data.detail || 'Erro desconhecido'}`);
-            return;
-        }
-
-        alert(`Documento censurado salvo com sucesso em ${data.documentos_criados} equipe(s)!`);
-        
-        // Limpar e voltar ao upload
-        documentInput.value = '';
-        updateFileSummary(null);
-        setStep('upload');
-        state.selectedTeams.clear();
-        renderSelectedSummary();
-
-    } catch (error) {
-        console.error('Erro ao salvar documento:', error);
-        alert('Erro ao salvar documento. Verifique o console.');
-    } finally {
-        saveCensoredDocBtn.disabled = false;
-        saveCensoredDocBtn.textContent = 'Salvar documento censurado';
-    }
-});
+censorStartBtn.addEventListener('click', startUpload);
+saveCensoredDocBtn.addEventListener('click', startUpload);
 
 docTitleInput.addEventListener('input', () => {
     if (!docTitleInput.value.trim() && state.currentFile) {
@@ -473,5 +450,4 @@ loadUserTeams();
 
 window.addEventListener('beforeunload', () => {
     clearTimeout(state.loadingTimeoutId);
-    clearPreviewUrl();
 });

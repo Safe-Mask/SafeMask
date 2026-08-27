@@ -10,7 +10,7 @@ const btnOpenCreateTeam = document.getElementById('btnOpenCreateTeam');
 const btnOpenCreateTeamInline = document.getElementById('btnOpenCreateTeamInline');
 const btnBackDashboard = document.getElementById('btnBackDashboard');
 const menuLinks = document.querySelectorAll('.menu-link');
-const API_BASE = 'https://safemask-3.onrender.com/equipes';
+const API_BASE = `${API_ROOT}/equipes`;
 
 const metricTotalEquipes = document.getElementById('metricTotalEquipes');
 const metricTotalMembros = document.getElementById('metricTotalMembros');

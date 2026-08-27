@@ -28,7 +28,7 @@ const loadingFileName = document.getElementById('loadingFileName');
 const loadingBadgeRedaction = document.getElementById('loadingBadgeRedaction');
 const loadingBadgeTeams = document.getElementById('loadingBadgeTeams');
 
-const API_DOCUMENTS = 'https://safemask-3.onrender.com/documentos/censurados';
+const API_DOCUMENTS = `${API_ROOT}/documentos/censurados`;
 const initialDocId = Number(new URLSearchParams(window.location.search).get('doc_id'));
 
 const storedName = localStorage.getItem('userName') || 'Usuario';
@@ -169,14 +169,12 @@ function renderDocumentDetails(documento) {
         <p>Buscando o arquivo protegido para exibir o documento completo.</p>
     `;
     detailPreviewFrame.src = 'about:blank';
-    detailPreviewFrame.onload = () => {
-        detailPreviewFallback.hidden = true;
-    };
+    detailPreviewFrame.onload = null;
 
     if (documento.preview_url) {
         const token = localStorage.getItem('token');
         if (token) {
-            fetch(`https://safemask-3.onrender.com${documento.preview_url}`, {
+            fetch(`${API_ROOT}${documento.preview_url}`, {
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
@@ -190,7 +188,12 @@ function renderDocumentDetails(documento) {
                 })
                 .then((blob) => {
                     state.previewObjectUrl = URL.createObjectURL(blob);
+                    detailPreviewFrame.onload = () => {
+                        detailPreviewFallback.hidden = true;
+                    };
+                    detailPreviewFrame.style.zIndex = '1';
                     detailPreviewFrame.src = state.previewObjectUrl;
+                    detailPreviewFallback.hidden = true;
                 })
                 .catch((error) => {
                     console.error(error);
@@ -201,6 +204,12 @@ function renderDocumentDetails(documento) {
                     detailPreviewFallback.hidden = false;
                 });
         }
+    } else {
+        detailPreviewFallback.innerHTML = `
+            <strong>Preview indisponível</strong>
+            <p>Este documento não possui arquivo para exibição.</p>
+        `;
+        detailPreviewFallback.hidden = false;
     }
 
     toggleDetailState(true);

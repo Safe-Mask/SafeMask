@@ -1,4 +1,4 @@
-const API_URL = 'https://safemask-3.onrender.com/auth';
+const API_URL = `${API_ROOT}/auth`;
 
 function getQueryParam(name) {
     const params = new URLSearchParams(window.location.search);
