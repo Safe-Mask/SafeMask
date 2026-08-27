@@ -1,7 +1,7 @@
 .censored-shell {
     background:
-        radial-gradient(circle at top left, rgba(0, 240, 255, 0.1), transparent 26%),
-        radial-gradient(circle at bottom right, rgba(255, 45, 149, 0.08), transparent 32%);
+        radial-gradient(circle at top left, rgba(0, 230, 118, 0.1), transparent 26%),
+        radial-gradient(circle at bottom right, rgba(255, 59, 92, 0.08), transparent 32%);
 }
 
 .censored-content {
@@ -84,8 +84,8 @@
     top: -18%;
     width: 100%;
     height: 18%;
-    background: linear-gradient(180deg, rgba(0, 240, 255, 0), rgba(0, 240, 255, 0.16), rgba(0, 240, 255, 0));
-    box-shadow: 0 0 18px rgba(0, 240, 255, 0.18);
+    background: linear-gradient(180deg, rgba(0, 230, 118, 0), rgba(0, 230, 118, 0.16), rgba(0, 230, 118, 0));
+    box-shadow: 0 0 18px rgba(0, 230, 118, 0.18);
     animation: scanDown 2.4s ease-in-out infinite;
     pointer-events: none;
 }
@@ -107,14 +107,14 @@
 }
 
 .loading-badge.active {
-    border-color: rgba(0, 240, 255, 0.35);
-    background: rgba(0, 240, 255, 0.08);
+    border-color: rgba(0, 230, 118, 0.35);
+    background: rgba(0, 230, 118, 0.08);
     color: var(--primary);
 }
 
 .hero-panel {
     border-left: 4px solid var(--primary);
-    background: linear-gradient(120deg, rgba(0, 240, 255, 0.06), rgba(15, 23, 38, 0.95));
+    background: linear-gradient(120deg, rgba(0, 230, 118, 0.06), rgba(15, 23, 38, 0.95));
 }
 
 .censored-layout {
@@ -151,7 +151,7 @@
 .doc-card.active {
     border-color: var(--primary);
     transform: translateY(-1px);
-    background: rgba(0, 240, 255, 0.06);
+    background: rgba(0, 230, 118, 0.06);
 }
 
 .doc-card-top {
@@ -182,7 +182,7 @@
 .doc-tag {
     border-radius: 999px;
     padding: 0.24rem 0.7rem;
-    background: rgba(0, 240, 255, 0.12);
+    background: rgba(0, 230, 118, 0.12);
     color: var(--primary);
     font-size: 0.78rem;
     font-weight: 700;
@@ -206,7 +206,7 @@
 }
 
 .doc-card .ghost-button:hover {
-    background: rgba(0, 240, 255, 0.1);
+    background: rgba(0, 230, 118, 0.1);
     border-color: var(--primary);
 }
 
@@ -321,7 +321,7 @@
 }
 
 .detail-actions .ghost-button:hover {
-    background: rgba(0, 240, 255, 0.1);
+    background: rgba(0, 230, 118, 0.1);
     border-color: var(--primary);
 }
 
@@ -332,14 +332,14 @@
     font-weight: 700;
     cursor: pointer;
     transition: 0.2s ease;
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    color: #05111a;
-    box-shadow: 0 10px 20px rgba(0, 240, 255, 0.18);
+    background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+    color: #04120a;
+    box-shadow: 0 10px 20px rgba(0, 230, 118, 0.18);
 }
 
 .detail-actions .cta-censor:hover {
     transform: translateY(-1px);
-    box-shadow: 0 12px 24px rgba(0, 240, 255, 0.25);
+    box-shadow: 0 12px 24px rgba(0, 230, 118, 0.25);
 }
 
 @keyframes scanDown {
@@ -370,11 +370,11 @@
     0%,
     100% {
         transform: scale(1);
-        box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.06);
+        box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.06);
     }
     50% {
         transform: scale(1.01);
-        box-shadow: 0 0 0 8px rgba(0, 240, 255, 0.04);
+        box-shadow: 0 0 0 8px rgba(0, 230, 118, 0.04);
     }
 }
 

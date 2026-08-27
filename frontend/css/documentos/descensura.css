@@ -1,7 +1,7 @@
 .descensura-shell {
     background:
-        radial-gradient(circle at top left, rgba(0, 240, 255, 0.1), transparent 26%),
-        radial-gradient(circle at bottom right, rgba(255, 45, 149, 0.08), transparent 32%);
+        radial-gradient(circle at top left, rgba(0, 230, 118, 0.1), transparent 26%),
+        radial-gradient(circle at bottom right, rgba(255, 59, 92, 0.08), transparent 32%);
 }
 
 .descensura-content {
@@ -11,7 +11,7 @@
 
 .descensura-hero {
     border-left: 4px solid var(--primary);
-    background: linear-gradient(120deg, rgba(0, 240, 255, 0.06), rgba(15, 23, 38, 0.95));
+    background: linear-gradient(120deg, rgba(0, 230, 118, 0.06), rgba(15, 23, 38, 0.95));
 }
 
 .descensura-layout {
@@ -47,7 +47,7 @@
     display: block;
     word-break: break-all;
     color: var(--primary);
-    text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+    text-shadow: 0 0 10px rgba(0, 230, 118, 0.3);
     font-size: 0.92rem;
 }
 

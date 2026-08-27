@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="900" viewBox="0 0 900 900">
+  <defs>
+    <radialGradient id="vignette" cx="50%" cy="40%" r="75%">
+      <stop offset="0%" stop-color="#0a0f18"/>
+      <stop offset="100%" stop-color="#04060b"/>
+    </radialGradient>
+    <pattern id="seigaiha" width="140" height="90" patternUnits="userSpaceOnUse">
+      <g fill="none" stroke="#00e676" stroke-width="1.1" opacity="0.05">
+        <path d="M0 60 a25 25 0 0 1 50 0 a25 25 0 0 1 50 0" transform="translate(0,0)"/>
+        <path d="M25 90 a25 25 0 0 1 50 0 a25 25 0 0 1 50 0" transform="translate(0,0)"/>
+        <path d="M0 30 a25 25 0 0 1 50 0 a25 25 0 0 1 50 0" transform="translate(0,0)"/>
+        <path d="M75 90 a25 25 0 0 1 50 0 a25 25 0 0 1 50 0" transform="translate(0,0)"/>
+        <circle cx="25" cy="95" r="3" opacity="0.5"/>
+        <circle cx="75" cy="95" r="3" opacity="0.5"/>
+      </g>
+    </pattern>
+  </defs>
+  <rect width="900" height="900" fill="url(#vignette)"/>
+  <rect width="900" height="900" fill="url(#seigaiha)"/>
+  <text x="120" y="210" font-family="'Hiragino Kaku Gothic','Noto Sans JP',sans-serif" font-size="46" fill="#00e676" opacity="0.045">安全</text>
+  <text x="620" y="150" font-family="'Hiragino Kaku Gothic','Noto Sans JP',sans-serif" font-size="38" fill="#00e676" opacity="0.04">保護</text>
+  <text x="70" y="760" font-family="'Hiragino Kaku Gothic','Noto Sans JP',sans-serif" font-size="52" fill="#00e676" opacity="0.04">マスク</text>
+  <text x="700" y="700" font-family="'Hiragino Kaku Gothic','Noto Sans JP',sans-serif" font-size="34" fill="#00e676" opacity="0.035">隠す</text>
+  <text x="480" y="640" font-family="'Hiragino Kaku Gothic','Noto Sans JP',sans-serif" font-size="26" fill="#00e676" opacity="0.03">データ</text>
+  <circle cx="820" cy="120" r="42" fill="#ff3b5c" opacity="0.05"/>
+  <g stroke="#00e676" stroke-width="2" opacity="0.05" fill="none">
+    <path d="M60 60 h26 l-13 22 z"/>
+    <path d="M86 60 h26 l-13 22 z"/>
+  </g>
+</svg>

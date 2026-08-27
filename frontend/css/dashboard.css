@@ -5,19 +5,19 @@
 }
 
 :root {
-    --primary: #00f0ff;
-    --accent: #ff2d95;
-    --gray: #5b7289;
+    --primary: #00e676;
+    --primary-strong: #00c853;
+    --gray: #9db4a9;
     --black: #000000;
     --white: #e6f7ff;
     --ok: #3dffb0;
     --warn: #ffb020;
     --wait: #8aa3b8;
-    --surface: #0f1726;
-    --surface-2: #131e33;
-    --line: rgba(0, 240, 255, 0.2);
+    --surface: #0b0f16;
+    --surface-2: #10161f;
+    --line: rgba(0, 230, 118, 0.2);
     --text: #e6f7ff;
-    --text-muted: #8aa3b8;
+    --text-muted: #9db4a9;
     --err: #ff3b5c;
     --shadow: 0 8px 20px rgba(0, 0, 0, 0.4);
 }
@@ -25,10 +25,13 @@
 body {
     font-family: "Inter", "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
     color: var(--text);
-    background:
-        radial-gradient(circle at top right, rgba(0, 240, 255, 0.08), transparent 42%),
-        radial-gradient(circle at bottom left, rgba(255, 45, 149, 0.06), transparent 45%),
-        #0a0e17;
+    background-color: #05070c;
+    background-image:
+        radial-gradient(circle at top right, rgba(0, 230, 118, 0.06), transparent 42%),
+        radial-gradient(circle at bottom left, rgba(255, 59, 92, 0.05), transparent 45%),
+        url('../images/bg/noir-japanese.svg');
+    background-size: auto, auto, 900px 900px;
+    background-attachment: fixed;
     min-height: 100vh;
 }
 
@@ -59,6 +62,11 @@ body {
 .brand-logo {
     width: 42px;
     height: 42px;
+    object-fit: contain;
+    background: #ffffff;
+    border-radius: 8px;
+    border: 2px solid rgba(0, 230, 118, 0.4);
+    box-shadow: 0 0 14px rgba(0, 230, 118, 0.2);
 }
 
 .brand-kicker {
@@ -73,7 +81,7 @@ body {
     font-size: 1.3rem;
     line-height: 1.2;
     font-family: "Orbitron", sans-serif;
-    text-shadow: 0 0 14px rgba(0, 240, 255, 0.3);
+    text-shadow: 0 0 14px rgba(0, 230, 118, 0.3);
 }
 
 .menu {
@@ -103,7 +111,7 @@ body {
 .menu-link:hover,
 .menu-link.active {
     border-color: var(--primary);
-    background: rgba(0, 240, 255, 0.08);
+    background: rgba(0, 230, 118, 0.08);
     color: var(--primary);
 }
 
@@ -151,19 +159,19 @@ body {
 
 .cta-censor {
     border: none;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-    color: #05111a;
+    background: linear-gradient(90deg, var(--primary), var(--primary-strong));
+    color: #04120a;
     font-weight: 700;
     border-radius: 999px;
     padding: 0.9rem 1.45rem;
     cursor: pointer;
-    box-shadow: 0 8px 16px rgba(0, 240, 255, 0.22);
+    box-shadow: 0 8px 16px rgba(0, 230, 118, 0.22);
     transition: 0.25s ease;
 }
 
 .cta-censor:hover {
     filter: brightness(1.05);
-    box-shadow: 0 10px 22px rgba(0, 240, 255, 0.32);
+    box-shadow: 0 10px 22px rgba(0, 230, 118, 0.32);
 }
 
 .user-menu {
@@ -187,8 +195,8 @@ body {
     width: 30px;
     height: 30px;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--primary), var(--accent));
-    color: #05111a;
+    background: linear-gradient(135deg, var(--primary), var(--primary-strong));
+    color: #04120a;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -224,7 +232,7 @@ body {
 }
 
 .dropdown-item:hover {
-    background: rgba(0, 240, 255, 0.08);
+    background: rgba(0, 230, 118, 0.08);
     color: var(--primary);
 }
 
@@ -248,8 +256,8 @@ body {
 }
 
 .metric-priority {
-    border: 1px solid rgba(0, 240, 255, 0.35);
-    background: linear-gradient(145deg, rgba(0, 240, 255, 0.1), rgba(15, 23, 38, 0.9));
+    border: 1px solid rgba(0, 230, 118, 0.35);
+    background: linear-gradient(145deg, rgba(0, 230, 118, 0.1), rgba(15, 23, 38, 0.9));
 }
 
 .metric-card p {
@@ -284,7 +292,7 @@ body {
 .highlight-panel {
     margin-bottom: 1rem;
     border-left: 4px solid var(--primary);
-    background: linear-gradient(120deg, rgba(0, 240, 255, 0.06), rgba(15, 23, 38, 0.95));
+    background: linear-gradient(120deg, rgba(0, 230, 118, 0.06), rgba(15, 23, 38, 0.95));
 }
 
 .highlight-text {
@@ -358,7 +366,7 @@ body {
     justify-content: space-between;
     align-items: center;
     gap: 1rem;
-    border-bottom: 1px solid rgba(0, 240, 255, 0.08);
+    border-bottom: 1px solid rgba(0, 230, 118, 0.08);
     padding: 0.6rem 0;
 }
 
@@ -429,7 +437,7 @@ body {
     height: 100%;
     border-radius: 999px;
     background: linear-gradient(90deg, var(--primary), #3dffb0);
-    box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+    box-shadow: 0 0 12px rgba(0, 230, 118, 0.4);
 }
 
 .donut-wrap {
@@ -443,10 +451,10 @@ body {
     width: 150px;
     height: 150px;
     border-radius: 50%;
-    background: conic-gradient(#00f0ff 0 68%, #ffb020 68% 88%, #3a4b63 88% 100%);
+    background: conic-gradient(#00e676 0 68%, #ffb020 68% 88%, #3a4b63 88% 100%);
     position: relative;
     margin: 0.6rem 0 0.9rem;
-    box-shadow: 0 0 22px rgba(0, 240, 255, 0.2);
+    box-shadow: 0 0 22px rgba(0, 230, 118, 0.2);
 }
 
 .donut::after {
@@ -477,7 +485,7 @@ body {
 }
 
 .dot.done {
-    background: #00f0ff;
+    background: #00e676;
 }
 
 .dot.review {

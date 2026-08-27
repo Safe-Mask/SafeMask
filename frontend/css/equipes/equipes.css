@@ -7,7 +7,7 @@
 .team-hero {
     margin-bottom: 1rem;
     border-left: 4px solid var(--primary);
-    background: linear-gradient(120deg, rgba(0, 240, 255, 0.06), rgba(15, 23, 38, 0.96));
+    background: linear-gradient(120deg, rgba(0, 230, 118, 0.06), rgba(15, 23, 38, 0.96));
 }
 
 .team-detail-panel,
@@ -75,7 +75,7 @@
 }
 
 .panel-action-button {
-    background: rgba(0, 240, 255, 0.1);
+    background: rgba(0, 230, 118, 0.1);
     color: var(--primary);
     border: 1px solid var(--line);
 }
@@ -137,7 +137,7 @@
 
 .team-card.active {
     border-color: var(--primary);
-    background: rgba(0, 240, 255, 0.08);
+    background: rgba(0, 230, 118, 0.08);
 }
 
 .team-card-top {
@@ -192,7 +192,7 @@
     display: flex;
     justify-content: space-between;
     gap: 1rem;
-    border-bottom: 1px solid rgba(0, 240, 255, 0.08);
+    border-bottom: 1px solid rgba(0, 230, 118, 0.08);
     padding: 0.7rem 0;
 }
 
@@ -229,8 +229,8 @@
 }
 
 .team-doc-item.allowed {
-    background: rgba(0, 240, 255, 0.08);
-    border-color: rgba(0, 240, 255, 0.3);
+    background: rgba(0, 230, 118, 0.08);
+    border-color: rgba(0, 230, 118, 0.3);
 }
 
 .team-doc-item.denied {
@@ -278,8 +278,8 @@
     font-weight: 700;
     text-decoration: none;
     cursor: pointer;
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-    color: #05111a;
+    background: linear-gradient(90deg, var(--primary), var(--primary-strong));
+    color: #04120a;
     white-space: nowrap;
 }
 
@@ -308,7 +308,7 @@
 }
 
 .empty-state {
-    border: 1px dashed rgba(0, 240, 255, 0.25);
+    border: 1px dashed rgba(0, 230, 118, 0.25);
     border-radius: 14px;
     background: rgba(15, 23, 38, 0.6);
     padding: 1rem;
@@ -426,7 +426,7 @@
 .field textarea:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(0, 240, 255, 0.12), 0 0 16px rgba(0, 240, 255, 0.15);
+    box-shadow: 0 0 0 3px rgba(0, 230, 118, 0.12), 0 0 16px rgba(0, 230, 118, 0.15);
 }
 
 .field-full {
@@ -470,7 +470,7 @@
 
 .candidate-item.selected {
     border-color: var(--primary);
-    background: rgba(0, 240, 255, 0.08);
+    background: rgba(0, 230, 118, 0.08);
 }
 
 .candidate-item strong {
@@ -487,7 +487,7 @@
 
 .candidate-action {
     border: 1px solid var(--line);
-    background: rgba(0, 240, 255, 0.1);
+    background: rgba(0, 230, 118, 0.1);
     color: var(--primary);
     border-radius: 999px;
     padding: 0.6rem 0.95rem;
@@ -515,13 +515,13 @@
 
 .selected-chip {
     border: 1px solid var(--line);
-    background: rgba(0, 240, 255, 0.1);
+    background: rgba(0, 230, 118, 0.1);
     color: var(--white);
     cursor: pointer;
 }
 
 .empty-chip {
-    border: 1px dashed rgba(0, 240, 255, 0.25);
+    border: 1px dashed rgba(0, 230, 118, 0.25);
     background: rgba(15, 23, 38, 0.6);
     color: var(--text-muted);
 }
@@ -539,9 +539,9 @@
 }
 
 .cta-censor {
-    background: linear-gradient(90deg, var(--primary), var(--accent));
-    color: #05111a;
-    box-shadow: 0 8px 16px rgba(0, 240, 255, 0.22);
+    background: linear-gradient(90deg, var(--primary), var(--primary-strong));
+    color: #04120a;
+    box-shadow: 0 8px 16px rgba(0, 230, 118, 0.22);
 }
 
 .team-card-link {
@@ -595,7 +595,7 @@
     height: 100%;
     border-radius: 999px;
     background: linear-gradient(90deg, var(--primary), #3dffb0);
-    box-shadow: 0 0 12px rgba(0, 240, 255, 0.4);
+    box-shadow: 0 0 12px rgba(0, 230, 118, 0.4);
 }
 
 @media (max-width: 1080px) {
