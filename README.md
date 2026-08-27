@@ -27,7 +27,7 @@ Detecte e censure automaticamente informações confidenciais em documentos, gar
 
 | Serviço | URL | Status |
 |---------|-----|--------|
-| 🌐 **Frontend (Vercel)** | [https://safemask.vercel.app](https://safemask.vercel.app) | ✅ Online |
+| 🌐 **Frontend (Vercel)** | [https://safe-mask.vercel.app](https://safe-mask.vercel.app) | ✅ Online |
 | 🔙 **Backend (Render)** | [https://safemask-3.onrender.com](https://safemask-3.onrender.com) | ✅ Online |
 | 🗄️ **API Docs** | [https://safemask-3.onrender.com/docs](https://safemask-3.onrender.com/docs) | ✅ Online |
 | 💾 **Database (Neon)** | PostgreSQL Serverless | ✅ Conectado |
@@ -424,7 +424,7 @@ for u in usuarios:
    ```
 
 5. **Deploy!**
-   - Seu frontend está em: `https://safemask.vercel.app`
+   - Seu frontend está em: `https://safe-mask.vercel.app`
 
 **Atualizações automáticas:** Qualquer push para `main` redeploya.
 
