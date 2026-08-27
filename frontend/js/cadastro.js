@@ -1,4 +1,4 @@
-const API_URL = 'https://safemask-3.onrender.com/auth';
+const API_URL = `${API_ROOT}/auth`;
 
 // Validar campo nome obrigatório
 document.getElementById('cadastro-nome').addEventListener('blur', (e) => {

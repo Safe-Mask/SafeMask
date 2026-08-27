@@ -78,11 +78,11 @@
                     <article class="panel upload-panel">
                         <div class="panel-header">
                             <h3>Enviar documento</h3>
-                            <span class="panel-action">PDF, PNG, JPG ou TIFF</span>
+                            <span class="panel-action">Somente PDF</span>
                         </div>
 
                         <label class="dropzone" id="dropzone">
-                            <input type="file" id="documentInput" accept=".pdf,.png,.jpg,.jpeg,.tiff" hidden>
+                            <input type="file" id="documentInput" accept=".pdf,application/pdf" hidden>
                             <div class="dropzone-prompt" id="dropzonePrompt">
                                 <div class="dropzone-icon">⬆</div>
                                 <strong>Arraste o arquivo aqui</strong>
@@ -256,6 +256,7 @@
         </div>
     </div>
 
+    <script src="../../js/config.js"></script>
     <script src="../../js/documentos/censurar.js"></script>
 </body>
 </html>

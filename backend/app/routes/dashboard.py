@@ -32,10 +32,20 @@ def get_dashboard_overview(
         .all()
     )
 
+    team_ids = [
+        row.team_id
+        for row in (
+            db.query(UsuarioEquipe.team_id)
+            .filter(UsuarioEquipe.user_id == current_user.user_id)
+            .distinct()
+            .all()
+        )
+    ]
+
     total_docs = (
         db.query(func.count(Documento.doc_id))
         .join(UsuarioEquipe, UsuarioEquipe.user_team_id == Documento.user_team_id)
-        .filter(UsuarioEquipe.user_id == current_user.user_id)
+        .filter(UsuarioEquipe.team_id.in_(team_ids))
         .scalar()
         or 0
     )
@@ -44,7 +54,7 @@ def get_dashboard_overview(
         db.query(func.count(Documento.doc_id))
         .join(UsuarioEquipe, UsuarioEquipe.user_team_id == Documento.user_team_id)
         .filter(
-            UsuarioEquipe.user_id == current_user.user_id,
+            UsuarioEquipe.team_id.in_(team_ids),
             Documento.chave_criptografica.isnot(None)
         )
         .scalar()
@@ -54,7 +64,7 @@ def get_dashboard_overview(
     media_nivel = (
         db.query(func.avg(Documento.nivel_seguranca))
         .join(UsuarioEquipe, UsuarioEquipe.user_team_id == Documento.user_team_id)
-        .filter(UsuarioEquipe.user_id == current_user.user_id)
+        .filter(UsuarioEquipe.team_id.in_(team_ids))
         .scalar()
     )
 
@@ -62,7 +72,7 @@ def get_dashboard_overview(
         db.query(func.count(Documento.doc_id))
         .join(UsuarioEquipe, UsuarioEquipe.user_team_id == Documento.user_team_id)
         .filter(
-            UsuarioEquipe.user_id == current_user.user_id,
+            UsuarioEquipe.team_id.in_(team_ids),
             Documento.nivel_seguranca >= 4
         )
         .scalar()
@@ -80,7 +90,7 @@ def get_dashboard_overview(
         )
         .join(UsuarioEquipe, UsuarioEquipe.user_team_id == Documento.user_team_id)
         .join(Equipe, Equipe.team_id == UsuarioEquipe.team_id)
-        .filter(UsuarioEquipe.user_id == current_user.user_id)
+        .filter(UsuarioEquipe.team_id.in_(team_ids))
         .order_by(Documento.criado_em.desc())
         .limit(8)
         .all()

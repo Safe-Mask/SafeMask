@@ -18,7 +18,7 @@ const detailMemberList = document.getElementById('detailMemberList');
 const detailDocumentList = document.getElementById('detailDocumentList');
 const teamDocsCount = document.getElementById('teamDocsCount');
 
-const API_BASE = 'https://safemask-3.onrender.com/equipes';
+const API_BASE = `${API_ROOT}/equipes`;
 const storedName = localStorage.getItem('userName') || 'Usuario';
 userNameElement.textContent = storedName;
 userIcon.textContent = storedName.charAt(0).toUpperCase();

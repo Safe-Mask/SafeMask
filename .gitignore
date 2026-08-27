@@ -78,3 +78,6 @@ logs/
 *.pt
 *.bin
 checkpoint-*/
+
+# Uploaded documents
+backend/uploads/
