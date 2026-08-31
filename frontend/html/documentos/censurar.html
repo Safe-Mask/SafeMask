@@ -6,8 +6,9 @@
     <title>SafeMask - Censurar Documento</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../css/dashboard.css">
+    <link rel="stylesheet" href="../../css/brand.css">
     <link rel="stylesheet" href="../../css/documentos/censurar.css">
 </head>
 <body>
@@ -42,10 +43,11 @@
         <div class="main-wrap">
             <header class="topbar">
                 <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
-                <div>
-                    <h2>Nova Censura de Documento</h2>
-                    <p class="subtitle">Suba o arquivo, revise o preview e associe o documento criptografado as equipes certas</p>
-                </div>
+                <nav class="crumb" aria-label="Breadcrumb">
+                    <span>SafeMask</span>
+                    <span class="crumb-sep">/</span>
+                    <span class="crumb-current">Nova Censura</span>
+                </nav>
 
                 <button class="cta-censor" id="goToDashboardBtn">Voltar ao Dashboard</button>
 
@@ -60,11 +62,11 @@
                 </div>
             </header>
 
-            <main class="content censor-content">
-                <section class="panel censor-hero">
+            <main class="content brand-main censor-content">
+                <section class="panel panel-sig censor-hero reveal">
                     <div class="panel-header">
                         <div>
-                            <p class="panel-kicker">Fluxo privado</p>
+                            <span class="panel-kicker">Fluxo privado</span>
                             <h3>Envie o documento e avance para a censura</h3>
                             <p class="panel-subtitle">O arquivo original nao fica armazenado em claro. O sistema trabalha primeiro com o envio seguro e, depois, libera a etapa de revisao, equipes e salvamento.</p>
                         </div>
@@ -77,7 +79,7 @@
                     </div>
                 </section>
 
-                <section class="panel upload-stage" id="uploadStep">
+                <section class="panel upload-stage reveal" id="uploadStep">
                     <article class="panel upload-panel">
                         <div class="panel-header">
                             <h3>Enviar documento</h3>
@@ -261,5 +263,6 @@
 
     <script src="../../js/config.js"></script>
     <script src="../../js/documentos/censurar.js"></script>
+    <script src="../../js/brand.js"></script>
 </body>
 </html>

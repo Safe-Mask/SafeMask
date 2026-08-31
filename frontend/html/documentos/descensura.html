@@ -6,8 +6,9 @@
     <title>SafeMask - Descensura</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../css/dashboard.css">
+    <link rel="stylesheet" href="../../css/brand.css">
     <link rel="stylesheet" href="../../css/documentos/censurados.css">
     <link rel="stylesheet" href="../../css/documentos/descensura.css">
 </head>
@@ -38,10 +39,11 @@
         <div class="main-wrap">
             <header class="topbar">
                 <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
-                <div>
-                    <h2>Descensura de Documento</h2>
-                    <p class="subtitle">Revise o documento autorizado antes de seguir com o fluxo de descensura</p>
-                </div>
+                <nav class="crumb" aria-label="Breadcrumb">
+                    <span>SafeMask</span>
+                    <span class="crumb-sep">/</span>
+                    <span class="crumb-current">Descensura</span>
+                </nav>
 
                 <button class="cta-censor" id="backToDocumentsBtn">Voltar</button>
 
@@ -56,11 +58,11 @@
                 </div>
             </header>
 
-            <main class="content descensura-content">
-                <section class="panel descensura-hero">
+            <main class="content brand-main descensura-content">
+                <section class="panel panel-sig descensura-hero reveal">
                     <div class="panel-header">
                         <div>
-                            <p class="panel-kicker">Documento autorizado</p>
+                            <span class="panel-kicker">Documento autorizado</span>
                             <h3 id="docTitle">Carregando documento</h3>
                             <p class="panel-subtitle" id="docSubtitle">Buscando os dados do documento selecionado.</p>
                         </div>
@@ -69,9 +71,12 @@
                 </section>
 
                 <section class="descensura-layout">
-                    <article class="panel descensura-preview-panel">
+                    <article class="panel panel-sig descensura-preview-panel reveal">
                         <div class="panel-header">
-                            <h3>Preview</h3>
+                            <div>
+                                <span class="panel-kicker">Preview</span>
+                                <h3>Preview</h3>
+                            </div>
                             <span class="panel-action" id="docTeamLabel">Equipe</span>
                         </div>
 
@@ -84,9 +89,12 @@
                         </div>
                     </article>
 
-                    <article class="panel descensura-detail-panel">
+                    <article class="panel panel-sig descensura-detail-panel reveal">
                         <div class="panel-header">
-                            <h3>Informações</h3>
+                            <div>
+                                <span class="panel-kicker">Detalhes</span>
+                                <h3>Informações</h3>
+                            </div>
                             <span class="panel-action">descensura</span>
                         </div>
 
@@ -134,5 +142,6 @@
 
     <script src="../../js/config.js?v=2"></script>
     <script src="../../js/documentos/descensura.js?v=2"></script>
+    <script src="../../js/brand.js?v=2"></script>
 </body>
 </html>

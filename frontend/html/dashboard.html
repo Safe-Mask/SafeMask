@@ -6,8 +6,9 @@
     <title>SafeMask - Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/dashboard.css">
+    <link rel="stylesheet" href="../css/brand.css">
 </head>
 <body>
     <div class="dashboard-shell">
@@ -41,10 +42,11 @@
         <div class="main-wrap">
             <header class="topbar">
                 <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
-                <div>
-                    <h2>Dashboard do Usuario</h2>
-                    <p class="subtitle">Acompanhe equipes, uploads e indicadores de seguranca</p>
-                </div>
+                <nav class="crumb" aria-label="Breadcrumb">
+                    <span>SafeMask</span>
+                    <span class="crumb-sep">/</span>
+                    <span class="crumb-current">Dashboard</span>
+                </nav>
 
                 <button class="cta-censor" id="btnCensurarDocumento">Censurar Documento</button>
 
@@ -59,34 +61,46 @@
                 </div>
             </header>
 
-            <main class="content" id="dashboardContent">
+            <main class="content brand-main" id="dashboardContent">
+                <section class="brand-head reveal">
+                    <div class="brand-kicker-row">
+                        <span class="kicker">Painel De Controle</span>
+                        <span class="live-dot"></span>
+                    </div>
+                    <h2>Dashboard do Usuario</h2>
+                    <p class="subtitle">Acompanhe equipes, uploads e indicadores de seguranca em tempo real.</p>
+                </section>
+
                 <section class="metrics">
-                    <article class="metric-card metric-priority">
+                    <article class="metric-card metric-priority reveal">
                         <p>Documentos Censurados</p>
-                        <h3 id="metricDocsCensurados">0</h3>
+                        <h3 data-count="0" id="metricDocsCensurados">0</h3>
                         <span class="metric-delta up" id="metricTaxaCensura">0% de censura aplicada</span>
                     </article>
-                    <article class="metric-card">
+                    <article class="metric-card reveal">
                         <p>Documentos Processados</p>
-                        <h3 id="metricTotalDocs">0</h3>
+                        <h3 data-count="0" id="metricTotalDocs">0</h3>
                         <span class="metric-delta up">documentos no sistema</span>
                     </article>
-                    <article class="metric-card">
+                    <article class="metric-card reveal">
                         <p>Total de Equipes</p>
-                        <h3 id="metricTotalEquipes">0</h3>
+                        <h3 data-count="0" id="metricTotalEquipes">0</h3>
                         <span class="metric-delta up">equipes com acesso</span>
                     </article>
-                    <article class="metric-card">
+                    <article class="metric-card reveal">
                         <p>Nivel Medio de Seguranca</p>
-                        <h3 id="metricNivelSeguranca">0</h3>
+                        <h3 data-count="0" id="metricNivelSeguranca">0</h3>
                         <span class="metric-delta up" id="metricNivelAlto">0 docs com nivel alto</span>
                     </article>
                 </section>
 
                 <section class="grid-panels">
-                    <article class="panel" id="equipes-principais">
+                    <article class="panel panel-sig reveal" id="equipes-principais">
                         <div class="panel-header">
-                            <h3>Equipes Principais</h3>
+                            <div>
+                                <span class="panel-kicker">Equipes</span>
+                                <h3>Equipes Principais</h3>
+                            </div>
                             <a href="equipes/equipes.html" class="panel-action">Ver todas</a>
                         </div>
                         <ul class="team-list" id="teamList">
@@ -97,9 +111,12 @@
                         </ul>
                     </article>
 
-                    <article class="panel" id="docs-enviados">
+                    <article class="panel panel-sig reveal" id="docs-enviados">
                         <div class="panel-header">
-                            <h3>Documentos Recentes</h3>
+                            <div>
+                                <span class="panel-kicker">Documentos</span>
+                                <h3>Documentos Recentes</h3>
+                            </div>
                             <a href="#" class="panel-action">Abrir historico</a>
                         </div>
                         <ul class="doc-list" id="docList">
@@ -113,20 +130,26 @@
                         </ul>
                     </article>
 
-                    <article class="panel chart-panel">
+                    <article class="panel panel-sig chart-panel reveal">
                         <div class="panel-header">
-                            <h3>Uploads por Equipe</h3>
+                            <div>
+                                <span class="panel-kicker">Analise</span>
+                                <h3>Uploads por Equipe</h3>
+                            </div>
                         </div>
                         <div class="bar-chart" id="barChartTeams">
                             <p class="empty-message">Sem dados para exibir.</p>
                         </div>
                     </article>
 
-                    <article class="panel chart-panel donut-wrap">
+                    <article class="panel panel-sig chart-panel donut-wrap reveal">
                         <div class="panel-header">
-                            <h3>Estado dos Processamentos</h3>
+                            <div>
+                                <span class="panel-kicker">Processamento</span>
+                                <h3>Estado dos Processamentos</h3>
+                            </div>
                         </div>
-                        <div class="donut" id="processingDonut"></div>
+                        <div class="donut float-slow" id="processingDonut"></div>
                         <ul class="legend" id="processingLegend">
                             <li><span class="dot done"></span> Censurados: 0%</li>
                             <li><span class="dot review"></span> Nivel alto: 0%</li>
@@ -140,5 +163,6 @@
 
     <script src="../js/config.js"></script>
     <script src="../js/dashboard.js"></script>
+    <script src="../js/brand.js"></script>
 </body>
 </html>

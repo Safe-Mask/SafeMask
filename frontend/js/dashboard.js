@@ -94,6 +94,12 @@ function statusBySecurityLevel(level) {
     return { label: 'Baixa Protecao', css: 'alert' };
 }
 
+function setCounted(element, value) {
+    const numeric = Number(value) || 0;
+    element.setAttribute('data-count', String(numeric));
+    element.textContent = String(numeric);
+}
+
 function renderTeams(teams) {
     if (!teams.length) {
         teamList.innerHTML = `
@@ -188,11 +194,11 @@ function renderProcessingChart(metrics) {
 }
 
 function applyMetrics(metrics) {
-    metricTotalEquipes.textContent = metrics.total_equipes ?? 0;
-    metricTotalDocs.textContent = metrics.total_documentos ?? 0;
-    metricDocsCensurados.textContent = metrics.documentos_censurados ?? 0;
+    setCounted(metricTotalEquipes, metrics.total_equipes);
+    setCounted(metricTotalDocs, metrics.total_documentos);
+    setCounted(metricDocsCensurados, metrics.documentos_censurados);
+    setCounted(metricNivelSeguranca, metrics.media_nivel_seguranca);
     metricTaxaCensura.textContent = `${metrics.taxa_censura ?? 0}% de censura aplicada`;
-    metricNivelSeguranca.textContent = metrics.media_nivel_seguranca ?? 0;
     metricNivelAlto.textContent = `${metrics.documentos_nivel_alto ?? 0} docs com nivel alto`;
 
     if (highlightTotalCensurados) {

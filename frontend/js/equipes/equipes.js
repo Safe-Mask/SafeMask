@@ -71,10 +71,16 @@ function closeModal() {
     renderSelectedMembers();
 }
 
+function setCounted(element, value) {
+    const numeric = Number(value) || 0;
+    element.setAttribute('data-count', String(numeric));
+    element.textContent = String(numeric);
+}
+
 function renderOverview(overview) {
-    metricTotalEquipes.textContent = overview?.metrics?.total_equipes ?? 0;
-    metricTotalMembros.textContent = overview?.metrics?.total_membros ?? 0;
-    metricTotalDocumentos.textContent = overview?.metrics?.total_documentos ?? 0;
+    setCounted(metricTotalEquipes, overview?.metrics?.total_equipes);
+    setCounted(metricTotalMembros, overview?.metrics?.total_membros);
+    setCounted(metricTotalDocumentos, overview?.metrics?.total_documentos);
 
     const topTeamName = overview?.metrics?.equipe_maior_nome || 'Nenhuma equipe';
     const topTeamMembers = overview?.metrics?.equipe_maior_membros ?? 0;

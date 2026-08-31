@@ -6,8 +6,9 @@
     <title>SafeMask - Equipes</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../css/dashboard.css">
+    <link rel="stylesheet" href="../../css/brand.css">
     <link rel="stylesheet" href="../../css/equipes/equipes.css">
 </head>
 <body>
@@ -42,10 +43,11 @@
         <div class="main-wrap">
             <header class="topbar">
                 <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu">☰</button>
-                <div>
-                    <h2>Gerenciar Equipes</h2>
-                    <p class="subtitle">Crie equipes, adicione membros e navegue pelos detalhes com o mesmo padrao do dashboard</p>
-                </div>
+                <nav class="crumb" aria-label="Breadcrumb">
+                    <span>SafeMask</span>
+                    <span class="crumb-sep">/</span>
+                    <span class="crumb-current">Equipes</span>
+                </nav>
 
                 <button class="cta-censor" id="btnOpenCreateTeam">Adicionar Equipe</button>
 
@@ -60,33 +62,43 @@
                 </div>
             </header>
 
-            <main class="content">
+            <main class="content brand-main">
+                <section class="brand-head reveal">
+                    <div class="brand-kicker-row">
+                        <span class="kicker">Equipes</span>
+                        <span class="live-dot"></span>
+                    </div>
+                    <h2>Gerenciar Equipes</h2>
+                    <p class="subtitle">Crie equipes, adicione membros e navegue pelos detalhes com o mesmo padrao do dashboard.</p>
+                </section>
+
                 <section class="metrics">
-                    <article class="metric-card metric-priority">
+                    <article class="metric-card metric-priority reveal">
                         <p>Total de Equipes</p>
-                        <h3 id="metricTotalEquipes">0</h3>
+                        <h3 data-count="0" id="metricTotalEquipes">0</h3>
                         <span class="metric-delta up">equipes vinculadas</span>
                     </article>
-                    <article class="metric-card">
+                    <article class="metric-card reveal">
                         <p>Membros Vinculados</p>
-                        <h3 id="metricTotalMembros">0</h3>
+                        <h3 data-count="0" id="metricTotalMembros">0</h3>
                         <span class="metric-delta up">usuarios em suas equipes</span>
                     </article>
-                    <article class="metric-card">
+                    <article class="metric-card reveal">
                         <p>Documentos nas Equipes</p>
-                        <h3 id="metricTotalDocumentos">0</h3>
+                        <h3 data-count="0" id="metricTotalDocumentos">0</h3>
                         <span class="metric-delta up">arquivos relacionados</span>
                     </article>
-                    <article class="metric-card">
+                    <article class="metric-card reveal">
                         <p>Equipe em Destaque</p>
                         <h3 id="metricEquipeMaiorNome">0</h3>
                         <span class="metric-delta up" id="metricEquipeMaior">maior equipe indisponivel</span>
                     </article>
                 </section>
 
-                <section class="panel team-hero">
+                <section class="panel panel-sig team-hero reveal">
                     <div class="panel-header">
                         <div>
+                            <span class="panel-kicker">Resumo</span>
                             <h3>Resumo das Equipes</h3>
                             <p class="panel-subtitle">Clique em uma equipe para abrir a pagina de detalhe com nome, descricao e membros ordenados por cargo.</p>
                         </div>
@@ -109,9 +121,10 @@
                     </div>
                 </section>
 
-                <section class="panel add-team-panel">
+                <section class="panel panel-sig add-team-panel reveal">
                     <div class="panel-header">
                         <div>
+                            <span class="panel-kicker">Nova</span>
                             <h3>Adicionar Equipe</h3>
                             <p class="panel-subtitle">Nome, descricao e membros ficam prontos antes de salvar.</p>
                         </div>
@@ -121,9 +134,12 @@
                 </section>
 
                 <section class="grid-panels equipes-grid">
-                    <article class="panel">
+                    <article class="panel panel-sig reveal">
                         <div class="panel-header">
-                            <h3>Suas Equipes</h3>
+                            <div>
+                                <span class="panel-kicker">Suas Equipes</span>
+                                <h3>Suas Equipes</h3>
+                            </div>
                             <span class="panel-action">Abrir detalhes</span>
                         </div>
                         <ul class="equipes-list" id="teamList">
@@ -134,9 +150,12 @@
                         </ul>
                     </article>
 
-                    <article class="panel">
+                    <article class="panel panel-sig reveal">
                         <div class="panel-header">
-                            <h3>Distribuicao por Equipe</h3>
+                            <div>
+                                <span class="panel-kicker">Distribuicao</span>
+                                <h3>Distribuicao por Equipe</h3>
+                            </div>
                             <span class="panel-action">por membros</span>
                         </div>
                         <div class="bar-chart" id="teamChart">
@@ -227,5 +246,6 @@
 
     <script src="../../js/config.js"></script>
     <script src="../../js/equipes/equipes.js"></script>
+    <script src="../../js/brand.js"></script>
 </body>
 </html>
