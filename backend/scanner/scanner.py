@@ -21,8 +21,9 @@ from scanner.patterns import (
     PHONE_PATTERN,
     increment_cpf_count,
     mask_cpf,
+    mask_phone,
 )
-from scanner.redaction import draw_cpf_mask
+from scanner.redaction import draw_structured_mask
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -193,12 +194,18 @@ class DocumentScanner:
                             )
                             segredos_encontrados.append(segredo)
 
-                            cpf_mask = mask_cpf(segredo) if tipo == "CPF" else None
+                            structured_mask = (
+                                mask_cpf(segredo)
+                                if tipo == "CPF"
+                                else mask_phone(segredo)
+                                if tipo == "TELEFONE"
+                                else None
+                            )
                             for c in coords:
                                 self._desenhar_caixa_pil(
                                     img_pagina,
                                     c,
-                                    cpf_mask=cpf_mask,
+                                    structured_mask=structured_mask,
                                     coordinates_are_pixels=usando_ocr,
                                 )
 
@@ -306,10 +313,10 @@ class DocumentScanner:
         self,
         img_pagina,
         coord: list,
-        cpf_mask: str | None = None,
+        structured_mask: str | None = None,
         coordinates_are_pixels: bool = False,
     ):
-        """Cobre uma coordenada com tarja preta ou máscara estruturada de CPF.
+        """Cobre uma coordenada com tarja preta ou máscara estruturada.
 
         O pdfplumber.drawing (wand/ImageMagick) pode estar ausente e nao desenhar
         nada silenciosamente; aqui convertemos as coords para pixels da imagem
@@ -322,8 +329,12 @@ class DocumentScanner:
             px0, ptop = img_pagina._reproject((x0, top))
             px1, pbottom = img_pagina._reproject((x1, bottom))
 
-        if cpf_mask:
-            draw_cpf_mask(img_pagina.original, (px0, ptop, px1, pbottom))
+        if structured_mask:
+            draw_structured_mask(
+                img_pagina.original,
+                (px0, ptop, px1, pbottom),
+                structured_mask,
+            )
             return
 
         ImageDraw.Draw(img_pagina.original).rectangle(
