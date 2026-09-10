@@ -9,6 +9,7 @@ from scanner.patterns import (
     PHONE_PATTERN,
     increment_cpf_count,
     mask_cpf,
+    mask_phone,
     normalize_phone,
 )
 
@@ -59,6 +60,20 @@ class PhonePatternTests(unittest.TestCase):
             with self.subTest(phone=phone):
                 self.assertIsNone(normalize_phone(phone))
                 self.assertIsNone(PHONE_PATTERN.fullmatch(phone))
+
+    def test_masks_phone_without_losing_its_structure(self):
+        masks = {
+            "(11) 99876-5432": "(11) *****-5432",
+            "+55 (21) 2345-6789": "+55 (21) ****-6789",
+            "1198765432": "11****5432",
+        }
+
+        for phone, expected in masks.items():
+            with self.subTest(phone=phone):
+                self.assertEqual(mask_phone(phone), expected)
+
+    def test_does_not_mask_invalid_phone_format(self):
+        self.assertIsNone(mask_phone("119876543"))
 
 
 class MedicalPatternTests(unittest.TestCase):

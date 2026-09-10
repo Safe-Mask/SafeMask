@@ -2,7 +2,7 @@ import unittest
 
 from PIL import Image
 
-from scanner.redaction import draw_cpf_mask
+from scanner.redaction import draw_cpf_mask, draw_structured_mask
 
 
 class CpfMaskRenderingTests(unittest.TestCase):
@@ -20,6 +20,13 @@ class CpfMaskRenderingTests(unittest.TestCase):
                 for y in range(masked_area.height)
             )
         )
+
+    def test_draws_any_structured_mask_over_detected_area(self):
+        image = Image.new("RGB", (180, 50), "gray")
+
+        draw_structured_mask(image, (10, 10, 170, 35), "(11) *****-5432")
+
+        self.assertEqual(image.getpixel((10, 10)), (255, 255, 255))
 
 
 if __name__ == "__main__":

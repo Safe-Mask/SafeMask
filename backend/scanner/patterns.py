@@ -26,6 +26,26 @@ def normalize_phone(phone: str) -> str | None:
     return digits[2:] if normalized_phone.startswith("+55") else digits
 
 
+def mask_phone(phone: str) -> str | None:
+    """Oculta o miolo do telefone sem alterar sua formatação original."""
+    normalized_phone = phone.strip()
+    if not PHONE_PATTERN.fullmatch(normalized_phone):
+        return None
+
+    digit_positions = [
+        index for index, character in enumerate(normalized_phone) if character.isdigit()
+    ]
+    prefix_length = 4 if normalized_phone.startswith("+55") else 2
+    visible_positions = set(digit_positions[:prefix_length] + digit_positions[-4:])
+
+    return "".join(
+        character
+        if not character.isdigit() or index in visible_positions
+        else "*"
+        for index, character in enumerate(normalized_phone)
+    )
+
+
 def mask_cpf(cpf: str) -> str | None:
     if not CPF_PATTERN.fullmatch(cpf):
         return None
