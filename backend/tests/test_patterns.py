@@ -7,6 +7,7 @@ from scanner.patterns import (
     CPF_PATTERN,
     EMAIL_PATTERN,
     PHONE_PATTERN,
+    increment_cpf_count,
     mask_cpf,
     normalize_phone,
 )
@@ -95,6 +96,13 @@ class CpfMaskTests(unittest.TestCase):
 
     def test_does_not_mask_invalid_cpf_format(self):
         self.assertIsNone(mask_cpf("12345678900"))
+
+    def test_increments_only_cpf_redactions(self):
+        count = increment_cpf_count(0, "CPF", 2)
+        count = increment_cpf_count(count, "EMAIL", 3)
+        count = increment_cpf_count(count, "CPF", 1)
+
+        self.assertEqual(count, 3)
 
 
 if __name__ == "__main__":

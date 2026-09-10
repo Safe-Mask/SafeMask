@@ -18,6 +18,7 @@ class Documento(Base):
     caminho_storage = Column(String(500), nullable=False)
     ativo = Column(Boolean, nullable=False, default=True, server_default="true")
     status_processamento = Column(String(50), nullable=False)
+    cpf_censurados = Column(Integer, nullable=False, default=0, server_default="0")
 
     usuario_equipe = relationship("UsuarioEquipe", back_populates="documentos")
     dados_sensiveis = relationship("DadoSensivel", back_populates="documento", cascade="all, delete-orphan")

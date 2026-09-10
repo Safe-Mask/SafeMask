@@ -19,6 +19,7 @@ from scanner.patterns import (
     CPF_PATTERN,
     EMAIL_PATTERN,
     PHONE_PATTERN,
+    increment_cpf_count,
     mask_cpf,
 )
 from scanner.redaction import draw_cpf_mask
@@ -141,7 +142,8 @@ class DocumentScanner:
             chave_criptografica=chave_cripto,
             hash_documento=file_hash,
             caminho_storage="",
-            status_processamento="PROCESSANDO"
+            status_processamento="PROCESSANDO",
+            cpf_censurados=0,
         )
 
         db.add(novo_doc)
@@ -149,6 +151,7 @@ class DocumentScanner:
 
         logger.info(f"Scan Iniciado: {doc_name} (ID: {novo_doc.doc_id})")
         sensitive_count = 0
+        cpf_censored_count = 0
         paginas_para_pdf = []
 
         with pdfplumber.open(file_path) as pdf:
@@ -183,6 +186,11 @@ class DocumentScanner:
                                 usando_ocr, ocr_data
                             )
                             sensitive_count += count
+                            cpf_censored_count = increment_cpf_count(
+                                cpf_censored_count,
+                                tipo,
+                                count,
+                            )
                             segredos_encontrados.append(segredo)
 
                             cpf_mask = mask_cpf(segredo) if tipo == "CPF" else None
@@ -283,11 +291,14 @@ class DocumentScanner:
             novo_doc.status_processamento = "ERRO"
             logger.error("Nenhuma pagina processada para gerar PDF tarjado.")
 
+        novo_doc.cpf_censurados = cpf_censored_count
+
         return {
             "doc_id": novo_doc.doc_id,
             "hash": file_hash,
             "caminho_censurado": novo_doc.caminho_storage,
             "total_sensiveis": sensitive_count,
+            "cpf_censurados": cpf_censored_count,
             "status": novo_doc.status_processamento
         }
 
