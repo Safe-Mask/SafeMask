@@ -3,7 +3,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware import Middleware
 
 from app.routes import auth, dashboard, equipes, documentos
-from app.database import engine, Base, SessionLocal, garantir_schema_equipes, garantir_indices
+from app.database import (
+    Base,
+    SessionLocal,
+    engine,
+    garantir_indices,
+    garantir_schema_documentos,
+    garantir_schema_equipes,
+)
 from app.models.cargo import Cargo
 
 middleware = [
@@ -42,6 +49,7 @@ def seed_cargos():
 
 Base.metadata.create_all(bind=engine)
 garantir_schema_equipes()
+garantir_schema_documentos()
 garantir_indices()
 seed_cargos()
 

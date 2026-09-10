@@ -31,3 +31,7 @@ def mask_cpf(cpf: str) -> str | None:
         return None
 
     return "***.***.***-**"
+
+
+def increment_cpf_count(current_count: int, entity_type: str, occurrences: int) -> int:
+    return current_count + occurrences if entity_type == "CPF" else current_count

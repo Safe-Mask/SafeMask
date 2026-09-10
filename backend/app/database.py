@@ -87,5 +87,31 @@ def garantir_schema_equipes():
             conn.execute(text("ALTER TABLE equipe ADD COLUMN descricao TEXT"))
 
 
+def garantir_schema_documentos():
+    inspector = inspect(engine)
+    if "documentos" not in inspector.get_table_names():
+        return
+
+    colunas = {coluna["name"] for coluna in inspector.get_columns("documentos")}
+    if "cpf_censurados" in colunas:
+        return
+
+    with engine.begin() as conn:
+        if engine.dialect.name == "postgresql":
+            conn.execute(
+                text(
+                    "ALTER TABLE documentos "
+                    "ADD COLUMN IF NOT EXISTS cpf_censurados INTEGER NOT NULL DEFAULT 0"
+                )
+            )
+        elif engine.dialect.name == "sqlite":
+            conn.execute(
+                text(
+                    "ALTER TABLE documentos "
+                    "ADD COLUMN cpf_censurados INTEGER NOT NULL DEFAULT 0"
+                )
+            )
+
+
 if __name__ == "__main__":
     criar_tabelas()

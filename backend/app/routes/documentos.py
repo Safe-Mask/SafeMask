@@ -121,6 +121,7 @@ async def upload_documento(
             "doc_id": resultado["doc_id"],
             "hash": resultado["hash"],
             "total_sensiveis": resultado["total_sensiveis"],
+            "cpf_censurados": resultado["cpf_censurados"],
             "status": resultado["status"]
         }
 
