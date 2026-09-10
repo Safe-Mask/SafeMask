@@ -1,6 +1,13 @@
 import unittest
 
-from scanner.patterns import EMAIL_PATTERN, PHONE_PATTERN, normalize_phone
+from scanner.patterns import (
+    CID10_PATTERN,
+    CNS_PATTERN,
+    CRM_PATTERN,
+    EMAIL_PATTERN,
+    PHONE_PATTERN,
+    normalize_phone,
+)
 
 
 class EmailPatternTests(unittest.TestCase):
@@ -49,6 +56,32 @@ class PhonePatternTests(unittest.TestCase):
             with self.subTest(phone=phone):
                 self.assertIsNone(normalize_phone(phone))
                 self.assertIsNone(PHONE_PATTERN.fullmatch(phone))
+
+
+class MedicalPatternTests(unittest.TestCase):
+    def test_accepts_medical_identifiers(self):
+        identifiers = [
+            (CNS_PATTERN, "123456789012345"),
+            (CID10_PATTERN, "A00.0"),
+            (CID10_PATTERN, "Z99"),
+            (CRM_PATTERN, "CRM-SP 123456"),
+            (CRM_PATTERN, "CRM 12345"),
+        ]
+
+        for pattern, identifier in identifiers:
+            with self.subTest(identifier=identifier):
+                self.assertIsNotNone(pattern.fullmatch(identifier))
+
+    def test_rejects_incomplete_medical_identifiers(self):
+        identifiers = [
+            (CNS_PATTERN, "12345678901234"),
+            (CID10_PATTERN, "AA0.0"),
+            (CRM_PATTERN, "CRM-SP 123"),
+        ]
+
+        for pattern, identifier in identifiers:
+            with self.subTest(identifier=identifier):
+                self.assertIsNone(pattern.fullmatch(identifier))
 
 
 if __name__ == "__main__":

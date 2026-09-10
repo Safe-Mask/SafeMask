@@ -11,6 +11,10 @@ PHONE_PATTERN = re.compile(
     r"(?:9?\d{4})[-\s]?\d{4}"
 )
 
+CNS_PATTERN = re.compile(r"\b\d{15}\b")
+CID10_PATTERN = re.compile(r"\b[A-TV-Z]\d{2}(?:\.\d{1,4})?\b", re.IGNORECASE)
+CRM_PATTERN = re.compile(r"CRM(?:\s*[-/]\s*[A-Z]{2})?\s+\d{4,6}", re.IGNORECASE)
+
 
 def normalize_phone(phone: str) -> str | None:
     normalized_phone = phone.strip()
