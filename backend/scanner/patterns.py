@@ -11,6 +11,7 @@ PHONE_PATTERN = re.compile(
     r"(?:9?\d{4})[-\s]?\d{4}"
 )
 
+CPF_PATTERN = re.compile(r"\b\d{3}\.\d{3}\.\d{3}-\d{2}\b")
 CNS_PATTERN = re.compile(r"\b\d{15}\b")
 CID10_PATTERN = re.compile(r"\b[A-TV-Z]\d{2}(?:\.\d{1,4})?\b", re.IGNORECASE)
 CRM_PATTERN = re.compile(r"CRM(?:\s*[-/]\s*[A-Z]{2})?\s+\d{4,6}", re.IGNORECASE)
@@ -23,3 +24,10 @@ def normalize_phone(phone: str) -> str | None:
 
     digits = re.sub(r"\D", "", normalized_phone)
     return digits[2:] if normalized_phone.startswith("+55") else digits
+
+
+def mask_cpf(cpf: str) -> str | None:
+    if not CPF_PATTERN.fullmatch(cpf):
+        return None
+
+    return "***.***.***-**"

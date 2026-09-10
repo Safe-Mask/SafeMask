@@ -4,8 +4,10 @@ from scanner.patterns import (
     CID10_PATTERN,
     CNS_PATTERN,
     CRM_PATTERN,
+    CPF_PATTERN,
     EMAIL_PATTERN,
     PHONE_PATTERN,
+    mask_cpf,
     normalize_phone,
 )
 
@@ -82,6 +84,17 @@ class MedicalPatternTests(unittest.TestCase):
         for pattern, identifier in identifiers:
             with self.subTest(identifier=identifier):
                 self.assertIsNone(pattern.fullmatch(identifier))
+
+
+class CpfMaskTests(unittest.TestCase):
+    def test_replaces_valid_cpf_with_structured_mask(self):
+        cpf = "123.456.789-00"
+
+        self.assertIsNotNone(CPF_PATTERN.fullmatch(cpf))
+        self.assertEqual(mask_cpf(cpf), "***.***.***-**")
+
+    def test_does_not_mask_invalid_cpf_format(self):
+        self.assertIsNone(mask_cpf("12345678900"))
 
 
 if __name__ == "__main__":
