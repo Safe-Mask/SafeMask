@@ -12,6 +12,7 @@ from pathlib import Path
 
 from app.models.documentos import Documento
 from app.models.dado_sensivel import DadoSensivel
+from scanner.patterns import EMAIL_PATTERN
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -49,7 +50,7 @@ class DocumentScanner:
         self.regex_config = {
             "CPF": {"pattern": r'\b\d{3}\.\d{3}\.\d{3}-\d{2}\b', "level": 3},
             "CNPJ": {"pattern": r'\b\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}\b', "level": 1},
-            "EMAIL": {"pattern": r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', "level": 2},
+            "EMAIL": {"pattern": EMAIL_PATTERN.pattern, "level": 2},
             "TELEFONE": {"pattern": r'\(?\d{2}\)?\s?9?\d{4}-?\d{4}', "level": 2},
             "RG": {"pattern": r'\b\d{1,2}\.?\d{3}\.?\d{3}-?[A-Za-z0-9]{1,2}(?:/[A-Z]{2})?\b|\b\d{7,9}\b', "level": 3},
             "PROCESSO": {"pattern": r'\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b|\b\d{3}/\d\.\d{2}\.\d{7}-\d\b', "level": 1},
