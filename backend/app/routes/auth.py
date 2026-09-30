@@ -12,6 +12,7 @@ from app.core.audit import (
     registrar,
 )
 from app.core.config import RESET_TOKEN_EXPIRE_MINUTES
+from app.core.current_user import get_current_user
 from app.core.email import enviar_email_recuperacao
 from app.core.security import (
     criar_token_jwt,
@@ -28,6 +29,39 @@ from app.schemas.auth import RecuperarSenhaRequest
 from app.schemas.usuario import UsuarioCreate, UsuarioLogin
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
+
+
+def cargo_efetivo(db: Session, user_id: int) -> dict | None:
+    """Cargo de maior nivel do usuario entre todas as equipes.
+
+    O papel viaja na resposta do login para o frontend montar o menu. Como um
+    usuario pode estar em varias equipes com cargos diferentes, vale o maior
+    nivel: esconder itens do menu e cosmético, a autorizacao real acontece em
+    cada endpoint.
+    """
+    linha = (
+        db.query(Cargo.nome, Cargo.nivel)
+        .join(UsuarioEquipe, UsuarioEquipe.cargo_id == Cargo.cargo_id)
+        .filter(UsuarioEquipe.user_id == user_id)
+        .order_by(Cargo.nivel.desc())
+        .first()
+    )
+    if not linha:
+        return None
+    return {"nome": linha.nome, "nivel": linha.nivel}
+
+
+def identidade(db: Session, usuario: Usuario) -> dict:
+    cargo = cargo_efetivo(db, usuario.user_id)
+    return {
+        "user_id": usuario.user_id,
+        "nome": usuario.nome,
+        "email": usuario.email,
+        # Sem equipe o usuario ainda autenticou, mas nao ha papel para o menu.
+        "cargo": cargo["nome"] if cargo else None,
+        "nivel": cargo["nivel"] if cargo else 0,
+    }
+
 
 # Rota para verificar o login do usuário
 @router.post("/login", response_model=dict)
@@ -50,7 +84,23 @@ async def login(
     registrar(db, request, usuario.user_id, ACAO_LOGIN)
     token = criar_token_jwt({"sub": usuario.email, "nome": usuario.nome})
 
-    return {"access_token": token, "token_type": "bearer"}
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": identidade(db, usuario),
+    }
+
+
+@router.get("/me", response_model=dict)
+async def me(
+    usuario_atual: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Identidade e cargo do portador do token.
+
+    Permite reidratar a sessao (por exemplo apos um deploy) sem refazer login.
+    """
+    return identidade(db, usuario_atual)
 
 # Rota para cadastrar o usuário
 @router.post("/cadastro", status_code=status.HTTP_201_CREATED)
@@ -108,7 +158,15 @@ async def cadastrar(
     # Gerar token JWT para login automático
     token = criar_token_jwt({"sub": db_usuario.email, "nome": db_usuario.nome})
 
-    return {"mensagem": "Usuário criado com sucesso.", "id": db_usuario.user_id, "access_token": token, "token_type": "bearer"}
+    return {
+        "mensagem": "Usuário criado com sucesso.",
+        "id": db_usuario.user_id,
+        "access_token": token,
+        "token_type": "bearer",
+        # Mesmo formato do login: o frontend usa para montar a sessao sem
+        # inferir nome pelo e-mail.
+        "user": identidade(db, db_usuario),
+    }
 
 # Rota para verificar se email já existe
 @router.get("/verificar-email/{email}")

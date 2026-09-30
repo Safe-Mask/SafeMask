@@ -206,6 +206,13 @@ document.getElementById('registerForm').addEventListener('submit', async (event)
             await new Promise(resolve => setTimeout(resolve, 800));
             loadingManager.hide();
             localStorage.setItem('token', data.access_token);
+            const user = data.user || {};
+            AppShell.Sessao.salvar({
+                token: data.access_token,
+                nome: user.nome || '',
+                cargo: user.cargo || '',
+                userId: user.user_id,
+            });
             window.location.href = '../dashboard.html';
         } else {
             await loadingManager.failPuzzle();

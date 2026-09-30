@@ -1,8 +1,12 @@
 # Dependencias de desenvolvimento e testes (backend).
 #
-# Deliberadamente leve: nao inclui torch/transformers/pdfplumber (que pesam
-# centenas de MB e sao carregados sob demanda pelo scanner) nem as versoes
-# "-r requirements.txt". As versoes de producao ficam em requirements.txt.
+# torch/transformers ficam de fora de proposito: somam centenas de MB e o
+# scanner so importa `transformers` quando os pesos do NER existem, entao
+# testes e o boot da API nao precisam deles. Se o NER for exercitado local,
+# instale `torch` e `transformers` a parte (veja requirements.txt).
+#
+# Todo o restante precisa estar aqui: `pytest` importa `app.main`, que alcanca
+# o scanner e portanto o SDK do SafeBank e o extrator de PDF.
 #
 # Uso:
 #   python -m venv .venv && source .venv/bin/activate
@@ -26,3 +30,6 @@ ruff==0.8.6
 SQLAlchemy==2.0.40
 uvicorn==0.34.0
 Pillow>=10.0.0
+pdfplumber>=0.11.0
+pytesseract>=0.3.10
+sib-api-v3-sdk

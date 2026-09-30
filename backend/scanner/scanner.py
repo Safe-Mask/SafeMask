@@ -9,7 +9,6 @@ import pdfplumber
 import pytesseract
 from PIL import ImageDraw
 from sqlalchemy.orm import Session
-from transformers import pipeline
 
 from app.models.dado_sensivel import DadoSensivel
 from app.models.documentos import Documento
@@ -47,6 +46,10 @@ class DocumentScanner:
         else:
             try:
                 logger.info(f"Carregando IA customizada de {model_folder} ...")
+                # Import tardio: `transformers` arrasta torch (centenas de MB) e
+                # baixa a memoria do container mesmo quando o NER nao e usado.
+                from transformers import pipeline
+
                 self.ia = pipeline(
                     "token-classification",
                     model=model_folder,
