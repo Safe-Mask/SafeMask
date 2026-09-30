@@ -1,10 +1,11 @@
-from sqlalchemy import create_engine, inspect, text, event
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+import logging
 import os
 import time
-import logging
+
 from dotenv import load_dotenv
+from sqlalchemy import create_engine, event, inspect, text
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
 logger = logging.getLogger("safemask.slow_query")
 
@@ -44,7 +45,10 @@ if _SLOW_QUERY_MS > 0:
 
 Base = declarative_base()
 
-from app.models import *
+# Importa todos os models para que fiquem registrados em Base.metadata antes
+# de create_all(). Precisa ficar depois de `Base = declarative_base()`.
+from app.models import *  # noqa: E402,F403
+
 
 def get_db():
     db = SessionLocal()

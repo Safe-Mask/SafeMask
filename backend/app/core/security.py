@@ -1,10 +1,11 @@
 # Funções para configurar o JWT de autenticação e hash de senhas
 
+import os
+from datetime import datetime, timedelta
+
+from dotenv import load_dotenv
 from jose import jwt
 from passlib.context import CryptContext
-from datetime import datetime, timedelta
-import os
-from dotenv import load_dotenv
 
 # Carrega as variáveis do arquivo .env
 load_dotenv()

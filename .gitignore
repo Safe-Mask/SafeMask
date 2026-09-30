@@ -81,3 +81,8 @@ checkpoint-*/
 
 # Uploaded documents
 backend/uploads/
+
+# Transcripts de sessao de IA (contem credenciais e detalhes operacionais)
+27_*.md
+MVP*safemask.md
+safemask_deploy.md

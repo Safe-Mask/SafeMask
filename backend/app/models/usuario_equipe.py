@@ -1,7 +1,9 @@
-from sqlalchemy import Column, Integer, TIMESTAMP, ForeignKey, UniqueConstraint
-from sqlalchemy.sql import func
+from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
 from app.database import Base
+
 
 class UsuarioEquipe(Base):
     __tablename__ = "usuario_equipe"

@@ -1,18 +1,19 @@
-from fastapi import APIRouter, Depends, File, UploadFile, Form, HTTPException, status
-from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
-from datetime import datetime
 import hashlib
 import mimetypes
+from datetime import datetime
 from pathlib import Path
 
-from app.database import get_db
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
+from sqlalchemy.orm import Session
+
 from app.core.current_user import get_current_user
-from app.models.usuario import Usuario
-from app.models.equipe import Equipe
+from app.database import get_db
 from app.models.cargo import Cargo
-from app.models.documentos import Documento
 from app.models.dado_sensivel import DadoSensivel
+from app.models.documentos import Documento
+from app.models.equipe import Equipe
+from app.models.usuario import Usuario
 from app.models.usuario_equipe import UsuarioEquipe
 from scanner.scanner import DocumentScanner
 
@@ -131,8 +132,8 @@ async def upload_documento(
         logger.error(f"Erro ao processar documento: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao processar documento: {str(e)}"
-        )
+            detail="Erro ao processar documento."
+        ) from e
 
 
 def normalizar_team_ids(teams: str) -> list[int]:
@@ -436,7 +437,7 @@ def obter_documento_parcial(
     """Descensura parcial por cargo.
 
     Revela os dados sensiveis cujo nivel_requerido <= cargo.nivel do usuario;
-    os itens de nivel acima continuam cobertos. O lider (nivel >= 
+    os itens de nivel acima continuam cobertos. O lider (nivel >=
     NIVEL_MIN_DESCENSURA) recebe o documento original integral.
     """
     documento = buscar_documento_autorizado(db, usuario_atual.user_id, doc_id)
@@ -515,8 +516,8 @@ def obter_documento_parcial(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Falha ao gerar a descensura parcial: {str(e)}",
-        )
+            detail="Falha ao gerar a descensura parcial.",
+        ) from e
 
     media_type, _ = mimetypes.guess_type(caminho_parcial.name)
     return FileResponse(
@@ -539,24 +540,24 @@ async def salvar_documento_censurado(
 ):
     """
     Salva um documento censurado nas equipes selecionadas.
-    
+
     - file: arquivo do documento
     - titulo: nome final do documento
     - nivel_seguranca: nível de proteção (1-4)
     - observacoes: notas internas
     - teams: array JSON de team_ids (ex: "[1, 2, 3]")
     """
-    
+
     try:
         team_ids = normalizar_team_ids(teams)
-        
+
         # Validar nível de segurança
         if nivel_seguranca < 1 or nivel_seguranca > 4:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Nível de segurança inválido (1-4)."
             )
-        
+
         # Ler arquivo
         conteudo_arquivo = await file.read()
         if not conteudo_arquivo:
@@ -564,40 +565,40 @@ async def salvar_documento_censurado(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Arquivo vazio."
             )
-        
+
         # Extrair extensão
         extensao = Path(file.filename).suffix or ".bin"
-        
+
         # Gerar hash do arquivo
         hash_arquivo = gerar_hash_arquivo(conteudo_arquivo)
-        
+
         # Gerar caminho de armazenamento
         nome_arquivo = f"{hash_arquivo}{extensao}"
         caminho_arquivo = CENSURADOS_DIR / nome_arquivo
-        
+
         # Salvar arquivo
         with open(caminho_arquivo, "wb") as f:
             f.write(conteudo_arquivo)
-        
+
         # Salvar documento para cada equipe selecionada
         documentos_criados = []
-        
+
         for team_id in team_ids:
             # Verificar se usuário faz parte da equipe
             usuario_equipe = db.query(UsuarioEquipe).filter(
                 UsuarioEquipe.user_id == usuario_atual.user_id,
                 UsuarioEquipe.team_id == team_id
             ).first()
-            
+
             if not usuario_equipe:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"Você não faz parte da equipe {team_id}."
                 )
-            
+
             # Gerar chave criptográfica
             chave_cripto = gerar_chave_criptografica(hash_arquivo, usuario_atual.user_id)
-            
+
             # Criar registro de Documento
             novo_documento = Documento(
                 user_team_id=usuario_equipe.user_team_id,
@@ -610,32 +611,32 @@ async def salvar_documento_censurado(
                 caminho_storage=str(caminho_arquivo),
                 status_processamento="CONCLUIDO"
             )
-            
+
             db.add(novo_documento)
             documentos_criados.append({
                 "team_id": team_id,
                 "titulo": titulo,
                 "nivel_seguranca": nivel_seguranca
             })
-        
+
         # Commit único para todas as mudanças
         db.commit()
-        
+
         return {
             "mensagem": "Documento censurado salvo com sucesso.",
             "arquivo_hash": hash_arquivo,
             "documentos_criados": len(documentos_criados),
             "detalhes": documentos_criados
         }
-    
+
     except HTTPException:
         raise
     except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao salvar documento: {str(e)}"
-        )
+            detail="Erro ao salvar documento."
+        ) from e
 
 @router.get("/listar/{team_id}")
 async def listar_documentos_equipe(
@@ -646,25 +647,25 @@ async def listar_documentos_equipe(
     """
     Lista documentos de uma equipe específica.
     """
-    
+
     # Verificar se usuário faz parte da equipe
     usuario_equipe_list = db.query(UsuarioEquipe).filter(
         UsuarioEquipe.user_id == usuario_atual.user_id,
         UsuarioEquipe.team_id == team_id
     ).all()
-    
+
     if not usuario_equipe_list:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Você não faz parte dessa equipe."
         )
-    
+
     # Listar documentos
     user_team_ids = [ue.user_team_id for ue in usuario_equipe_list]
     documentos = db.query(Documento).filter(
         Documento.user_team_id.in_(user_team_ids)
     ).all()
-    
+
     return {
         "total": len(documentos),
         "documentos": [

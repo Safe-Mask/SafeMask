@@ -1,7 +1,9 @@
-from sqlalchemy import Column, Integer, String, Text, TIMESTAMP
-from sqlalchemy.sql import func
+from sqlalchemy import TIMESTAMP, Column, Integer, String, Text
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
 from app.database import Base
+
 
 class Equipe(Base):
     __tablename__ = "equipe"

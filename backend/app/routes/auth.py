@@ -1,16 +1,22 @@
-from fastapi import APIRouter, Depends, HTTPException, status
 from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.schemas.usuario import UsuarioLogin, UsuarioCreate
-from app.schemas.auth import RecuperarSenhaRequest
-from app.models.usuario import Usuario
-from app.models.equipe import Equipe
-from app.models.usuario_equipe import UsuarioEquipe
-from app.models.cargo import Cargo
-from app.core.security import criar_token_jwt, verificar_senha, hash_senha, criar_token_jwt_com_expiry
 from app.core.email import enviar_email_recuperacao
+from app.core.security import (
+    criar_token_jwt,
+    criar_token_jwt_com_expiry,
+    hash_senha,
+    verificar_senha,
+)
 from app.database import get_db
+from app.models.cargo import Cargo
+from app.models.equipe import Equipe
+from app.models.usuario import Usuario
+from app.models.usuario_equipe import UsuarioEquipe
+from app.schemas.auth import RecuperarSenhaRequest
+from app.schemas.usuario import UsuarioCreate, UsuarioLogin
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
@@ -25,7 +31,7 @@ async def login(credenciais: UsuarioLogin, db: Session = Depends(get_db)):
             detail="Email ou senha incorretos.",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     token = criar_token_jwt({"sub": usuario.email, "nome": usuario.nome})
 
     return {"access_token": token, "token_type": "bearer"}
@@ -38,7 +44,7 @@ async def cadastrar(usuario: UsuarioCreate, db: Session = Depends(get_db)):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email já cadastrado.",
         )
-    
+
     db_usuario = Usuario (
         nome=usuario.nome,
         email=usuario.email,
@@ -129,7 +135,8 @@ async def reset_senha(payload: dict, db: Session = Depends(get_db)):
         # Decodifica o token para obter o email
         from jose import jwt
         from jose.exceptions import ExpiredSignatureError
-        from app.core.security import SECRET_KEY, ALGORITHM
+
+        from app.core.security import ALGORITHM, SECRET_KEY
 
         decoded = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email = decoded.get('sub')
@@ -146,7 +153,9 @@ async def reset_senha(payload: dict, db: Session = Depends(get_db)):
         db.commit()
 
         return {'mensagem': 'Senha atualizada com sucesso.'}
-    except ExpiredSignatureError:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Token expirado.')
+    except ExpiredSignatureError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Token expirado."
+        ) from exc
     except Exception as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Token inválido ou erro ao redefinir a senha.') from exc

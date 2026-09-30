@@ -3,8 +3,8 @@ import unittest
 from scanner.patterns import (
     CID10_PATTERN,
     CNS_PATTERN,
-    CRM_PATTERN,
     CPF_PATTERN,
+    CRM_PATTERN,
     EMAIL_PATTERN,
     PHONE_PATTERN,
     increment_cpf_count,

@@ -1,4 +1,3 @@
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import desc, func, or_
@@ -16,7 +15,7 @@ from app.schemas.equipe import EquipeCreate
 router = APIRouter(prefix="/equipes", tags=["Equipes"])
 
 
-def _current_team_ids(db: Session, user_id: int) -> List[int]:
+def _current_team_ids(db: Session, user_id: int) -> list[int]:
     return [
         row.team_id
         for row in (
@@ -28,7 +27,7 @@ def _current_team_ids(db: Session, user_id: int) -> List[int]:
     ]
 
 
-def _get_cargo_by_name(db: Session, nomes: List[str]) -> Cargo | None:
+def _get_cargo_by_name(db: Session, nomes: list[str]) -> Cargo | None:
     cargos = (
         db.query(Cargo)
         .filter(Cargo.nome.in_(nomes))

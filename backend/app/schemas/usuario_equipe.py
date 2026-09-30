@@ -1,5 +1,7 @@
-from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+
+from pydantic import BaseModel, ConfigDict
+
 
 class UsuarioEquipeBase(BaseModel):
     user_id: int

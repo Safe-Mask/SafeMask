@@ -1,8 +1,7 @@
 from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware import Middleware
+from fastapi.middleware.cors import CORSMiddleware
 
-from app.routes import auth, dashboard, equipes, documentos
 from app.database import (
     Base,
     SessionLocal,
@@ -12,6 +11,7 @@ from app.database import (
     garantir_schema_equipes,
 )
 from app.models.cargo import Cargo
+from app.routes import auth, dashboard, documentos, equipes
 
 middleware = [
     Middleware(

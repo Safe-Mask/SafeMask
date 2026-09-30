@@ -1,22 +1,23 @@
+import hashlib
+import logging
 import os
 import re
-import bcrypt
-import logging
-import pdfplumber
-import hashlib
-import pytesseract
-from PIL import Image, ImageDraw
-from transformers import pipeline
-from sqlalchemy.orm import Session
 from pathlib import Path
 
-from app.models.documentos import Documento
+import bcrypt
+import pdfplumber
+import pytesseract
+from PIL import ImageDraw
+from sqlalchemy.orm import Session
+from transformers import pipeline
+
 from app.models.dado_sensivel import DadoSensivel
+from app.models.documentos import Documento
 from scanner.patterns import (
     CID10_PATTERN,
     CNS_PATTERN,
-    CRM_PATTERN,
     CPF_PATTERN,
+    CRM_PATTERN,
     EMAIL_PATTERN,
     PHONE_PATTERN,
     increment_cpf_count,

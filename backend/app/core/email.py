@@ -1,5 +1,6 @@
-import os
 import logging
+import os
+
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
 
@@ -35,11 +36,11 @@ def enviar_email_recuperacao(destinatario: str, nome: str, token: str) -> None:
 
     # Monta o link de redefinição apontando para o frontend com token e email
     if frontend_url:
-        reset_path = f"/html/auth/reset_password.html"
+        reset_path = "/html/auth/reset_password.html"
         link = f"{frontend_url.rstrip('/')}{reset_path}?token={token}&email={destinatario}"
         linhas.extend([f"Redefinir senha: {link}", ""])
     else:
-        linhas.extend(["(Frontend não configurado. Contate o suporte.)", ""]) 
+        linhas.extend(["(Frontend não configurado. Contate o suporte.)", ""])
 
     if support_email:
         linhas.extend([f"Suporte: {support_email}"])

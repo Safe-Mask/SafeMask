@@ -1,7 +1,19 @@
+from .cargo import Cargo
+from .dado_sensivel import DadoSensivel
+from .documentos import Documento
+from .equipe import Equipe
+from .log_auditoria import LogAuditoria
 from .usuario import Usuario
 from .usuario_equipe import UsuarioEquipe
-from .documentos import Documento
-from .dado_sensivel import DadoSensivel
-from .equipe import Equipe
-from .cargo import Cargo
-from .log_auditoria import LogAuditoria
+
+# Reexportados para app.database (`from app.models import *`), que precisa que
+# todos os models estejam importados antes de Base.metadata.create_all().
+__all__ = [
+    "Cargo",
+    "DadoSensivel",
+    "Documento",
+    "Equipe",
+    "LogAuditoria",
+    "Usuario",
+    "UsuarioEquipe",
+]
