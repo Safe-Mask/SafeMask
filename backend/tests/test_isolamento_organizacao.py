@@ -6,6 +6,8 @@ nada da Acme aparece para um usuario da Globex, nem o contrario.
 """
 
 from app.core.security import criar_token_jwt
+from app.models.equipe import Equipe
+from app.models.organizacao import Organizacao
 
 SENHA = "SenhaForte123!"
 
@@ -165,3 +167,37 @@ def test_usuario_sem_organizacao_nao_acessa_a_gestao_de_equipes(client, seed):
     resp = client.get("/equipes/form-data", headers=_auth(seed["usuario"]))
 
     assert resp.status_code == 403
+
+
+def test_cadastros_com_o_mesmo_nome_nao_compartilham_organizacao(client, seed):
+    db_session = seed["db"]
+    """Regressao: o nome da organizacao e rotulo, nao chave de tenant.
+
+    Com `buscar_ou_criar`, duas "Ana Silva" de empresas diferentes caiam na
+    mesma organizacao — e a segunda enxergava a equipe da primeira.
+    """
+    for indice in range(2):
+        resp = client.post(
+            "/auth/cadastro",
+            json={
+                "nome": "Ana Silva",
+                "email": f"ana{indice}@empresa{indice}.com.br",
+                "senha_hash": "SenhaForte@123",
+            },
+        )
+        assert resp.status_code == 201, resp.text
+
+    orgaos = db_session.query(Organizacao).filter(
+        Organizacao.nome == "Organização de Ana Silva"
+    ).all()
+    assert len(orgaos) == 2, [o.organizacao_id for o in orgaos]
+
+    # E o isolamento vale: as duas nao enxergam a equipe uma da outra.
+    ids = sorted(o.organizacao_id for o in orgaos)
+    equipes = (
+        db_session.query(Equipe)
+        .filter(Equipe.organizacao_id.in_(ids))
+        .all()
+    )
+    assert len(equipes) == 2
+    assert {e.nome for e in equipes} == {"Minha equipe"}

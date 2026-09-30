@@ -127,7 +127,9 @@ async def cadastrar(
 
     # Cada cadastro publico abre uma organizacao propria. Sem isso o usuario
     # novo cairia na organizacao legada e enxergaria dados de outros clientes.
-    organizacao = tenancy.buscar_ou_criar(db, f"Organização de {usuario.nome}".strip())
+    # `criar`, e nao `buscar_ou_criar`: o nome e rotulo, e duas Ana Silva de
+    # empresas diferentes caem em tenants distintos.
+    organizacao = tenancy.criar(db, f"Organização de {usuario.nome.strip()}")
 
     db_usuario = Usuario (
         nome=usuario.nome,

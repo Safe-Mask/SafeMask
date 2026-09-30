@@ -21,8 +21,28 @@ from app.models.usuario import Usuario
 ORGANIZACAO_LEGADA_NOME = "SafeMask (dados anteriores)"
 
 
+def criar(db: Session, nome: str, *, commit: bool = False) -> Organizacao:
+    """Sempre uma organizacao nova, mesmo com nome repetido.
+
+    `buscar_ou_criar` no cadastro compartilhava tenant: duas pessoas chamadas
+    "Ana Silva" em empresas diferentes caiam na mesma organizacao e enxergavam
+    as equipes uma da outra. O nome e rotulo, nao chave.
+    """
+    organizacao = Organizacao(nome=nome)
+    db.add(organizacao)
+    if commit:
+        db.commit()
+    else:
+        db.flush()
+    return organizacao
+
+
 def buscar_ou_criar(db: Session, nome: str, *, commit: bool = False) -> Organizacao:
     """Organizacao pelo nome, criando se ainda nao existir.
+
+    So para onde o tenant e legitimamente compartilhado: o backfill legado, em
+    que todos os dados anteriores vao para a mesma organizacao. **Nao usar no
+    cadastro**, para isso use `criar`.
 
     O nome nao e unico no schema: duas empresas podem se chamar igual, entao
     desambiguamos pelo menor id criado.
