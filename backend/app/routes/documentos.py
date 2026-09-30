@@ -1,10 +1,8 @@
 import hashlib
-import mimetypes
 from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
-from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.core.audit import (
@@ -17,6 +15,7 @@ from app.core.audit import (
     registrar,
 )
 from app.core.current_user import get_current_user
+from app.core.file_responses import responder_arquivo
 from app.core.uploads import ler_e_validar_upload
 from app.database import get_db
 from app.models.cargo import Cargo
@@ -438,12 +437,10 @@ def obter_arquivo_documento_censurado(
         )
 
     registrar(db, request, usuario_atual.user_id, ACAO_VER_CENSURADO)
-    media_type, _ = mimetypes.guess_type(caminho.name)
-    return FileResponse(
-        path=str(caminho),
-        media_type=media_type or "application/octet-stream",
-        filename=f"{documento.nome_original}{documento.extensao}",
-        content_disposition_type="inline",
+    return responder_arquivo(
+        caminho,
+        f"{documento.nome_original}{documento.extensao}",
+        inline=True,
     )
 
 
@@ -483,12 +480,9 @@ def obter_documento_original(
 
     caminho = candidatos[0]
     registrar(db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL)
-    media_type, _ = mimetypes.guess_type(caminho.name)
-    return FileResponse(
-        path=str(caminho),
-        media_type=media_type or "application/octet-stream",
-        filename=f"{documento.nome_original}_original.pdf",
-        content_disposition_type="attachment",
+    return responder_arquivo(
+        caminho,
+        f"{documento.nome_original}_original.pdf",
     )
 
 
@@ -529,12 +523,9 @@ def obter_documento_parcial(
             )
         caminho = candidatos[0]
         registrar(db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL)
-        media_type, _ = mimetypes.guess_type(caminho.name)
-        return FileResponse(
-            path=str(caminho),
-            media_type=media_type or "application/octet-stream",
-            filename=f"{documento.nome_original}_original.pdf",
-            content_disposition_type="attachment",
+        return responder_arquivo(
+            caminho,
+            f"{documento.nome_original}_original.pdf",
         )
 
     nivel = cargo["nivel"]
@@ -566,12 +557,9 @@ def obter_documento_parcial(
     if not itens_para_cobrir:
         caminho_censurado = caminho_armazenado(documento)
         registrar(db, request, usuario_atual.user_id, ACAO_VER_PARCIAL)
-        media_type, _ = mimetypes.guess_type(caminho_censurado.name)
-        return FileResponse(
-            path=str(caminho_censurado),
-            media_type=media_type or "application/octet-stream",
-            filename=f"{documento.nome_original}_censurado.pdf",
-            content_disposition_type="attachment",
+        return responder_arquivo(
+            caminho_censurado,
+            f"{documento.nome_original}_censurado.pdf",
         )
 
     try:
@@ -589,12 +577,9 @@ def obter_documento_parcial(
         ) from e
 
     registrar(db, request, usuario_atual.user_id, ACAO_VER_PARCIAL)
-    media_type, _ = mimetypes.guess_type(caminho_parcial.name)
-    return FileResponse(
-        path=str(caminho_parcial),
-        media_type=media_type or "application/octet-stream",
-        filename=f"{documento.nome_original}_parcial_nivel{nivel}.pdf",
-        content_disposition_type="attachment",
+    return responder_arquivo(
+        caminho_parcial,
+        f"{documento.nome_original}_parcial_nivel{nivel}.pdf",
     )
 
 
