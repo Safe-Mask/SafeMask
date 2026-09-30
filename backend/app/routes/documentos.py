@@ -102,8 +102,9 @@ async def upload_documento(
 
         # Compartilha o mesmo documento com as demais equipes selecionadas.
         chave_cripto = gerar_chave_criptografica(hash_arquivo, usuario_atual.user_id)
+        docs_compartilhados = []
         for usuario_equipe in usuario_equipes[1:]:
-            db.add(Documento(
+            doc_compartilhado = Documento(
                 user_team_id=usuario_equipe.user_team_id,
                 nome_original=titulo,
                 extensao=extensao.replace(".", ""),
@@ -113,7 +114,17 @@ async def upload_documento(
                 hash_documento=hash_arquivo,
                 caminho_storage=str(CENSURADOS_DIR / f"{hash_arquivo}_tarjado.pdf"),
                 status_processamento="CONCLUIDO"
-            ))
+            )
+            db.add(doc_compartilhado)
+            docs_compartilhados.append(doc_compartilhado)
+
+        # Sem o flush, as copias ainda nao tem doc_id para receber os itens.
+        db.flush()
+
+        # Os itens sensiveis sao vinculados ao doc_id de quem fez o upload.
+        # Sem esta copia, /parcial de uma equipe secundaria nao acha nada a
+        # cobrir e devolve o PDF original sem censura.
+        duplicar_itens_sensiveis(db, resultado["doc_id"], docs_compartilhados)
 
         db.commit()
 
@@ -173,6 +184,51 @@ def gerar_chave_criptografica(arquivo_hash: str, user_id: int) -> str:
     """Gera uma chave criptográfica baseada no hash e user_id."""
     chave_base = f"{arquivo_hash}:{user_id}:{datetime.utcnow().isoformat()}"
     return hashlib.sha256(chave_base.encode()).hexdigest()
+
+
+def caminho_armazenado(documento: Documento) -> Path:
+    """Caminho do PDF tarjado de um documento, com fallback por hash."""
+    if documento.caminho_storage:
+        caminho = Path(documento.caminho_storage)
+        if caminho.is_file():
+            return caminho
+
+    candidatos = sorted(CENSURADOS_DIR.glob(f"{documento.hash_documento}*"))
+    if not candidatos:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Arquivo censurado nao encontrado no armazenamento.",
+        )
+    return candidatos[0]
+
+
+def duplicar_itens_sensiveis(db: Session, doc_id_origem: int, documentos_destino: list[Documento]) -> int:
+    """Replica os DadoSensivel de um documento para outros Documento copias.
+
+    Documento e uma linha por (arquivo, equipe). DadoSensivel aponta para
+    doc_id, entao cada copia precisa dos proprios itens para que a descensura
+    por cargo funcione igual em todas as equipes.
+    """
+    itens = db.query(DadoSensivel).filter(DadoSensivel.doc_id == doc_id_origem).all()
+    if not itens:
+        return 0
+
+    copiados = 0
+    for doc_destino in documentos_destino:
+        for item in itens:
+            db.add(
+                DadoSensivel(
+                    doc_id=doc_destino.doc_id,
+                    tipo_entidade=item.tipo_entidade,
+                    conteudo_hash=item.conteudo_hash,
+                    pagina=item.pagina,
+                    coordenadas=item.coordenadas,
+                    nivel_requerido=item.nivel_requerido,
+                )
+            )
+            copiados += 1
+    db.flush()
+    return copiados
 
 
 def buscar_documento_autorizado(db: Session, user_id: int, doc_id: int):
@@ -494,14 +550,16 @@ def obter_documento_parcial(
             detail="Arquivo original nao encontrado no armazenamento.",
         )
 
-    # Se nao ha nada a manter coberto para este cargo, devolve o original.
-    if not itens:
-        caminho = caminhos_originais[0]
-        media_type, _ = mimetypes.guess_type(caminho.name)
+    # Nenhum item acima do nivel do usuario: nao ha regiao a cobrir, mas
+    # entregamos a versao tarjada. Servir o original aqui vazaria o documento
+    # sempre que o scan nao encontrou nada.
+    if not itens_para_cobrir:
+        caminho_censurado = caminho_armazenado(documento)
+        media_type, _ = mimetypes.guess_type(caminho_censurado.name)
         return FileResponse(
-            path=str(caminho),
+            path=str(caminho_censurado),
             media_type=media_type or "application/octet-stream",
-            filename=f"{documento.nome_original}_original.pdf",
+            filename=f"{documento.nome_original}_censurado.pdf",
             content_disposition_type="attachment",
         )
 
