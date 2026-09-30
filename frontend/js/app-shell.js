@@ -90,18 +90,22 @@
 
     // Acoes do topo e subtitulo sao especificos de cada pagina. A pagina os
     // declara antes de carregar este script:
-    //   <script>window.APP_SHELL = { acoes: [{id, texto}], subtitulo: {id, texto} };</script>
+    //   <script>window.APP_SHELL = { acoes: [{id, texto, cargo}], subtitulo: {id, texto} };</script>
     // Os ids sao preservados porque o JS da pagina ja registra handlers neles.
     function configDaPagina() {
         return window.APP_SHELL || {};
     }
 
-    function acoesHtml() {
+    function acoesHtml(sessao) {
         const acoes = configDaPagina().acoes;
         if (!Array.isArray(acoes) || acoes.length === 0) {
             return `<a href="${BASE_HTML}/documentos/censurar.html" class="cta-censor" id="btnCensurarDocumento">Censurar Documento</a>`;
         }
+        // Mesma guarda do menu: uma acao sem `cargo` e visivel para todos, mas
+        // quem declara `cargo` nao ve o botao se nao puder executa-lo. Sem
+        // isso o membro clicava em "Adicionar Equipe" e levava 403.
         return acoes
+            .filter((acao) => !acao.cargo || sessao.temCargoMinimo(acao.cargo))
             .map(
                 (acao) =>
                     `<button type="button" class="cta-censor" id="${acao.id}">${acao.texto}</button>`
@@ -123,7 +127,7 @@
         return `<span class="crumb-current" id="${crumb.id}">${crumb.texto}</span>`;
     }
 
-    function topbarHtml(tituloPagina) {
+    function topbarHtml(tituloPagina, sessao) {
         return `
         <header class="topbar">
             <button class="menu-toggle" id="menuToggle" aria-label="Abrir menu" aria-expanded="false">&#9776;</button>
@@ -133,7 +137,7 @@
                 ${crumbHtml(tituloPagina)}${subtituloHtml()}
             </nav>
 
-            ${acoesHtml()}
+            ${acoesHtml(sessao)}
 
             <div class="user-menu" id="userMenu">
                 <button class="user-trigger" id="userTrigger" aria-haspopup="true" aria-expanded="false">
@@ -166,12 +170,26 @@
         const wrapper = document.createElement('div');
         wrapper.className = 'dashboard-shell';
         wrapper.innerHTML = `${sidebarHtml(sessao)}
-        <div class="main-wrap">${topbarHtml(nomeDaPagina())}</div>`;
+        <div class="main-wrap">${topbarHtml(nomeDaPagina(), sessao)}</div>`;
 
         shell.replaceWith(wrapper);
 
         const mainWrap = wrapper.querySelector('.main-wrap');
         mainWrap.appendChild(conteudo);
+
+        aplicarGuardasDeCargo(sessao);
+    }
+
+    // Trechos marcados com `data-cargo-min` somem para quem nao alcanca o cargo.
+    // Sem isso o painel continuaria visivel para o membro, que so ganharia um
+    // 403 ao clicar. Varre o documento inteiro porque o modal fica fora de
+    // #appContent.
+    function aplicarGuardasDeCargo(sessao) {
+        document.querySelectorAll('[data-cargo-min]').forEach((elemento) => {
+            if (!sessao.temCargoMinimo(elemento.dataset.cargoMin)) {
+                elemento.remove();
+            }
+        });
     }
 
     function ligarEventos(sessao) {

@@ -72,7 +72,7 @@
                 </div>
             </section>
 
-            <section class="panel panel-sig add-team-panel reveal">
+            <section class="panel panel-sig add-team-panel reveal" data-cargo-min="supervisor">
                 <div class="panel-header">
                     <div>
                         <span class="panel-kicker">Nova</span>
@@ -116,7 +116,7 @@
             </section>
     </main>
 
-    <div class="modal-overlay" id="createTeamModal" aria-hidden="true">
+    <div class="modal-overlay" id="createTeamModal" aria-hidden="true" data-cargo-min="supervisor">
         <div class="modal-card">
             <div class="modal-header">
                 <div>
@@ -193,7 +193,7 @@
         window.SAFE_MASK_TEAM_OVERVIEW = window.SAFE_MASK_TEAM_OVERVIEW || {};
     </script>
 
-    <script>window.APP_SHELL = { acoes: [{ id: 'btnOpenCreateTeam', texto: 'Adicionar Equipe' }] };</script>
+    <script>window.APP_SHELL = { acoes: [{ id: 'btnOpenCreateTeam', texto: 'Adicionar Equipe', cargo: 'supervisor' }] };</script>
     <script src="../../js/session.js"></script>
     <script src="../../js/app-shell.js"></script>
     <script src="../../js/config.js"></script>

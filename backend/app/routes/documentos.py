@@ -5,6 +5,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
+from app.core import tenancy
 from app.core.audit import (
     ACAO_LISTAR_DOCUMENTOS,
     ACAO_UPLOAD,
@@ -14,11 +15,11 @@ from app.core.audit import (
     ACAO_VER_PARCIAL,
     registrar,
 )
+from app.core.autorizacao import NIVEL_MIN_DESCENSURA, cargo_na_equipe
 from app.core.current_user import get_current_user
 from app.core.file_responses import responder_arquivo
 from app.core.uploads import ler_e_validar_upload
 from app.database import get_db
-from app.models.cargo import Cargo
 from app.models.dado_sensivel import DadoSensivel
 from app.models.documentos import Documento
 from app.models.equipe import Equipe
@@ -230,62 +231,41 @@ def duplicar_itens_sensiveis(db: Session, doc_id_origem: int, documentos_destino
     return copiados
 
 
-def buscar_documento_autorizado(db: Session, user_id: int, doc_id: int):
-    """Retorna o documento se o usuario for membro da equipe dona dele."""
+def equipe_do_documento(db: Session, documento: Documento) -> Equipe | None:
+    """Equipe dona do documento, sem atravessar o tenant.
+
+    `Documento.user_team_id` aponta para o vinculo de equipe, nao para a
+    equipe; e o primeiro membro desse vinculo que revelava o `team_id`. Um
+    vinculo apontando para equipe de outra organizacao nao resolve.
+    """
+    return (
+        db.query(Equipe)
+        .join(UsuarioEquipe, UsuarioEquipe.team_id == Equipe.team_id)
+        .filter(UsuarioEquipe.user_team_id == documento.user_team_id)
+        .distinct()
+        .first()
+    )
+
+
+def buscar_documento_autorizado(db: Session, usuario: Usuario, doc_id: int) -> Documento | None:
+    """Documento, ou None se o usuario nao puder nem ve-lo.
+
+    Membro de outra equipe/organizacao recebe `None` (a rota transforma em
+    404), nunca 403: responder "proibido" confirmaria que o documento existe.
+    """
     documento = db.query(Documento).filter(Documento.doc_id == doc_id).first()
     if not documento:
         return None
 
-    membro_dono = (
-        db.query(UsuarioEquipe)
-        .filter(UsuarioEquipe.user_team_id == documento.user_team_id)
-        .first()
-    )
-    if not membro_dono:
+    equipe = equipe_do_documento(db, documento)
+    if not equipe:
         return None
 
-    pertence = (
-        db.query(UsuarioEquipe)
-        .filter(
-            UsuarioEquipe.user_id == user_id,
-            UsuarioEquipe.team_id == membro_dono.team_id,
-        )
-        .first()
-    )
-    return documento if pertence else None
-
-
-def cargo_usuario_no_documento(db: Session, user_id: int, documento: Documento) -> dict | None:
-    """Retorna cargo (nome/nivel) do usuario dentro da equipe dona do documento."""
-    membro = (
-        db.query(UsuarioEquipe)
-        .filter(UsuarioEquipe.user_team_id == documento.user_team_id)
-        .first()
-    )
-    if not membro:
+    organizacao_id = tenancy.exigir_organizacao(usuario)
+    if equipe.organizacao_id != organizacao_id:
         return None
 
-    registro_usuario = (
-        db.query(UsuarioEquipe)
-        .filter(
-            UsuarioEquipe.user_id == user_id,
-            UsuarioEquipe.team_id == membro.team_id,
-        )
-        .first()
-    )
-    if not registro_usuario:
-        return None
-
-    cargo = db.query(Cargo).filter(Cargo.cargo_id == registro_usuario.cargo_id).first()
-    if not cargo:
-        return None
-
-    return {"nome": cargo.nome, "nivel": cargo.nivel}
-
-# Nivel minimo (cargo.nivel) para ter acesso ao documento original (descensura).
-# Escala do banco: lider=3, supervisor=2, membro=1.
-NIVEL_MIN_DESCENSURA = 3
-
+    return documento if cargo_na_equipe(db, usuario, equipe.team_id) else None
 
 @router.get("/censurados")
 def listar_documentos_censurados(
@@ -364,7 +344,7 @@ def obter_documento_censurado(
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
 ):
-    documento = buscar_documento_autorizado(db, usuario_atual.user_id, doc_id)
+    documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
 
     if not documento:
         raise HTTPException(
@@ -372,19 +352,19 @@ def obter_documento_censurado(
             detail="Documento não encontrado ou sem acesso.",
         )
 
-    usuario_equipe = (
-        db.query(UsuarioEquipe)
-        .filter(UsuarioEquipe.user_team_id == documento.user_team_id)
-        .first()
-    )
-
-    equipe = None
+    equipe = equipe_do_documento(db, documento)
     autor = None
-    if usuario_equipe:
-        equipe = db.query(Equipe).filter(Equipe.team_id == usuario_equipe.team_id).first()
-        autor = db.query(Usuario).filter(Usuario.user_id == usuario_equipe.user_id).first()
+    if equipe:
+        primeiro_membro = (
+            db.query(Usuario)
+            .join(UsuarioEquipe, UsuarioEquipe.user_id == Usuario.user_id)
+            .filter(UsuarioEquipe.team_id == equipe.team_id)
+            .order_by(UsuarioEquipe.user_team_id)
+            .first()
+        )
+        autor = primeiro_membro
 
-    cargo = cargo_usuario_no_documento(db, usuario_atual.user_id, documento)
+    cargo = cargo_na_equipe(db, usuario_atual, equipe.team_id) if equipe else None
 
     registrar(db, request, usuario_atual.user_id, ACAO_VER_CENSURADO)
 
@@ -418,7 +398,7 @@ def obter_arquivo_documento_censurado(
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
 ):
-    documento = buscar_documento_autorizado(db, usuario_atual.user_id, doc_id)
+    documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
 
     if not documento:
         raise HTTPException(
@@ -455,7 +435,7 @@ def obter_documento_original(
     Retorna o PDF original (sem censura) para usuarios com cargo de nivel
     suficiente (ex.: lider). Membros recebem 403.
     """
-    documento = buscar_documento_autorizado(db, usuario_atual.user_id, doc_id)
+    documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
 
     if not documento:
         raise HTTPException(
@@ -463,7 +443,8 @@ def obter_documento_original(
             detail="Documento não encontrado ou sem acesso.",
         )
 
-    cargo = cargo_usuario_no_documento(db, usuario_atual.user_id, documento)
+    equipe = equipe_do_documento(db, documento)
+    cargo = cargo_na_equipe(db, usuario_atual, equipe.team_id) if equipe else None
     if not cargo or cargo["nivel"] < NIVEL_MIN_DESCENSURA:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -499,14 +480,15 @@ def obter_documento_parcial(
     os itens de nivel acima continuam cobertos. O lider (nivel >=
     NIVEL_MIN_DESCENSURA) recebe o documento original integral.
     """
-    documento = buscar_documento_autorizado(db, usuario_atual.user_id, doc_id)
+    documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
     if not documento:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Documento não encontrado ou sem acesso.",
         )
 
-    cargo = cargo_usuario_no_documento(db, usuario_atual.user_id, documento)
+    equipe = equipe_do_documento(db, documento)
+    cargo = cargo_na_equipe(db, usuario_atual, equipe.team_id) if equipe else None
     if not cargo:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,

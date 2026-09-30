@@ -48,15 +48,17 @@ function escapeHtml(value) {
 }
 
 function openModal() {
+    if (!createTeamModal) return;
     createTeamModal.classList.add('open');
     createTeamModal.setAttribute('aria-hidden', 'false');
     loadFormData();
 }
 
 function closeModal() {
+    if (!createTeamModal) return;
     createTeamModal.classList.remove('open');
     createTeamModal.setAttribute('aria-hidden', 'true');
-    createTeamForm.reset();
+    if (createTeamForm) createTeamForm.reset();
     state.selectedMembers.clear();
     renderSelectedMembers();
 }
@@ -164,6 +166,9 @@ function renderCandidates(list, container, emptyTitle, emptyText) {
 }
 
 function renderSelectedMembers() {
+    // A lista de selecionados vive no modal, que so existe para quem gerencia.
+    if (!selectedMembersList) return;
+
     const selectedMembers = Array.from(state.selectedMembers.values());
     selectedMemberCount.textContent = `${selectedMembers.length} selecionado(s)`;
     heroSuggestedCount.textContent = state.suggestedMembers.length;
@@ -342,29 +347,46 @@ if (btnBackDashboard) {
     });
 }
 
-btnOpenCreateTeam.addEventListener('click', openModal);
+// Os dois botoes so existem para quem tem cargo de gestao: o shell esconde o
+// do topo, e o do painel segue a mesma regra. Sem o `if`, um membro derrubaria
+// a pagina com "cannot read properties of null".
+if (btnOpenCreateTeam) {
+    btnOpenCreateTeam.addEventListener('click', openModal);
+}
 if (btnOpenCreateTeamInline) {
     btnOpenCreateTeamInline.addEventListener('click', openModal);
 }
-closeCreateTeamModal.addEventListener('click', closeModal);
-cancelCreateTeam.addEventListener('click', closeModal);
+// O modal inteiro e removido para quem nao tem cargo de gestao, entao cada
+// elemento abaixo e opcional.
+if (closeCreateTeamModal) {
+    closeCreateTeamModal.addEventListener('click', closeModal);
+}
+if (cancelCreateTeam) {
+    cancelCreateTeam.addEventListener('click', closeModal);
+}
 
-createTeamModal.addEventListener('click', (event) => {
-    if (event.target === createTeamModal) {
-        closeModal();
-    }
-});
+if (createTeamModal) {
+    createTeamModal.addEventListener('click', (event) => {
+        if (event.target === createTeamModal) {
+            closeModal();
+        }
+    });
+}
 
-createTeamForm.addEventListener('submit', handleCreateTeam);
+if (createTeamForm) {
+    createTeamForm.addEventListener('submit', handleCreateTeam);
+}
 
-userSearchInput.addEventListener('input', () => {
-    clearTimeout(state.searchTimer);
-    state.searchTimer = setTimeout(() => {
-        loadFormData(userSearchInput.value.trim());
-    }, 250);
-});
+if (userSearchInput) {
+    userSearchInput.addEventListener('input', () => {
+        clearTimeout(state.searchTimer);
+        state.searchTimer = setTimeout(() => {
+            loadFormData(userSearchInput.value.trim());
+        }, 250);
+    });
+}
 
-suggestedMembersList.addEventListener('click', (event) => {
+if (suggestedMembersList) suggestedMembersList.addEventListener('click', (event) => {
     const button = event.target.closest('[data-member-id]');
     if (!button) {
         return;
@@ -377,7 +399,7 @@ suggestedMembersList.addEventListener('click', (event) => {
     }
 });
 
-availableUsersList.addEventListener('click', (event) => {
+if (availableUsersList) availableUsersList.addEventListener('click', (event) => {
     const button = event.target.closest('[data-member-id]');
     if (!button) {
         return;
@@ -390,7 +412,7 @@ availableUsersList.addEventListener('click', (event) => {
     }
 });
 
-selectedMembersList.addEventListener('click', (event) => {
+if (selectedMembersList) selectedMembersList.addEventListener('click', (event) => {
     const button = event.target.closest('[data-remove-member]');
     if (!button) {
         return;

@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import desc, func, or_
 from sqlalchemy.orm import Session
 
-from app.core import tenancy
+from app.core import autorizacao, tenancy
 from app.core.current_user import get_current_user
 from app.database import get_db
 from app.models.cargo import Cargo
@@ -372,6 +372,11 @@ def create_team(
     cargo_lider = _get_cargo_lider(db)
     cargo_membro = _get_cargo_membro(db)
     organizacao_id = tenancy.exigir_organizacao(current_user)
+
+    # Quem cria a equipe vira lider dela. Antes isso valia para qualquer
+    # autenticado: um membro comum criava um time e ja nascia lider, o que
+    # destrava descensura (nivel 3) sobre os documentos dele.
+    autorizacao.exigir_gestao(db, current_user)
 
     equipe = Equipe(
         nome=nome,
