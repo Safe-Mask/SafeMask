@@ -236,6 +236,25 @@ body {
     color: var(--primary);
 }
 
+/* Cargo do usuario no dropdown. Editavel pelo shell em qualquer pagina. */
+.dropdown-cargo {
+    display: block;
+    font-size: 0.72rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0.35rem 0.65rem 0.5rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 0.25rem;
+}
+
+/* Item de menu sem pagina de destino: fica visivel, porem nao clicavel. */
+.menu-link.is-disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
 .content {
     padding: 1.3rem;
 }

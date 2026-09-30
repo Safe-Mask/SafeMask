@@ -1,13 +1,6 @@
-const userTrigger = document.getElementById('userTrigger');
-const userDropdown = document.getElementById('userDropdown');
-const userMenu = document.getElementById('userMenu');
-const logoutBtn = document.getElementById('logoutBtn');
+// Sidebar, topbar e dropdown pertencem ao app-shell.js.
 const userNameElement = document.getElementById('userName');
-const userIcon = document.querySelector('.user-icon');
-const menuToggle = document.getElementById('menuToggle');
-const btnCensurarDocumento = document.getElementById('btnCensurarDocumento');
-const sidebar = document.getElementById('sidebar');
-const menuLinks = document.querySelectorAll('.menu-link');
+const userIcon = document.getElementById('userIcon');
 const API_URL = `${API_ROOT}/dashboard/overview`;
 
 const metricTotalEquipes = document.getElementById('metricTotalEquipes');
@@ -27,29 +20,6 @@ const barChartTeams = document.getElementById('barChartTeams');
 const processingDonut = document.getElementById('processingDonut');
 const processingLegend = document.getElementById('processingLegend');
 const docsPanel = document.getElementById('docs-enviados');
-
-const storedName = localStorage.getItem('userName') || 'Usuario';
-userNameElement.textContent = storedName;
-userIcon.textContent = storedName.charAt(0).toUpperCase();
-
-userTrigger.addEventListener('click', () => {
-    const isOpen = userDropdown.classList.toggle('open');
-    userTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-});
-
-// Fecha o dropdown ao clicar fora da area do menu do usuario.
-document.addEventListener('click', (event) => {
-    if (!userMenu.contains(event.target)) {
-        userDropdown.classList.remove('open');
-        userTrigger.setAttribute('aria-expanded', 'false');
-    }
-});
-
-logoutBtn.addEventListener('click', () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userName');
-    window.location.href = '../../index.html';
-});
 
 function escapeHtml(value) {
     return String(value)
@@ -262,29 +232,5 @@ async function loadDashboardData() {
     }
 }
 
-menuToggle.addEventListener('click', () => {
-    sidebar.classList.toggle('open');
-});
-
-btnCensurarDocumento.addEventListener('click', () => {
-    window.location.href = 'documentos/censurar.html';
-});
-
-// Marca visualmente a secao selecionada no menu lateral.
-menuLinks.forEach((link) => {
-    link.addEventListener('click', (event) => {
-        const href = link.getAttribute('href') || '';
-
-        if (!href || href === '#') {
-            event.preventDefault();
-            menuLinks.forEach((item) => item.classList.remove('active'));
-            link.classList.add('active');
-        }
-
-        if (window.innerWidth <= 860) {
-            sidebar.classList.remove('open');
-        }
-    });
-});
-
+// Sidebar, dropdown de usuario, logout e CTA sao gerenciados por app-shell.js.
 loadDashboardData();

@@ -667,7 +667,7 @@ async def salvar_documento_censurado(
         documentos_criados = []
         chave_cripto = gerar_chave_criptografica(hash_arquivo, usuario_atual.user_id)
 
-        for team_id, usuario_equipe in zip(team_ids, vinculos):
+        for team_id, usuario_equipe in zip(team_ids, vinculos, strict=True):
             # Criar registro de Documento
             novo_documento = Documento(
                 user_team_id=usuario_equipe.user_team_id,

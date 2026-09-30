@@ -101,7 +101,7 @@ def test_salvar_censurado_nao_deixa_arquivo_orfao(client, seed, tmp_path):
 
     hash_esperado = hashlib.sha256(PDF_VALIDO).hexdigest()
     orfaos = list((tmp_path / "censurados").glob(f"{hash_esperado}*"))
-    assert not orfaos, f"arquivo orfao deixado no storage: {oriaos}"
+    assert not orfaos, f"arquivo orfao deixado no storage: {orfaos}"
 
 
 # --- Auditoria -----------------------------------------------------------
