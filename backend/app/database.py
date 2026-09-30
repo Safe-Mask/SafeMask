@@ -136,6 +136,23 @@ def _ddl_adicionar_organizacao(dialecto: str) -> dict[str, str]:
     return ddl
 
 
+def _ddl_adicionar_coluna_espaco(dialecto: str) -> str:
+    """DDL da coluna que diz em que espaco estao as coordenadas.
+
+    Coluna nova com `DEFAULT 'pdf'` e `NOT NULL`: as linhas que ja existem
+    materialmente cidram em `pdf`, que era o unico espaco que o scanner usava
+    antes dela existir. Sem o default, o `ALTER TABLE` falharia em banco com
+    dado.
+    """
+    sql = (
+        "ALTER TABLE dado_sensivel ADD COLUMN IF NOT EXISTS "
+        "espaco_coordenadas VARCHAR(10) NOT NULL DEFAULT 'pdf'"
+    )
+    if dialecto == "sqlite":
+        return sql.replace("IF NOT EXISTS ", "")
+    return sql
+
+
 def garantir_schema_organizacoes():
     """Cria as colunas de tenant e alinha os dados ja existentes.
 
@@ -171,6 +188,18 @@ def garantir_schema_organizacoes():
             conn.execute(text(ddl))
 
     _preencher_organizacoes_pendentes()
+    _garantir_espaco_coordenadas(inspector, tabelas)
+
+
+def _garantir_espaco_coordenadas(inspector, tabelas: set):
+    """Acrescenta `dado_sensivel.espaco_coordenadas` em bancos existentes."""
+    if "dado_sensivel" not in tabelas:
+        return
+    colunas = {c["name"] for c in inspector.get_columns("dado_sensivel")}
+    if "espaco_coordenadas" in colunas:
+        return
+    with engine.begin() as conn:
+        conn.execute(text(_ddl_adicionar_coluna_espaco(engine.dialect.name)))
 
 
 def _preencher_organizacoes_pendentes():

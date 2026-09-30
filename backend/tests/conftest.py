@@ -204,6 +204,7 @@ class ScannerFalso:
         self.itens_sensiveis = itens_sensiveis
         self.doc_id_atribuido = doc_id_atribuido
         self.chamadas = 0
+        self.itens_para_cobrir = None
 
     def scan_and_save(self, file_path, db, user_team_id, nome_original,
                       nivel_seguranca, dir_original, dir_censurado):
@@ -238,6 +239,7 @@ class ScannerFalso:
                     conteudo_hash="hash",
                     pagina=pagina,
                     coordenadas=[10, 10, 100, 20],
+                    espaco_coordenadas="pdf",
                     nivel_requerido=nivel_requerido,
                 )
             )
@@ -256,6 +258,9 @@ class ScannerFalso:
 
     def gerar_pdf_parcial(self, file_path, itens_para_cobrir, dir_destino, nome_saida):
         from pathlib import Path
+
+        # Guarda o que a rota mandou, para o teste ver o espaco de cada caixa.
+        self.itens_para_cobrir = itens_para_cobrir
 
         Path(dir_destino).mkdir(parents=True, exist_ok=True)
         destino = Path(dir_destino) / nome_saida

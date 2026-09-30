@@ -1,4 +1,5 @@
 import hashlib
+import logging
 from datetime import datetime
 from pathlib import Path
 
@@ -25,9 +26,11 @@ from app.models.documentos import Documento
 from app.models.equipe import Equipe
 from app.models.usuario import Usuario
 from app.models.usuario_equipe import UsuarioEquipe
-from scanner.scanner import DocumentScanner
+from scanner.coordenadas import ESPACO_PDF
+from scanner.scanner import DocumentScanner, NenhumaMascaraAplicavel
 
 router = APIRouter(prefix="/documentos", tags=["Documentos"])
+logger = logging.getLogger(__name__)
 
 # Criar diretórios de uploads se não existir
 UPLOAD_DIR = Path("uploads")
@@ -522,9 +525,14 @@ def obter_documento_parcial(
         .all()
     )
 
+    # (coordenadas, espaco): o espaco ve de DadoSensivel. Sem ele, as caixas de
+    # uma pagina escaneada (pixels) seriam reprojetadas como pontos do PDF e a
+    # tarja sairia deslocada — o dado ficaria visivel na descensura parcial.
     itens_para_cobrir: dict = {}
     for item in itens:
-        itens_para_cobrir.setdefault(item.pagina, []).append(item.coordenadas)
+        itens_para_cobrir.setdefault(item.pagina, []).append(
+            (item.coordenadas, item.espaco_coordenadas or ESPACO_PDF)
+        )
 
     caminhos_originais = list(ORIGINAIS_DIR.glob(f"{documento.hash_documento}*"))
     if not caminhos_originais:
@@ -551,6 +559,20 @@ def obter_documento_parcial(
             itens_para_cobrir=itens_para_cobrir,
             dir_destino=CENSURADOS_DIR,
             nome_saida=nome_saida,
+        )
+    except NenhumaMascaraAplicavel:
+        # Havia item a cobrir, mas nenhuma caixa era utilizavel. Servir o
+        # parcial assim seria o original sem nenhuma tarja; a versao
+        # integralmente censurada e mais restritiva e ainda entrega algo
+        # honesto ao usuario.
+        logger.warning(
+            f"Doc {documento.doc_id}: nenhuma caixa aplicavel na descensura "
+            "parcial; servindo a versao censurada."
+        )
+        registrar(db, request, usuario_atual.user_id, ACAO_VER_PARCIAL)
+        return responder_arquivo(
+            caminho_armazenado(documento),
+            f"{documento.nome_original}_censurado.pdf",
         )
     except Exception as e:
         raise HTTPException(
