@@ -1,11 +1,3 @@
-const userTrigger = document.getElementById('userTrigger');
-const userDropdown = document.getElementById('userDropdown');
-const userMenu = document.getElementById('userMenu');
-const logoutBtn = document.getElementById('logoutBtn');
-const userNameElement = document.getElementById('userName');
-const userIcon = document.querySelector('.user-icon');
-const menuToggle = document.getElementById('menuToggle');
-const sidebar = document.getElementById('sidebar');
 const goToUploadBtn = document.getElementById('goToUploadBtn');
 const docsList = document.getElementById('docsList');
 const docsEmptyState = document.getElementById('docsEmptyState');
@@ -31,10 +23,7 @@ const loadingBadgeTeams = document.getElementById('loadingBadgeTeams');
 const API_DOCUMENTS = `${API_ROOT}/documentos/censurados`;
 const initialDocId = Number(new URLSearchParams(window.location.search).get('doc_id'));
 
-const storedName = localStorage.getItem('userName') || 'Usuario';
-userNameElement.textContent = storedName;
-userIcon.textContent = storedName.charAt(0).toUpperCase();
-currentUserLabel.textContent = storedName;
+const storedName = localStorage.getItem('userName') || 'Usuario';currentUserLabel.textContent = storedName;
 
 const state = {
     documentos: [],
@@ -287,29 +276,6 @@ async function loadDocuments() {
         toggleDetailState(false);
     }
 }
-
-userTrigger.addEventListener('click', () => {
-    const isOpen = userDropdown.classList.toggle('open');
-    userTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-});
-
-document.addEventListener('click', (event) => {
-    if (!userMenu.contains(event.target)) {
-        userDropdown.classList.remove('open');
-        userTrigger.setAttribute('aria-expanded', 'false');
-    }
-});
-
-logoutBtn.addEventListener('click', () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userId');
-    window.location.href = '../../../index.html';
-});
-
-menuToggle.addEventListener('click', () => {
-    sidebar.classList.toggle('open');
-});
 
 goToUploadBtn.addEventListener('click', () => {
     window.location.href = 'censurar.html';

@@ -1,5 +1,8 @@
 const API_URL = `${API_ROOT}/auth`;
 
+// Validação de formato de email
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // Validar campo nome obrigatório
 document.getElementById('cadastro-nome').addEventListener('blur', (e) => {
     const nome = e.target.value;
@@ -18,13 +21,20 @@ document.getElementById('cadastro-nome').addEventListener('blur', (e) => {
     }
 });
 
-// Validar email ao sair do campo
-document.getElementById('cadastro-email').addEventListener('blur', async (e) => {
-    const email = e.target.value;
+// Validar formato do email ao sair do campo.
+//
+// Só formato, de propósito. A versão anterior consultava
+// `/auth/verificar-email/{email}` e mostrava "Email já cadastrado" ou
+// "Email disponível": um endpoint público que respondia {"existe": bool}
+// permitia montar a lista de quem usa o sistema, sem login. O e-mail em uso
+// agora só é revelado no envio do cadastro, que precisa responder de qualquer
+// forma para a pessoa saber o que aconteceu.
+document.getElementById('cadastro-email').addEventListener('blur', (e) => {
+    const email = e.target.value.trim();
     const validationMsg = document.getElementById('email-validation');
     const emailInput = e.target;
 
-    if (email.trim() === '') {
+    if (email === '') {
         validationMsg.textContent = 'Email é obrigatório';
         validationMsg.classList.remove('valid');
         validationMsg.classList.add('invalid');
@@ -33,8 +43,6 @@ document.getElementById('cadastro-email').addEventListener('blur', async (e) => 
         return;
     }
 
-    // Validação de formato de email
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
         validationMsg.textContent = 'Email inválido';
         validationMsg.classList.remove('valid');
@@ -44,26 +52,10 @@ document.getElementById('cadastro-email').addEventListener('blur', async (e) => 
         return;
     }
 
-    try {
-        const response = await fetch(`${API_URL}/verificar-email/${email}`);
-        const data = await response.json();
-
-        if (data.existe) {
-            validationMsg.textContent = 'Email já cadastrado';
-            validationMsg.classList.remove('valid');
-            validationMsg.classList.add('invalid');
-            emailInput.classList.remove('valid');
-            emailInput.classList.add('invalid');
-        } else {
-            validationMsg.textContent = 'Email disponível';
-            validationMsg.classList.remove('invalid');
-            validationMsg.classList.add('valid');
-            emailInput.classList.remove('invalid');
-            emailInput.classList.add('valid');
-        }
-    } catch (error) {
-        console.error('Erro ao verificar email:', error);
-    }
+    validationMsg.textContent = '';
+    validationMsg.classList.remove('valid', 'invalid');
+    emailInput.classList.remove('invalid');
+    emailInput.classList.add('valid');
 });
 
 // Validar força da senha em tempo real
@@ -206,6 +198,13 @@ document.getElementById('registerForm').addEventListener('submit', async (event)
             await new Promise(resolve => setTimeout(resolve, 800));
             loadingManager.hide();
             localStorage.setItem('token', data.access_token);
+            const user = data.user || {};
+            AppShell.Sessao.salvar({
+                token: data.access_token,
+                nome: user.nome || '',
+                cargo: user.cargo || '',
+                userId: user.user_id,
+            });
             window.location.href = '../dashboard.html';
         } else {
             await loadingManager.failPuzzle();

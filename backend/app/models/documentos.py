@@ -1,7 +1,9 @@
-from sqlalchemy import Boolean, Column, Integer, String, TIMESTAMP, BIGINT, ForeignKey
-from sqlalchemy.sql import func
+from sqlalchemy import BIGINT, TIMESTAMP, Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
 from app.database import Base
+
 
 class Documento(Base):
     __tablename__ = "documentos"

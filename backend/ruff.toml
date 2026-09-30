@@ -1,0 +1,14 @@
+line-length = 100
+target-version = "py312"
+exclude = [".venv", "uploads", "scanner/safemask-ner"]
+
+[lint]
+select = ["E", "F", "W", "I", "UP", "B"]
+ignore = [
+    # Handlers async que usam Session sincrona existem hoje; corrigir em etapas futuras.
+    "B008",
+    "E501",
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["E402", "F401"]

@@ -1,6 +1,5 @@
 from PIL import Image, ImageDraw
 
-
 CPF_MASK = "***.***.***-**"
 
 

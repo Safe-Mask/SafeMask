@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import List
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -10,7 +9,7 @@ class EquipeBase(BaseModel):
 
 
 class EquipeCreate(EquipeBase):
-    membros_ids: List[int] = Field(default_factory=list)
+    membros_ids: list[int] = Field(default_factory=list)
 
 
 class EquipeMemberResponse(BaseModel):
@@ -32,6 +31,6 @@ class EquipeDetailResponse(BaseModel):
     criado_em: datetime
     membros: int
     documentos: int
-    membros_lista: List[EquipeMemberResponse]
+    membros_lista: list[EquipeMemberResponse]
 
     model_config = ConfigDict(from_attributes=True)

@@ -1,11 +1,3 @@
-const userTrigger = document.getElementById('userTrigger');
-const userDropdown = document.getElementById('userDropdown');
-const userMenu = document.getElementById('userMenu');
-const logoutBtn = document.getElementById('logoutBtn');
-const userNameElement = document.getElementById('userName');
-const userIcon = document.querySelector('.user-icon');
-const menuToggle = document.getElementById('menuToggle');
-const sidebar = document.getElementById('sidebar');
 const goToDashboardBtn = document.getElementById('goToDashboardBtn');
 const goToDashboardBtnInline = document.getElementById('goToDashboardBtnInline');
 const cancelUploadBtn = document.getElementById('cancelUploadBtn');
@@ -36,9 +28,6 @@ const API_UPLOAD = `${API_ROOT}/documentos/upload`;
 const API_DASHBOARD_OVERVIEW = `${API_ROOT}/dashboard/overview`;
 
 const storedName = localStorage.getItem('userName') || 'Usuario';
-userNameElement.textContent = storedName;
-userIcon.textContent = storedName.charAt(0).toUpperCase();
-
 const state = {
     selectedTeams: new Set(),
     currentFile: null,
@@ -366,29 +355,6 @@ async function startUpload() {
         setStep('upload');
     }
 }
-
-userTrigger.addEventListener('click', () => {
-    const isOpen = userDropdown.classList.toggle('open');
-    userTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-});
-
-document.addEventListener('click', (event) => {
-    if (!userMenu.contains(event.target)) {
-        userDropdown.classList.remove('open');
-        userTrigger.setAttribute('aria-expanded', 'false');
-    }
-});
-
-logoutBtn.addEventListener('click', () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userId');
-    window.location.href = '../../../index.html';
-});
-
-menuToggle.addEventListener('click', () => {
-    sidebar.classList.toggle('open');
-});
 
 goToDashboardBtn.addEventListener('click', () => {
     window.location.href = '../dashboard.html';

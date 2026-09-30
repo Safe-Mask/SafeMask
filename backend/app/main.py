@@ -1,8 +1,11 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.middleware import Middleware
+import logging
 
-from app.routes import auth, dashboard, equipes, documentos
+from fastapi import FastAPI
+from fastapi.middleware import Middleware
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import CORS_ORIGINS, descrever
+from app.core.http_headers import HeadersSegurancaMiddleware
 from app.database import (
     Base,
     SessionLocal,
@@ -10,17 +13,25 @@ from app.database import (
     garantir_indices,
     garantir_schema_documentos,
     garantir_schema_equipes,
+    garantir_schema_organizacoes,
 )
 from app.models.cargo import Cargo
+from app.routes import auth, dashboard, documentos, equipes
+
+logger = logging.getLogger(__name__)
 
 middleware = [
+    # Headers primeiro: assim valem tambem para as respostas JSON e para os
+    # arquivos, sem depender de cada rota lembrar de aplica-los.
+    Middleware(HeadersSegurancaMiddleware),
     Middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        # Lista explicita: com allow_credentials=True, "*" faria o navegador
+        # descartar o header e a API responder sem Access-Control-Allow-Origin.
+        allow_origins=CORS_ORIGINS,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-        expose_headers=["*"]
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
     )
 ]
 
@@ -50,8 +61,13 @@ def seed_cargos():
 Base.metadata.create_all(bind=engine)
 garantir_schema_equipes()
 garantir_schema_documentos()
+# Antes de garantir_indices(): os indices de tenant so podem ser criados
+# depois que as colunas organizacao_id existirem.
+garantir_schema_organizacoes()
 garantir_indices()
 seed_cargos()
+
+logger.info("Configuracao ativa: %s", descrever())
 
 app.include_router(auth.router)
 app.include_router(dashboard.router)

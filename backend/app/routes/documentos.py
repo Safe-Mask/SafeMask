@@ -1,22 +1,36 @@
-from fastapi import APIRouter, Depends, File, UploadFile, Form, HTTPException, status
-from fastapi.responses import FileResponse
-from sqlalchemy.orm import Session
-from datetime import datetime
 import hashlib
-import mimetypes
+import logging
+from datetime import datetime
 from pathlib import Path
 
-from app.database import get_db
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from sqlalchemy.orm import Session
+
+from app.core import tenancy
+from app.core.audit import (
+    ACAO_LISTAR_DOCUMENTOS,
+    ACAO_UPLOAD,
+    ACAO_UPLOAD_CENSURADO,
+    ACAO_VER_CENSURADO,
+    ACAO_VER_ORIGINAL,
+    ACAO_VER_PARCIAL,
+    registrar,
+)
+from app.core.autorizacao import NIVEL_MIN_DESCENSURA, cargo_na_equipe
 from app.core.current_user import get_current_user
-from app.models.usuario import Usuario
-from app.models.equipe import Equipe
-from app.models.cargo import Cargo
-from app.models.documentos import Documento
+from app.core.file_responses import responder_arquivo
+from app.core.uploads import ler_e_validar_upload
+from app.database import get_db
 from app.models.dado_sensivel import DadoSensivel
+from app.models.documentos import Documento
+from app.models.equipe import Equipe
+from app.models.usuario import Usuario
 from app.models.usuario_equipe import UsuarioEquipe
-from scanner.scanner import DocumentScanner
+from scanner.coordenadas import ESPACO_PDF
+from scanner.scanner import DocumentScanner, NenhumaMascaraAplicavel
 
 router = APIRouter(prefix="/documentos", tags=["Documentos"])
+logger = logging.getLogger(__name__)
 
 # Criar diretórios de uploads se não existir
 UPLOAD_DIR = Path("uploads")
@@ -37,6 +51,7 @@ def get_scanner():
 
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_documento(
+    request: Request,
     file: UploadFile = File(...),
     titulo: str = Form(...),
     nivel_seguranca: int = Form(1),
@@ -44,12 +59,6 @@ async def upload_documento(
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
 ):
-    if not file.filename or not file.filename.lower().endswith('.pdf'):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Apenas arquivos PDF sao aceitos."
-        )
-
     team_ids = normalizar_team_ids(teams)
 
     if nivel_seguranca < 1 or nivel_seguranca > 4:
@@ -72,14 +81,8 @@ async def upload_documento(
             detail="Voce nao faz parte de nenhuma das equipes selecionadas."
         )
 
-    conteudo = await file.read()
-    if not conteudo:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Arquivo vazio."
-        )
-
-    extensao = Path(file.filename).suffix or ".pdf"
+    conteudo, caminho_nome = await ler_e_validar_upload(file, Path(file.filename or ""))
+    extensao = caminho_nome.suffix or ".pdf"
     hash_arquivo = hashlib.sha256(conteudo).hexdigest()
     nome_arquivo = f"{hash_arquivo}{extensao}"
     caminho_original = ORIGINAIS_DIR / nome_arquivo
@@ -101,8 +104,9 @@ async def upload_documento(
 
         # Compartilha o mesmo documento com as demais equipes selecionadas.
         chave_cripto = gerar_chave_criptografica(hash_arquivo, usuario_atual.user_id)
+        docs_compartilhados = []
         for usuario_equipe in usuario_equipes[1:]:
-            db.add(Documento(
+            doc_compartilhado = Documento(
                 user_team_id=usuario_equipe.user_team_id,
                 nome_original=titulo,
                 extensao=extensao.replace(".", ""),
@@ -112,9 +116,20 @@ async def upload_documento(
                 hash_documento=hash_arquivo,
                 caminho_storage=str(CENSURADOS_DIR / f"{hash_arquivo}_tarjado.pdf"),
                 status_processamento="CONCLUIDO"
-            ))
+            )
+            db.add(doc_compartilhado)
+            docs_compartilhados.append(doc_compartilhado)
+
+        # Sem o flush, as copias ainda nao tem doc_id para receber os itens.
+        db.flush()
+
+        # Os itens sensiveis sao vinculados ao doc_id de quem fez o upload.
+        # Sem esta copia, /parcial de uma equipe secundaria nao acha nada a
+        # cobrir e devolve o PDF original sem censura.
+        duplicar_itens_sensiveis(db, resultado["doc_id"], docs_compartilhados)
 
         db.commit()
+        registrar(db, request, usuario_atual.user_id, ACAO_UPLOAD)
 
         return {
             "mensagem": "Documento processado e censurado com sucesso.",
@@ -131,8 +146,8 @@ async def upload_documento(
         logger.error(f"Erro ao processar documento: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao processar documento: {str(e)}"
-        )
+            detail="Erro ao processar documento."
+        ) from e
 
 
 def normalizar_team_ids(teams: str) -> list[int]:
@@ -162,7 +177,10 @@ def normalizar_team_ids(teams: str) -> list[int]:
                 detail="Teams deve ser um array JSON de ids válidos.",
             ) from exc
 
-    return team_ids
+    # `teams=[1, 1]` criava dois Documentos apontando para o mesmo
+    # user_team_id e o mesmo arquivo. O upload nao sofria disso porque sua query
+    # usa `.in_()`; `/salvar-censurado` itera a lista e sofria.
+    return sorted(set(team_ids))
 
 def gerar_hash_arquivo(conteudo: bytes) -> str:
     """Gera hash SHA256 do arquivo."""
@@ -174,65 +192,95 @@ def gerar_chave_criptografica(arquivo_hash: str, user_id: int) -> str:
     return hashlib.sha256(chave_base.encode()).hexdigest()
 
 
-def buscar_documento_autorizado(db: Session, user_id: int, doc_id: int):
-    """Retorna o documento se o usuario for membro da equipe dona dele."""
-    documento = db.query(Documento).filter(Documento.doc_id == doc_id).first()
+def caminho_armazenado(documento: Documento) -> Path:
+    """Caminho do PDF tarjado de um documento, com fallback por hash."""
+    if documento.caminho_storage:
+        caminho = Path(documento.caminho_storage)
+        if caminho.is_file():
+            return caminho
+
+    candidatos = sorted(CENSURADOS_DIR.glob(f"{documento.hash_documento}*"))
+    if not candidatos:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Arquivo censurado nao encontrado no armazenamento.",
+        )
+    return candidatos[0]
+
+
+def duplicar_itens_sensiveis(db: Session, doc_id_origem: int, documentos_destino: list[Documento]) -> int:
+    """Replica os DadoSensivel de um documento para outros Documento copias.
+
+    Documento e uma linha por (arquivo, equipe). DadoSensivel aponta para
+    doc_id, entao cada copia precisa dos proprios itens para que a descensura
+    por cargo funcione igual em todas as equipes.
+    """
+    itens = db.query(DadoSensivel).filter(DadoSensivel.doc_id == doc_id_origem).all()
+    if not itens:
+        return 0
+
+    copiados = 0
+    for doc_destino in documentos_destino:
+        for item in itens:
+            db.add(
+                DadoSensivel(
+                    doc_id=doc_destino.doc_id,
+                    tipo_entidade=item.tipo_entidade,
+                    conteudo_hash=item.conteudo_hash,
+                    pagina=item.pagina,
+                    coordenadas=item.coordenadas,
+                    nivel_requerido=item.nivel_requerido,
+                )
+            )
+            copiados += 1
+    db.flush()
+    return copiados
+
+
+def equipe_do_documento(db: Session, documento: Documento) -> Equipe | None:
+    """Equipe dona do documento, sem atravessar o tenant.
+
+    `Documento.user_team_id` aponta para o vinculo de equipe, nao para a
+    equipe; e o primeiro membro desse vinculo que revelava o `team_id`. Um
+    vinculo apontando para equipe de outra organizacao nao resolve.
+    """
+    return (
+        db.query(Equipe)
+        .join(UsuarioEquipe, UsuarioEquipe.team_id == Equipe.team_id)
+        .filter(UsuarioEquipe.user_team_id == documento.user_team_id)
+        .distinct()
+        .first()
+    )
+
+
+def buscar_documento_autorizado(db: Session, usuario: Usuario, doc_id: int) -> Documento | None:
+    """Documento, ou None se o usuario nao puder nem ve-lo.
+
+    Membro de outra equipe/organizacao recebe `None` (a rota transforma em
+    404), nunca 403: responder "proibido" confirmaria que o documento existe.
+    """
+    documento = db.query(Documento).filter(
+        Documento.doc_id == doc_id,
+        # `ativo` era o soft-delete previsto e nenhuma rota o lia: um documento
+        # arquivado continuaria sendo servido e listado.
+        Documento.ativo.is_(True),
+    ).first()
     if not documento:
         return None
 
-    membro_dono = (
-        db.query(UsuarioEquipe)
-        .filter(UsuarioEquipe.user_team_id == documento.user_team_id)
-        .first()
-    )
-    if not membro_dono:
+    equipe = equipe_do_documento(db, documento)
+    if not equipe:
         return None
 
-    pertence = (
-        db.query(UsuarioEquipe)
-        .filter(
-            UsuarioEquipe.user_id == user_id,
-            UsuarioEquipe.team_id == membro_dono.team_id,
-        )
-        .first()
-    )
-    return documento if pertence else None
-
-
-def cargo_usuario_no_documento(db: Session, user_id: int, documento: Documento) -> dict | None:
-    """Retorna cargo (nome/nivel) do usuario dentro da equipe dona do documento."""
-    membro = (
-        db.query(UsuarioEquipe)
-        .filter(UsuarioEquipe.user_team_id == documento.user_team_id)
-        .first()
-    )
-    if not membro:
+    organizacao_id = tenancy.exigir_organizacao(usuario)
+    if equipe.organizacao_id != organizacao_id:
         return None
 
-    registro_usuario = (
-        db.query(UsuarioEquipe)
-        .filter(
-            UsuarioEquipe.user_id == user_id,
-            UsuarioEquipe.team_id == membro.team_id,
-        )
-        .first()
-    )
-    if not registro_usuario:
-        return None
-
-    cargo = db.query(Cargo).filter(Cargo.cargo_id == registro_usuario.cargo_id).first()
-    if not cargo:
-        return None
-
-    return {"nome": cargo.nome, "nivel": cargo.nivel}
-
-# Nivel minimo (cargo.nivel) para ter acesso ao documento original (descensura).
-# Escala do banco: lider=3, supervisor=2, membro=1.
-NIVEL_MIN_DESCENSURA = 3
-
+    return documento if cargo_na_equipe(db, usuario, equipe.team_id) else None
 
 @router.get("/censurados")
 def listar_documentos_censurados(
+    request: Request,
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
 ):
@@ -302,11 +350,12 @@ def listar_documentos_censurados(
 
 @router.get("/censurados/{doc_id}")
 def obter_documento_censurado(
+    request: Request,
     doc_id: int,
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
 ):
-    documento = buscar_documento_autorizado(db, usuario_atual.user_id, doc_id)
+    documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
 
     if not documento:
         raise HTTPException(
@@ -314,19 +363,21 @@ def obter_documento_censurado(
             detail="Documento não encontrado ou sem acesso.",
         )
 
-    usuario_equipe = (
-        db.query(UsuarioEquipe)
-        .filter(UsuarioEquipe.user_team_id == documento.user_team_id)
-        .first()
-    )
-
-    equipe = None
+    equipe = equipe_do_documento(db, documento)
     autor = None
-    if usuario_equipe:
-        equipe = db.query(Equipe).filter(Equipe.team_id == usuario_equipe.team_id).first()
-        autor = db.query(Usuario).filter(Usuario.user_id == usuario_equipe.user_id).first()
+    if equipe:
+        primeiro_membro = (
+            db.query(Usuario)
+            .join(UsuarioEquipe, UsuarioEquipe.user_id == Usuario.user_id)
+            .filter(UsuarioEquipe.team_id == equipe.team_id)
+            .order_by(UsuarioEquipe.user_team_id)
+            .first()
+        )
+        autor = primeiro_membro
 
-    cargo = cargo_usuario_no_documento(db, usuario_atual.user_id, documento)
+    cargo = cargo_na_equipe(db, usuario_atual, equipe.team_id) if equipe else None
+
+    registrar(db, request, usuario_atual.user_id, ACAO_VER_CENSURADO)
 
     return {
         "doc_id": documento.doc_id,
@@ -334,9 +385,12 @@ def obter_documento_censurado(
         "extensao": documento.extensao,
         "tamanho_bytes": documento.tamanho_bytes,
         "nivel_seguranca": documento.nivel_seguranca,
+        # `hash_documento` e `caminho_storage` ficam no servidor. O hash e a
+        # chave de glob que localiza os arquivos (documentos.py:458 e ss.), e o
+        # caminho entrega o layout do disco: quem tem documento teu nao tem por
+        # que saber onde ele mora. `chave_criptografica` segue exposta porque a
+        # tela a mostra, mas nenhum caminho do codigo criptografa com ela.
         "chave_criptografica": documento.chave_criptografica,
-        "hash_documento": documento.hash_documento,
-        "caminho_storage": documento.caminho_storage,
         "criado_em": documento.criado_em.isoformat() if documento.criado_em else None,
         "status_processamento": documento.status_processamento,
         "autor_nome": autor.nome if autor else None,
@@ -353,11 +407,12 @@ def obter_documento_censurado(
 
 @router.get("/censurados/{doc_id}/arquivo")
 def obter_arquivo_documento_censurado(
+    request: Request,
     doc_id: int,
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
 ):
-    documento = buscar_documento_autorizado(db, usuario_atual.user_id, doc_id)
+    documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
 
     if not documento:
         raise HTTPException(
@@ -375,17 +430,17 @@ def obter_arquivo_documento_censurado(
             detail="Arquivo físico não encontrado.",
         )
 
-    media_type, _ = mimetypes.guess_type(caminho.name)
-    return FileResponse(
-        path=str(caminho),
-        media_type=media_type or "application/octet-stream",
-        filename=f"{documento.nome_original}{documento.extensao}",
-        content_disposition_type="inline",
+    registrar(db, request, usuario_atual.user_id, ACAO_VER_CENSURADO)
+    return responder_arquivo(
+        caminho,
+        f"{documento.nome_original}{documento.extensao}",
+        inline=True,
     )
 
 
 @router.get("/{doc_id}/original")
 def obter_documento_original(
+    request: Request,
     doc_id: int,
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
@@ -394,7 +449,7 @@ def obter_documento_original(
     Retorna o PDF original (sem censura) para usuarios com cargo de nivel
     suficiente (ex.: lider). Membros recebem 403.
     """
-    documento = buscar_documento_autorizado(db, usuario_atual.user_id, doc_id)
+    documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
 
     if not documento:
         raise HTTPException(
@@ -402,7 +457,8 @@ def obter_documento_original(
             detail="Documento não encontrado ou sem acesso.",
         )
 
-    cargo = cargo_usuario_no_documento(db, usuario_atual.user_id, documento)
+    equipe = equipe_do_documento(db, documento)
+    cargo = cargo_na_equipe(db, usuario_atual, equipe.team_id) if equipe else None
     if not cargo or cargo["nivel"] < NIVEL_MIN_DESCENSURA:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -418,17 +474,16 @@ def obter_documento_original(
         )
 
     caminho = candidatos[0]
-    media_type, _ = mimetypes.guess_type(caminho.name)
-    return FileResponse(
-        path=str(caminho),
-        media_type=media_type or "application/octet-stream",
-        filename=f"{documento.nome_original}_original.pdf",
-        content_disposition_type="attachment",
+    registrar(db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL)
+    return responder_arquivo(
+        caminho,
+        f"{documento.nome_original}_original.pdf",
     )
 
 
 @router.get("/{doc_id}/parcial")
 def obter_documento_parcial(
+    request: Request,
     doc_id: int,
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
@@ -436,17 +491,18 @@ def obter_documento_parcial(
     """Descensura parcial por cargo.
 
     Revela os dados sensiveis cujo nivel_requerido <= cargo.nivel do usuario;
-    os itens de nivel acima continuam cobertos. O lider (nivel >= 
+    os itens de nivel acima continuam cobertos. O lider (nivel >=
     NIVEL_MIN_DESCENSURA) recebe o documento original integral.
     """
-    documento = buscar_documento_autorizado(db, usuario_atual.user_id, doc_id)
+    documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
     if not documento:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Documento não encontrado ou sem acesso.",
         )
 
-    cargo = cargo_usuario_no_documento(db, usuario_atual.user_id, documento)
+    equipe = equipe_do_documento(db, documento)
+    cargo = cargo_na_equipe(db, usuario_atual, equipe.team_id) if equipe else None
     if not cargo:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -462,12 +518,10 @@ def obter_documento_parcial(
                 detail="Arquivo original nao encontrado no armazenamento.",
             )
         caminho = candidatos[0]
-        media_type, _ = mimetypes.guess_type(caminho.name)
-        return FileResponse(
-            path=str(caminho),
-            media_type=media_type or "application/octet-stream",
-            filename=f"{documento.nome_original}_original.pdf",
-            content_disposition_type="attachment",
+        registrar(db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL)
+        return responder_arquivo(
+            caminho,
+            f"{documento.nome_original}_original.pdf",
         )
 
     nivel = cargo["nivel"]
@@ -482,9 +536,14 @@ def obter_documento_parcial(
         .all()
     )
 
+    # (coordenadas, espaco): o espaco ve de DadoSensivel. Sem ele, as caixas de
+    # uma pagina escaneada (pixels) seriam reprojetadas como pontos do PDF e a
+    # tarja sairia deslocada — o dado ficaria visivel na descensura parcial.
     itens_para_cobrir: dict = {}
     for item in itens:
-        itens_para_cobrir.setdefault(item.pagina, []).append(item.coordenadas)
+        itens_para_cobrir.setdefault(item.pagina, []).append(
+            (item.coordenadas, item.espaco_coordenadas or ESPACO_PDF)
+        )
 
     caminhos_originais = list(ORIGINAIS_DIR.glob(f"{documento.hash_documento}*"))
     if not caminhos_originais:
@@ -493,15 +552,15 @@ def obter_documento_parcial(
             detail="Arquivo original nao encontrado no armazenamento.",
         )
 
-    # Se nao ha nada a manter coberto para este cargo, devolve o original.
-    if not itens:
-        caminho = caminhos_originais[0]
-        media_type, _ = mimetypes.guess_type(caminho.name)
-        return FileResponse(
-            path=str(caminho),
-            media_type=media_type or "application/octet-stream",
-            filename=f"{documento.nome_original}_original.pdf",
-            content_disposition_type="attachment",
+    # Nenhum item acima do nivel do usuario: nao ha regiao a cobrir, mas
+    # entregamos a versao tarjada. Servir o original aqui vazaria o documento
+    # sempre que o scan nao encontrou nada.
+    if not itens_para_cobrir:
+        caminho_censurado = caminho_armazenado(documento)
+        registrar(db, request, usuario_atual.user_id, ACAO_VER_PARCIAL)
+        return responder_arquivo(
+            caminho_censurado,
+            f"{documento.nome_original}_censurado.pdf",
         )
 
     try:
@@ -512,23 +571,36 @@ def obter_documento_parcial(
             dir_destino=CENSURADOS_DIR,
             nome_saida=nome_saida,
         )
+    except NenhumaMascaraAplicavel:
+        # Havia item a cobrir, mas nenhuma caixa era utilizavel. Servir o
+        # parcial assim seria o original sem nenhuma tarja; a versao
+        # integralmente censurada e mais restritiva e ainda entrega algo
+        # honesto ao usuario.
+        logger.warning(
+            f"Doc {documento.doc_id}: nenhuma caixa aplicavel na descensura "
+            "parcial; servindo a versao censurada."
+        )
+        registrar(db, request, usuario_atual.user_id, ACAO_VER_PARCIAL)
+        return responder_arquivo(
+            caminho_armazenado(documento),
+            f"{documento.nome_original}_censurado.pdf",
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Falha ao gerar a descensura parcial: {str(e)}",
-        )
+            detail="Falha ao gerar a descensura parcial.",
+        ) from e
 
-    media_type, _ = mimetypes.guess_type(caminho_parcial.name)
-    return FileResponse(
-        path=str(caminho_parcial),
-        media_type=media_type or "application/octet-stream",
-        filename=f"{documento.nome_original}_parcial_nivel{nivel}.pdf",
-        content_disposition_type="attachment",
+    registrar(db, request, usuario_atual.user_id, ACAO_VER_PARCIAL)
+    return responder_arquivo(
+        caminho_parcial,
+        f"{documento.nome_original}_parcial_nivel{nivel}.pdf",
     )
 
 
 @router.post("/salvar-censurado", status_code=status.HTTP_201_CREATED)
 async def salvar_documento_censurado(
+    request: Request,
     file: UploadFile = File(...),
     titulo: str = Form(...),
     nivel_seguranca: int = Form(...),
@@ -539,65 +611,63 @@ async def salvar_documento_censurado(
 ):
     """
     Salva um documento censurado nas equipes selecionadas.
-    
+
     - file: arquivo do documento
     - titulo: nome final do documento
     - nivel_seguranca: nível de proteção (1-4)
     - observacoes: notas internas
     - teams: array JSON de team_ids (ex: "[1, 2, 3]")
     """
-    
+
     try:
         team_ids = normalizar_team_ids(teams)
-        
+
         # Validar nível de segurança
         if nivel_seguranca < 1 or nivel_seguranca > 4:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Nível de segurança inválido (1-4)."
             )
-        
-        # Ler arquivo
-        conteudo_arquivo = await file.read()
-        if not conteudo_arquivo:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Arquivo vazio."
-            )
-        
-        # Extrair extensão
-        extensao = Path(file.filename).suffix or ".bin"
-        
+
+        # Ler e validar arquivo
+        conteudo_arquivo, caminho_nome = await ler_e_validar_upload(
+            file, Path(file.filename or "")
+        )
+
+        extensao = caminho_nome.suffix or ".pdf"
+
         # Gerar hash do arquivo
         hash_arquivo = gerar_hash_arquivo(conteudo_arquivo)
-        
+
         # Gerar caminho de armazenamento
         nome_arquivo = f"{hash_arquivo}{extensao}"
         caminho_arquivo = CENSURADOS_DIR / nome_arquivo
-        
-        # Salvar arquivo
-        with open(caminho_arquivo, "wb") as f:
-            f.write(conteudo_arquivo)
-        
-        # Salvar documento para cada equipe selecionada
-        documentos_criados = []
-        
+
+        # Validar TODAS as equipes antes de gravar qualquer coisa em disco:
+        # caso contrario um 403 no meio do loop deixa arquivo orfao no storage.
+        vinculos = []
         for team_id in team_ids:
-            # Verificar se usuário faz parte da equipe
             usuario_equipe = db.query(UsuarioEquipe).filter(
                 UsuarioEquipe.user_id == usuario_atual.user_id,
                 UsuarioEquipe.team_id == team_id
             ).first()
-            
+
             if not usuario_equipe:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"Você não faz parte da equipe {team_id}."
                 )
-            
-            # Gerar chave criptográfica
-            chave_cripto = gerar_chave_criptografica(hash_arquivo, usuario_atual.user_id)
-            
+            vinculos.append(usuario_equipe)
+
+        # Salvar arquivo
+        with open(caminho_arquivo, "wb") as f:
+            f.write(conteudo_arquivo)
+
+        # Salvar documento para cada equipe selecionada
+        documentos_criados = []
+        chave_cripto = gerar_chave_criptografica(hash_arquivo, usuario_atual.user_id)
+
+        for team_id, usuario_equipe in zip(team_ids, vinculos, strict=True):
             # Criar registro de Documento
             novo_documento = Documento(
                 user_team_id=usuario_equipe.user_team_id,
@@ -610,35 +680,37 @@ async def salvar_documento_censurado(
                 caminho_storage=str(caminho_arquivo),
                 status_processamento="CONCLUIDO"
             )
-            
+
             db.add(novo_documento)
             documentos_criados.append({
                 "team_id": team_id,
                 "titulo": titulo,
                 "nivel_seguranca": nivel_seguranca
             })
-        
+
         # Commit único para todas as mudanças
         db.commit()
-        
+        registrar(db, request, usuario_atual.user_id, ACAO_UPLOAD_CENSURADO)
+
         return {
             "mensagem": "Documento censurado salvo com sucesso.",
             "arquivo_hash": hash_arquivo,
             "documentos_criados": len(documentos_criados),
             "detalhes": documentos_criados
         }
-    
+
     except HTTPException:
         raise
     except Exception as e:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erro ao salvar documento: {str(e)}"
-        )
+            detail="Erro ao salvar documento."
+        ) from e
 
 @router.get("/listar/{team_id}")
 async def listar_documentos_equipe(
+    request: Request,
     team_id: int,
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
@@ -646,25 +718,28 @@ async def listar_documentos_equipe(
     """
     Lista documentos de uma equipe específica.
     """
-    
+
     # Verificar se usuário faz parte da equipe
     usuario_equipe_list = db.query(UsuarioEquipe).filter(
         UsuarioEquipe.user_id == usuario_atual.user_id,
         UsuarioEquipe.team_id == team_id
     ).all()
-    
+
     if not usuario_equipe_list:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Você não faz parte dessa equipe."
         )
-    
+
     # Listar documentos
     user_team_ids = [ue.user_team_id for ue in usuario_equipe_list]
     documentos = db.query(Documento).filter(
-        Documento.user_team_id.in_(user_team_ids)
+        Documento.user_team_id.in_(user_team_ids),
+        Documento.ativo.is_(True),
     ).all()
-    
+
+    registrar(db, request, usuario_atual.user_id, ACAO_LISTAR_DOCUMENTOS)
+
     return {
         "total": len(documentos),
         "documentos": [

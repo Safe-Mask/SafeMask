@@ -65,8 +65,15 @@ document.getElementById('loginForm').addEventListener('submit', async (event) =>
             await new Promise(resolve => setTimeout(resolve, 800));
             loadingManager.hide();
             localStorage.setItem('token', data.access_token);
-            const userName = email.includes('@') ? email.split('@')[0] : email;
-            localStorage.setItem('userName', userName);
+            // Identidade e papel vem do servidor. Inferir o nome pelo e-mail
+            // deixava o menu sem cargo e o token sem vinculo com o usuario.
+            const user = data.user || {};
+            AppShell.Sessao.salvar({
+                token: data.access_token,
+                nome: user.nome || (email.includes('@') ? email.split('@')[0] : email),
+                cargo: user.cargo || '',
+                userId: user.user_id,
+            });
             window.location.href = '../dashboard.html';
         } else {
             await loadingManager.failPuzzle();

@@ -1,9 +1,9 @@
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import desc, func, or_
 from sqlalchemy.orm import Session
 
+from app.core import autorizacao, tenancy
 from app.core.current_user import get_current_user
 from app.database import get_db
 from app.models.cargo import Cargo
@@ -16,7 +16,7 @@ from app.schemas.equipe import EquipeCreate
 router = APIRouter(prefix="/equipes", tags=["Equipes"])
 
 
-def _current_team_ids(db: Session, user_id: int) -> List[int]:
+def _current_team_ids(db: Session, user_id: int) -> list[int]:
     return [
         row.team_id
         for row in (
@@ -28,7 +28,7 @@ def _current_team_ids(db: Session, user_id: int) -> List[int]:
     ]
 
 
-def _get_cargo_by_name(db: Session, nomes: List[str]) -> Cargo | None:
+def _get_cargo_by_name(db: Session, nomes: list[str]) -> Cargo | None:
     cargos = (
         db.query(Cargo)
         .filter(Cargo.nome.in_(nomes))
@@ -78,6 +78,7 @@ def _load_team_detail(db: Session, current_user: Usuario, team_id: int):
     team_row = (
         db.query(
             Equipe.team_id,
+            Equipe.organizacao_id,
             Equipe.nome,
             Equipe.descricao,
             Equipe.criado_em,
@@ -86,6 +87,9 @@ def _load_team_detail(db: Session, current_user: Usuario, team_id: int):
         .filter(
             Equipe.team_id == team_id,
             UsuarioEquipe.user_id == current_user.user_id,
+            # Defesa em profundidade: o vinculo de equipe ja restringe, mas a
+            # equipe tambem precisa pertencer a organizacao de quem pede.
+            Equipe.organizacao_id == tenancy.exigir_organizacao(current_user),
         )
         .first()
     )
@@ -138,7 +142,7 @@ def _load_team_detail(db: Session, current_user: Usuario, team_id: int):
         .join(UsuarioEquipe, UsuarioEquipe.user_team_id == Documento.user_team_id)
         .join(Usuario, Usuario.user_id == UsuarioEquipe.user_id)
         .join(Cargo, Cargo.cargo_id == UsuarioEquipe.cargo_id)
-        .filter(UsuarioEquipe.team_id == team_id)
+        .filter(UsuarioEquipe.team_id == team_id, Documento.ativo.is_(True))
         .order_by(Documento.criado_em.desc(), Documento.doc_id.desc())
         .all()
     )
@@ -146,13 +150,14 @@ def _load_team_detail(db: Session, current_user: Usuario, team_id: int):
     documentos = (
         db.query(func.count(func.distinct(Documento.doc_id)))
         .join(UsuarioEquipe, UsuarioEquipe.user_team_id == Documento.user_team_id)
-        .filter(UsuarioEquipe.team_id == team_id)
+        .filter(UsuarioEquipe.team_id == team_id, Documento.ativo.is_(True))
         .scalar()
         or 0
     )
 
     return {
         "team_id": team_row.team_id,
+        "organizacao_id": team_row.organizacao_id,
         "nome": team_row.nome,
         "descricao": team_row.descricao,
         "criado_em": team_row.criado_em.isoformat() if team_row.criado_em else None,
@@ -271,6 +276,7 @@ def get_form_data(
         current_user: Usuario = Depends(get_current_user)
     ):
     team_ids = _current_team_ids(db, current_user.user_id)
+    organizacao_id = tenancy.exigir_organizacao(current_user)
     normalized_query = query.strip()
 
     suggested_members = []
@@ -316,7 +322,12 @@ def get_form_data(
         Usuario.user_id,
         Usuario.nome,
         Usuario.email,
-    ).filter(Usuario.user_id != current_user.user_id)
+    ).filter(
+        Usuario.user_id != current_user.user_id,
+        # Sugerir membros e listar usuarios e uma busca global. Sem este
+        # filtro a tela de criar equipe oferecia usuarios de outras empresas.
+        Usuario.organizacao_id == organizacao_id,
+    )
 
     if linked_user_ids:
         available_users_query = available_users_query.filter(~Usuario.user_id.in_(linked_user_ids))
@@ -360,10 +371,17 @@ def create_team(
 
     cargo_lider = _get_cargo_lider(db)
     cargo_membro = _get_cargo_membro(db)
+    organizacao_id = tenancy.exigir_organizacao(current_user)
+
+    # Quem cria a equipe vira lider dela. Antes isso valia para qualquer
+    # autenticado: um membro comum criava um time e ja nascia lider, o que
+    # destrava descensura (nivel 3) sobre os documentos dele.
+    autorizacao.exigir_gestao(db, current_user)
 
     equipe = Equipe(
         nome=nome,
         descricao=payload.descricao.strip() if payload.descricao else None,
+        organizacao_id=organizacao_id,
     )
     db.add(equipe)
     db.flush()
@@ -379,7 +397,16 @@ def create_team(
         if membro_id == current_user.user_id or membro_id in membros_ids:
             continue
 
-        usuario = db.query(Usuario).filter(Usuario.user_id == membro_id).first()
+        # `membros_ids` vem do corpo da requisicao. Sem o filtro de tenant, um
+        # lider poderia adicionar ao time alguem de outra organizacao.
+        usuario = (
+            db.query(Usuario)
+            .filter(
+                Usuario.user_id == membro_id,
+                Usuario.organizacao_id == organizacao_id,
+            )
+            .first()
+        )
         if not usuario:
             continue
 

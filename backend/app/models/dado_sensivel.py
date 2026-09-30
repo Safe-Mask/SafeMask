@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey
+from sqlalchemy import Column, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
 
@@ -14,6 +14,12 @@ class DadoSensivel(Base):
     conteudo_hash = Column(Text, nullable=False)
     pagina = Column(Integer, nullable=False)
     coordenadas = Column(JSONB, nullable=False)
+    # Em que espaco `coordenadas` estao expressas. Uma pagina lida por texto
+    # devolve pontos do PDF; uma pagina tratada por OCR devolve pixels da
+    # imagem renderizada (150 dpi). Sem distinguir, a descensura parcial
+    # reprojeta pixels como pontos e a tarja cai fora do lugar.
+    espaco_coordenadas = Column(String(10), nullable=False, default="pdf",
+                               server_default="pdf")
     nivel_requerido = Column(Integer, nullable=False, default=4, server_default="4")
 
     documento = relationship("Documento", back_populates="dados_sensiveis")
