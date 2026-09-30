@@ -39,6 +39,7 @@ from app.models.cargo import Cargo  # noqa: E402
 from app.models.dado_sensivel import DadoSensivel  # noqa: E402
 from app.models.documentos import Documento  # noqa: E402
 from app.models.equipe import Equipe  # noqa: E402
+from app.models.organizacao import Organizacao  # noqa: E402
 from app.models.usuario import Usuario  # noqa: E402
 from app.models.usuario_equipe import UsuarioEquipe  # noqa: E402
 
@@ -85,9 +86,11 @@ def client(db_session, monkeypatch, tmp_path):
 
 @pytest.fixture
 def seed(db_session):
-    """Cargos, equipes e um usuario com vinculo em duas equipes.
+    """Cargos, duas organizacoes, equipes e usuarios de cada uma.
 
-    Retorna um dict com os ids criados para uso nos testes.
+    A segunda organizacao existe para que os testes de isolamento tenham o que
+    comparar: sem um segundo tenant, um filtro de organizacao ausente passaria
+    despercebido.
     """
 
     def _criar(nome: str, nivel: int) -> Cargo:
@@ -99,24 +102,50 @@ def seed(db_session):
     supervisor = _criar("supervisor", 2)
     membro = _criar("membro", 1)
 
-    equipe_a = Equipe(nome="Equipe A", descricao="A")
-    equipe_b = Equipe(nome="Equipe B", descricao="B")
-    db_session.add_all([equipe_a, equipe_b])
+    org_acme = Organizacao(nome="Acme")
+    org_globex = Organizacao(nome="Globex")
+    db_session.add_all([org_acme, org_globex])
+    db_session.flush()
 
-    usuario = Usuario(nome="Ana", email="ana@safemask.example.com", senha_hash="$2b$12$vBdMepuNx2WXFohAlnalx.rRdH2/ccJHnpJ4CuIDz.P2FA9KUV53K")
-    db_session.add(usuario)
+    equipe_a = Equipe(nome="Equipe A", descricao="A", organizacao_id=org_acme.organizacao_id)
+    equipe_b = Equipe(nome="Equipe B", descricao="B", organizacao_id=org_acme.organizacao_id)
+    equipe_globex = Equipe(nome="Equipe Globex", descricao="G", organizacao_id=org_globex.organizacao_id)
+    db_session.add_all([equipe_a, equipe_b, equipe_globex])
+
+    usuario = Usuario(
+        nome="Ana",
+        email="ana@safemask.example.com",
+        senha_hash="$2b$12$vBdMepuNx2WXFohAlnalx.rRdH2/ccJHnpJ4CuIDz.P2FA9KUV53K",
+        organizacao_id=org_acme.organizacao_id,
+    )
+    usuario_globex = Usuario(
+        nome="Bia",
+        email="bia@safemask.example.com",
+        senha_hash="$2b$12$vBdMepuNx2WXFohAlnalx.rRdH2/ccJHnpJ4CuIDz.P2FA9KUV53K",
+        organizacao_id=org_globex.organizacao_id,
+    )
+    db_session.add_all([usuario, usuario_globex])
     db_session.flush()
 
     vinculo_a = UsuarioEquipe(user_id=usuario.user_id, team_id=equipe_a.team_id, cargo_id=lider.cargo_id)
     vinculo_b = UsuarioEquipe(user_id=usuario.user_id, team_id=equipe_b.team_id, cargo_id=membro.cargo_id)
-    db_session.add_all([vinculo_a, vinculo_b])
+    vinculo_globex = UsuarioEquipe(
+        user_id=usuario_globex.user_id,
+        team_id=equipe_globex.team_id,
+        cargo_id=lider.cargo_id,
+    )
+    db_session.add_all([vinculo_a, vinculo_b, vinculo_globex])
     db_session.commit()
 
     return {
         "db": db_session,
         "usuario": usuario,
+        "usuario_globex": usuario_globex,
+        "organizacao": org_acme,
+        "organizacao_globex": org_globex,
         "equipe_a": equipe_a,
         "equipe_b": equipe_b,
+        "equipe_globex": equipe_globex,
         "user_team_a": vinculo_a.user_team_id,
         "user_team_b": vinculo_b.user_team_id,
         "cargo_lider": lider,

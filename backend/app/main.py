@@ -12,6 +12,7 @@ from app.database import (
     garantir_indices,
     garantir_schema_documentos,
     garantir_schema_equipes,
+    garantir_schema_organizacoes,
 )
 from app.models.cargo import Cargo
 from app.routes import auth, dashboard, documentos, equipes
@@ -56,6 +57,9 @@ def seed_cargos():
 Base.metadata.create_all(bind=engine)
 garantir_schema_equipes()
 garantir_schema_documentos()
+# Antes de garantir_indices(): os indices de tenant so podem ser criados
+# depois que as colunas organizacao_id existirem.
+garantir_schema_organizacoes()
 garantir_indices()
 seed_cargos()
 

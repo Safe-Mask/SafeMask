@@ -142,7 +142,7 @@ def test_login_registra_auditoria(client, seed):
     from app.core.security import hash_senha
     from app.models.usuario import Usuario
 
-    usuario = seed["db"].query(Usuario).one()
+    usuario = seed["db"].query(Usuario).filter(Usuario.email == seed["usuario"].email).one()
     usuario.senha_hash = hash_senha("SenhaForte123!")
     seed["db"].commit()
 
@@ -158,7 +158,7 @@ def test_login_registra_auditoria(client, seed):
 def test_login_falho_registra_auditoria(client, seed):
     from app.models.usuario import Usuario
 
-    usuario = seed["db"].query(Usuario).one()
+    usuario = seed["db"].query(Usuario).filter(Usuario.email == seed["usuario"].email).one()
     resp = client.post(
         "/auth/login", json={"email": usuario.email, "senha_hash": "senha-errada"}
     )

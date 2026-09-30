@@ -48,6 +48,7 @@ Base = declarative_base()
 # Importa todos os models para que fiquem registrados em Base.metadata antes
 # de create_all(). Precisa ficar depois de `Base = declarative_base()`.
 from app.models import *  # noqa: E402,F403
+from app.models.organizacao import Organizacao  # noqa: E402
 
 
 def get_db():
@@ -69,6 +70,8 @@ def garantir_indices():
         "CREATE INDEX IF NOT EXISTS idx_dado_sensivel_doc_id ON dado_sensivel(doc_id)",
         "CREATE INDEX IF NOT EXISTS idx_usuario_equipe_team_id ON usuario_equipe(team_id)",
         "CREATE INDEX IF NOT EXISTS idx_log_auditoria_user_id ON log_auditoria(user_id)",
+        "CREATE INDEX IF NOT EXISTS idx_equipe_organizacao_id ON equipe(organizacao_id)",
+        "CREATE INDEX IF NOT EXISTS idx_usuario_organizacao_id ON usuario(organizacao_id)",
     ]
     with engine.begin() as conn:
         for ddl in indices:
@@ -115,6 +118,118 @@ def garantir_schema_documentos():
                     "ADD COLUMN cpf_censurados INTEGER NOT NULL DEFAULT 0"
                 )
             )
+
+
+def _ddl_adicionar_organizacao(dialecto: str) -> dict[str, str]:
+    """DDL de `ALTER TABLE` por tabela, ajustado ao dialeto.
+
+    Postgres aceita `ADD COLUMN IF NOT EXISTS`, o que torna a migracao
+    segura para rodar em paralelo. SQLite (usado nos testes) nao aceita e
+    falha a sentenca; la o filtro de colunas ja garante que nao repetimos.
+    """
+    ddl = {
+        "usuario": "ALTER TABLE usuario ADD COLUMN IF NOT EXISTS organizacao_id INTEGER",
+        "equipe": "ALTER TABLE equipe ADD COLUMN IF NOT EXISTS organizacao_id INTEGER",
+    }
+    if dialecto == "sqlite":
+        return {tabela: sql.replace("IF NOT EXISTS ", "") for tabela, sql in ddl.items()}
+    return ddl
+
+
+def garantir_schema_organizacoes():
+    """Cria as colunas de tenant e alinha os dados ja existentes.
+
+    `criar_telas()` roda antes e cria a tabela `organizacao`. Aqui so
+    acrescentamos `organizacao_id` em `usuario` e `equipe`, que em bancos
+    existentes nao tem a coluna.
+
+    Os registros sem organizacao vao para uma unica organizacao legada. Criar
+    uma organizacao por equipe mudaria quem enxerga o que, e essa decisao e de
+    negocio; enquanto ela nao for tomada, o comportamento atual e preservado.
+    """
+    inspector = inspect(engine)
+    tabelas = set(inspector.get_table_names())
+
+    # `criar_telas()` normalmente ja criou a tabela no boot, mas criar aqui
+    # deixa a migracao autocontida e executavel isoladamente.
+    Organizacao.__table__.create(bind=engine, checkfirst=True)
+    tabelas.add("organizacao")
+
+    alteracoes = _ddl_adicionar_organizacao(engine.dialect.name)
+
+    pendentes = {}
+    for tabela, ddl in alteracoes.items():
+        if tabela not in tabelas:
+            continue
+        colunas = {coluna["name"] for coluna in inspector.get_columns(tabela)}
+        if "organizacao_id" in colunas:
+            continue
+        pendentes[tabela] = ddl
+
+    with engine.begin() as conn:
+        for ddl in pendentes.values():
+            conn.execute(text(ddl))
+
+    _preencher_organizacoes_pendentes()
+
+
+def _preencher_organizacoes_pendentes():
+    """Backfill das linhas sem organizacao, uma vez, em qualquer boot."""
+    # Import local: `app.core.tenancy` importa os models, que importam este
+    # modulo. Dentro da funcao o `app.database` ja esta carregado.
+    from app.core.tenancy import ORGANIZACAO_LEGADA_NOME
+    from app.models.equipe import Equipe
+    from app.models.organizacao import Organizacao
+    from app.models.usuario import Usuario
+
+    Session = sessionmaker(bind=engine)
+    db = Session()
+    try:
+        pendentes = (
+            db.query(Usuario).filter(Usuario.organizacao_id.is_(None)).count()
+            + db.query(Equipe).filter(Equipe.organizacao_id.is_(None)).count()
+        )
+        if pendentes == 0:
+            return
+
+        legada = (
+            db.query(Organizacao)
+            .filter(Organizacao.nome == ORGANIZACAO_LEGADA_NOME)
+            .order_by(Organizacao.organizacao_id)
+            .first()
+        )
+        if not legada:
+            legada = Organizacao(nome=ORGANIZACAO_LEGADA_NOME)
+            db.add(legada)
+            db.flush()
+
+        atualizadas = (
+            db.query(Usuario)
+            .filter(Usuario.organizacao_id.is_(None))
+            .update(
+                {Usuario.organizacao_id: legada.organizacao_id},
+                synchronize_session=False,
+            )
+        )
+        atualizadas += (
+            db.query(Equipe)
+            .filter(Equipe.organizacao_id.is_(None))
+            .update(
+                {Equipe.organizacao_id: legada.organizacao_id},
+                synchronize_session=False,
+            )
+        )
+        db.commit()
+        logger.info(
+            "Organizacao legada '%s' criada; %s registros vinculados.",
+            ORGANIZACAO_LEGADA_NOME,
+            atualizadas,
+        )
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@ from .dado_sensivel import DadoSensivel
 from .documentos import Documento
 from .equipe import Equipe
 from .log_auditoria import LogAuditoria
+from .organizacao import Organizacao
 from .usuario import Usuario
 from .usuario_equipe import UsuarioEquipe
 
@@ -14,6 +15,7 @@ __all__ = [
     "Documento",
     "Equipe",
     "LogAuditoria",
+    "Organizacao",
     "Usuario",
     "UsuarioEquipe",
 ]

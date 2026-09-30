@@ -3,6 +3,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core import tenancy
 from app.core.audit import (
     ACAO_CADASTRO,
     ACAO_LOGIN,
@@ -31,32 +32,41 @@ from app.schemas.usuario import UsuarioCreate, UsuarioLogin
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
 
-def cargo_efetivo(db: Session, user_id: int) -> dict | None:
-    """Cargo de maior nivel do usuario entre todas as equipes.
+def cargo_efetivo(db: Session, user_id: int, organizacao_id: int | None = None) -> dict | None:
+    """Cargo de maior nivel do usuario entre as equipes da organizacao.
 
     O papel viaja na resposta do login para o frontend montar o menu. Como um
     usuario pode estar em varias equipes com cargos diferentes, vale o maior
     nivel: esconder itens do menu e cosmético, a autorizacao real acontece em
     cada endpoint.
+
+    Quando `organizacao_id` vem informado, os vinculos de outras organizacoes
+    sao ignorados: o papel de um tenant nao pode conceder acesso em outro.
     """
-    linha = (
+    consulta = (
         db.query(Cargo.nome, Cargo.nivel)
         .join(UsuarioEquipe, UsuarioEquipe.cargo_id == Cargo.cargo_id)
         .filter(UsuarioEquipe.user_id == user_id)
-        .order_by(Cargo.nivel.desc())
-        .first()
     )
+    if organizacao_id is not None:
+        consulta = consulta.join(
+            Equipe, Equipe.team_id == UsuarioEquipe.team_id
+        ).filter(Equipe.organizacao_id == organizacao_id)
+
+    linha = consulta.order_by(Cargo.nivel.desc()).first()
     if not linha:
         return None
     return {"nome": linha.nome, "nivel": linha.nivel}
 
 
 def identidade(db: Session, usuario: Usuario) -> dict:
-    cargo = cargo_efetivo(db, usuario.user_id)
+    cargo = cargo_efetivo(db, usuario.user_id, usuario.organizacao_id)
     return {
         "user_id": usuario.user_id,
         "nome": usuario.nome,
         "email": usuario.email,
+        "organizacao_id": usuario.organizacao_id,
+        "organizacao_nome": usuario.organizacao.nome if usuario.organizacao else None,
         # Sem equipe o usuario ainda autenticou, mas nao ha papel para o menu.
         "cargo": cargo["nome"] if cargo else None,
         "nivel": cargo["nivel"] if cargo else 0,
@@ -115,10 +125,15 @@ async def cadastrar(
             detail="Email já cadastrado.",
         )
 
+    # Cada cadastro publico abre uma organizacao propria. Sem isso o usuario
+    # novo cairia na organizacao legada e enxergaria dados de outros clientes.
+    organizacao = tenancy.buscar_ou_criar(db, f"Organização de {usuario.nome}".strip())
+
     db_usuario = Usuario (
         nome=usuario.nome,
         email=usuario.email,
         senha_hash=hash_senha(usuario.senha_hash),
+        organizacao_id=organizacao.organizacao_id,
         criado_em=datetime.utcnow()
     )
 
@@ -129,6 +144,7 @@ async def cadastrar(
     # Criar equipe 'Minha equipe'
     db_equipe = Equipe(
         nome="Minha equipe",
+        organizacao_id=organizacao.organizacao_id,
         criado_em=datetime.utcnow()
     )
     db.add(db_equipe)
