@@ -1,11 +1,5 @@
-const userTrigger = document.getElementById('userTrigger');
-const userDropdown = document.getElementById('userDropdown');
-const userMenu = document.getElementById('userMenu');
-const logoutBtn = document.getElementById('logoutBtn');
 const userNameElement = document.getElementById('userName');
-const userIcon = document.querySelector('.user-icon');
-const menuToggle = document.getElementById('menuToggle');
-const sidebar = document.getElementById('sidebar');
+const userIcon = document.getElementById('userIcon');
 
 const teamNameHeader = document.getElementById('teamNameHeader');
 const teamSubtitle = document.getElementById('teamSubtitle');
@@ -20,9 +14,6 @@ const teamDocsCount = document.getElementById('teamDocsCount');
 
 const API_BASE = `${API_ROOT}/equipes`;
 const storedName = localStorage.getItem('userName') || 'Usuario';
-userNameElement.textContent = storedName;
-userIcon.textContent = storedName.charAt(0).toUpperCase();
-
 function escapeHtml(value) {
     return String(value)
         .replace(/&/g, '&amp;')
@@ -273,28 +264,5 @@ async function loadTeam() {
         renderTeam(null);
     }
 }
-
-userTrigger.addEventListener('click', () => {
-    const isOpen = userDropdown.classList.toggle('open');
-    userTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-});
-
-document.addEventListener('click', (event) => {
-    if (!userMenu.contains(event.target)) {
-        userDropdown.classList.remove('open');
-        userTrigger.setAttribute('aria-expanded', 'false');
-    }
-});
-
-logoutBtn.addEventListener('click', () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userId');
-    window.location.href = '../../../index.html';
-});
-
-menuToggle.addEventListener('click', () => {
-    sidebar.classList.toggle('open');
-});
 
 loadTeam();

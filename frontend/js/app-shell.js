@@ -88,6 +88,41 @@
         </aside>`;
     }
 
+    // Acoes do topo e subtitulo sao especificos de cada pagina. A pagina os
+    // declara antes de carregar este script:
+    //   <script>window.APP_SHELL = { acoes: [{id, texto}], subtitulo: {id, texto} };</script>
+    // Os ids sao preservados porque o JS da pagina ja registra handlers neles.
+    function configDaPagina() {
+        return window.APP_SHELL || {};
+    }
+
+    function acoesHtml() {
+        const acoes = configDaPagina().acoes;
+        if (!Array.isArray(acoes) || acoes.length === 0) {
+            return `<a href="${BASE_HTML}/documentos/censurar.html" class="cta-censor" id="btnCensurarDocumento">Censurar Documento</a>`;
+        }
+        return acoes
+            .map(
+                (acao) =>
+                    `<button type="button" class="cta-censor" id="${acao.id}">${acao.texto}</button>`
+            )
+            .join('\n            ');
+    }
+
+    function subtituloHtml() {
+        const subtitulo = configDaPagina().subtitulo;
+        if (!subtitulo) return '';
+        return `
+                <span class="crumb-sep">&middot;</span>
+                <span id="${subtitulo.id}">${subtitulo.texto}</span>`;
+    }
+
+    function crumbHtml(tituloPagina) {
+        const crumb = configDaPagina().crumb;
+        if (!crumb) return `<span class="crumb-current">${tituloPagina}</span>`;
+        return `<span class="crumb-current" id="${crumb.id}">${crumb.texto}</span>`;
+    }
+
     function topbarHtml(tituloPagina) {
         return `
         <header class="topbar">
@@ -95,10 +130,10 @@
             <nav class="crumb" aria-label="Breadcrumb">
                 <span>SafeMask</span>
                 <span class="crumb-sep">/</span>
-                <span class="crumb-current">${tituloPagina}</span>
+                ${crumbHtml(tituloPagina)}${subtituloHtml()}
             </nav>
 
-            <a href="${BASE_HTML}/documentos/censurar.html" class="cta-censor" id="btnCensurarDocumento">Censurar Documento</a>
+            ${acoesHtml()}
 
             <div class="user-menu" id="userMenu">
                 <button class="user-trigger" id="userTrigger" aria-haspopup="true" aria-expanded="false">

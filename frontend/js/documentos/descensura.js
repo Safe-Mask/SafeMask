@@ -1,11 +1,3 @@
-const userTrigger = document.getElementById('userTrigger');
-const userDropdown = document.getElementById('userDropdown');
-const userMenu = document.getElementById('userMenu');
-const logoutBtn = document.getElementById('logoutBtn');
-const userNameElement = document.getElementById('userName');
-const userIcon = document.querySelector('.user-icon');
-const menuToggle = document.getElementById('menuToggle');
-const sidebar = document.getElementById('sidebar');
 const backToDocumentsBtn = document.getElementById('backToDocumentsBtn');
 const docTitle = document.getElementById('docTitle');
 const docSubtitle = document.getElementById('docSubtitle');
@@ -27,9 +19,6 @@ const API_DOCUMENT = `${API_ROOT}/documentos/censurados`;
 const docId = Number(new URLSearchParams(window.location.search).get('doc_id'));
 
 const storedName = localStorage.getItem('userName') || 'Usuario';
-userNameElement.textContent = storedName;
-userIcon.textContent = storedName.charAt(0).toUpperCase();
-
 let previewObjectUrl = null;
 let podeDescensurar = false;
 let cargoNivelAtual = 0;
@@ -219,29 +208,6 @@ async function loadDocument() {
         resetPage('Não foi possível carregar o documento selecionado.');
     }
 }
-
-userTrigger.addEventListener('click', () => {
-    const isOpen = userDropdown.classList.toggle('open');
-    userTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-});
-
-document.addEventListener('click', (event) => {
-    if (!userMenu.contains(event.target)) {
-        userDropdown.classList.remove('open');
-        userTrigger.setAttribute('aria-expanded', 'false');
-    }
-});
-
-logoutBtn.addEventListener('click', () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userId');
-    window.location.href = '../../../index.html';
-});
-
-menuToggle.addEventListener('click', () => {
-    sidebar.classList.toggle('open');
-});
 
 backToDocumentsBtn.addEventListener('click', () => {
     window.location.href = 'censurados.html';

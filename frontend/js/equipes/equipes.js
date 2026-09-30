@@ -1,15 +1,8 @@
-const userTrigger = document.getElementById('userTrigger');
-const userDropdown = document.getElementById('userDropdown');
-const userMenu = document.getElementById('userMenu');
-const logoutBtn = document.getElementById('logoutBtn');
 const userNameElement = document.getElementById('userName');
-const userIcon = document.querySelector('.user-icon');
-const menuToggle = document.getElementById('menuToggle');
-const sidebar = document.getElementById('sidebar');
+const userIcon = document.getElementById('userIcon');
 const btnOpenCreateTeam = document.getElementById('btnOpenCreateTeam');
 const btnOpenCreateTeamInline = document.getElementById('btnOpenCreateTeamInline');
 const btnBackDashboard = document.getElementById('btnBackDashboard');
-const menuLinks = document.querySelectorAll('.menu-link');
 const API_BASE = `${API_ROOT}/equipes`;
 
 const metricTotalEquipes = document.getElementById('metricTotalEquipes');
@@ -37,9 +30,6 @@ const selectedMembersList = document.getElementById('selectedMembersList');
 const selectedMemberCount = document.getElementById('selectedMemberCount');
 
 const storedName = localStorage.getItem('userName') || 'Usuario';
-userNameElement.textContent = storedName;
-userIcon.textContent = storedName.charAt(0).toUpperCase();
-
 const state = {
     overview: null,
     suggestedMembers: [],
@@ -346,29 +336,6 @@ async function handleCreateTeam(event) {
     }
 }
 
-userTrigger.addEventListener('click', () => {
-    const isOpen = userDropdown.classList.toggle('open');
-    userTrigger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
-});
-
-document.addEventListener('click', (event) => {
-    if (!userMenu.contains(event.target)) {
-        userDropdown.classList.remove('open');
-        userTrigger.setAttribute('aria-expanded', 'false');
-    }
-});
-
-logoutBtn.addEventListener('click', () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('userId');
-    window.location.href = '../../../index.html';
-});
-
-menuToggle.addEventListener('click', () => {
-    sidebar.classList.toggle('open');
-});
-
 if (btnBackDashboard) {
     btnBackDashboard.addEventListener('click', () => {
         window.location.href = '../dashboard.html';
@@ -430,19 +397,6 @@ selectedMembersList.addEventListener('click', (event) => {
     }
 
     removeMember(Number(button.getAttribute('data-remove-member')));
-});
-
-menuLinks.forEach((link) => {
-    link.addEventListener('click', (event) => {
-        const href = link.getAttribute('href') || '';
-        if (!href || href === '#') {
-            event.preventDefault();
-        }
-
-        if (window.innerWidth <= 860) {
-            sidebar.classList.remove('open');
-        }
-    });
 });
 
 loadOverview();
