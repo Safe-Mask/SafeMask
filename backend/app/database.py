@@ -187,8 +187,13 @@ def garantir_schema_organizacoes():
         for ddl in pendentes.values():
             conn.execute(text(ddl))
 
-    _preencher_organizacoes_pendentes()
+    # As colunas novas vem antes do backfill: ele consulta `Usuario` pelo
+    # modelo, e o modelo ja seleciona `token_version`. Sem a coluna, o proprio
+    # backfill quebra com "no such column".
     _garantir_espaco_coordenadas(inspector, tabelas)
+    _garantir_token_version(inspector, tabelas)
+
+    _preencher_organizacoes_pendentes()
 
 
 def _garantir_espaco_coordenadas(inspector, tabelas: set):
@@ -200,6 +205,28 @@ def _garantir_espaco_coordenadas(inspector, tabelas: set):
         return
     with engine.begin() as conn:
         conn.execute(text(_ddl_adicionar_coluna_espaco(engine.dialect.name)))
+
+
+def _garantir_token_version(inspector, tabelas: set):
+    """Acrescenta `usuario.token_version` em bancos existentes.
+
+    Coluna NOT NULL DEFAULT 0: todo usuario ja existente vale versao 0, que e
+    exatamente o valor dos tokens de acesso ja emitidos. Sem o default o
+    `ALTER TABLE` quebraria com dado em tabela.
+    """
+    if "usuario" not in tabelas:
+        return
+    colunas = {c["name"] for c in inspector.get_columns("usuario")}
+    if "token_version" in colunas:
+        return
+    sql = (
+        "ALTER TABLE usuario ADD COLUMN IF NOT EXISTS "
+        "token_version INTEGER NOT NULL DEFAULT 0"
+    )
+    if engine.dialect.name == "sqlite":
+        sql = sql.replace("IF NOT EXISTS ", "")
+    with engine.begin() as conn:
+        conn.execute(text(sql))
 
 
 def _preencher_organizacoes_pendentes():

@@ -142,7 +142,7 @@ def _load_team_detail(db: Session, current_user: Usuario, team_id: int):
         .join(UsuarioEquipe, UsuarioEquipe.user_team_id == Documento.user_team_id)
         .join(Usuario, Usuario.user_id == UsuarioEquipe.user_id)
         .join(Cargo, Cargo.cargo_id == UsuarioEquipe.cargo_id)
-        .filter(UsuarioEquipe.team_id == team_id)
+        .filter(UsuarioEquipe.team_id == team_id, Documento.ativo.is_(True))
         .order_by(Documento.criado_em.desc(), Documento.doc_id.desc())
         .all()
     )
@@ -150,7 +150,7 @@ def _load_team_detail(db: Session, current_user: Usuario, team_id: int):
     documentos = (
         db.query(func.count(func.distinct(Documento.doc_id)))
         .join(UsuarioEquipe, UsuarioEquipe.user_team_id == Documento.user_team_id)
-        .filter(UsuarioEquipe.team_id == team_id)
+        .filter(UsuarioEquipe.team_id == team_id, Documento.ativo.is_(True))
         .scalar()
         or 0
     )

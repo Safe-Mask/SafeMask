@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 # Acoes usadas nas rotas. Mantidas curtas porque `acao` tem String(100).
 ACAO_LOGIN = "login"
 ACAO_LOGIN_FALHO = "login_falha"
+ACAO_LOGIN_BLOQUEADO = "login_bloqueado"
 ACAO_LOGOUT = "logout"
 ACAO_CADASTRO = "cadastro"
 ACAO_RESET_SENHA_SOLICITACAO = "reset_senha_solicitacao"

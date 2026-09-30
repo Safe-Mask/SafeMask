@@ -44,7 +44,36 @@ from app.models.usuario import Usuario  # noqa: E402
 from app.models.usuario_equipe import UsuarioEquipe  # noqa: E402
 
 CONTEUDO_PDF = b"%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n"
+
+# Senha dos usuarios semeados. Antes era um hash bcrypt literal cujo texto
+# original ninguem conhecia: o usuario existia mas nao dava para logar, e
+# nenhum teste de login cobria o caminho real de senha.
+SENHA_SEED = "SenhaForte123!"
 CONTEUDO_CENSURADO = b"%PDF-1.4\nconteudo-tarjado-pelo-scanner\n%%EOF\n"
+
+# E-mails enviados durante a suite, para o teste inspecionar.
+EMAILS_ENVIADOS: list[dict] = []
+
+
+@pytest.fixture(autouse=True)
+def sem_envio_de_email_real(monkeypatch):
+    """Impede a suite de chamar o SendGrid de verdade.
+
+    Sem isto, qualquer teste que dispare `/auth/recuperar-senha` para um e-mail
+    que existe faz uma chamada HTTPS para a internet: a suite fica lenta,
+    dependente de rede e sujeita ao limite de taxa da conta. E o 401 da API
+    vazava na saida do teste como se fosse falha nossa.
+    """
+    from app.routes import auth as auth_routes
+
+    def _fake(destinatario, nome, token):
+        EMAILS_ENVIADOS.append(
+            {"destinatario": destinatario, "nome": nome, "token": token}
+        )
+
+    monkeypatch.setattr(auth_routes, "enviar_email_recuperacao", _fake)
+    monkeypatch.setattr("app.core.email.enviar_email_recuperacao", _fake, raising=False)
+    yield
 
 
 @pytest.fixture
@@ -84,6 +113,19 @@ def client(db_session, monkeypatch, tmp_path):
     app.dependency_overrides.clear()
 
 
+def _senha_seed() -> str:
+    """Hash da senha semeada, calculado uma vez por sessao de teste."""
+    global _SENHA_HASH_CACHE
+    if _SENHA_HASH_CACHE is None:
+        from app.core.security import hash_senha
+
+        _SENHA_HASH_CACHE = hash_senha(SENHA_SEED)
+    return _SENHA_HASH_CACHE
+
+
+_SENHA_HASH_CACHE = None
+
+
 @pytest.fixture
 def seed(db_session):
     """Cargos, duas organizacoes, equipes e usuarios de cada uma.
@@ -115,13 +157,13 @@ def seed(db_session):
     usuario = Usuario(
         nome="Ana",
         email="ana@safemask.example.com",
-        senha_hash="$2b$12$vBdMepuNx2WXFohAlnalx.rRdH2/ccJHnpJ4CuIDz.P2FA9KUV53K",
+        senha_hash=_senha_seed(),
         organizacao_id=org_acme.organizacao_id,
     )
     usuario_globex = Usuario(
         nome="Bia",
         email="bia@safemask.example.com",
-        senha_hash="$2b$12$vBdMepuNx2WXFohAlnalx.rRdH2/ccJHnpJ4CuIDz.P2FA9KUV53K",
+        senha_hash=_senha_seed(),
         organizacao_id=org_globex.organizacao_id,
     )
     db_session.add_all([usuario, usuario_globex])

@@ -18,6 +18,10 @@ class Usuario(Base):
     nome = Column(String(120), nullable=False)
     email = Column(String(129), unique=True, nullable=False)
     senha_hash = Column(String(255), nullable=False)
+    # Sobe a cada troca de senha. O access token carrega o valor com que foi
+    # emitido; um token anterior deixa de servir quando a versao muda. E o que
+    # corta o acesso de quem roubou a senha antiga.
+    token_version = Column(Integer, nullable=False, default=0, server_default="0")
     criado_em = Column(TIMESTAMP, server_default=func.now())
 
     organizacao = relationship("Organizacao", back_populates="usuarios")

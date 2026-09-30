@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
-from app.core.security import ALGORITHM, SECRET_KEY
+from app.core.security import ALGORITHM, SECRET_KEY, TIPO_ACCESS
 from app.database import get_db
 from app.models.usuario import Usuario
 
@@ -25,11 +25,20 @@ def get_current_user(
         if email is None:
             raise credentials_exception
 
+        # Um token de recuperacao de senha tambem e um JWT valido. Sem esta
+        # checagem ele serviria para autenticar na API.
+        if payload.get("typ") != TIPO_ACCESS:
+            raise credentials_exception
+
     except JWTError as exc:
         raise credentials_exception from exc
 
     user = db.query(Usuario).filter(Usuario.email == email).first()
     if user is None:
+        raise credentials_exception
+
+    # Senha trocada invalida os tokens emitidos antes dela.
+    if payload.get("tv") != (user.token_version or 0):
         raise credentials_exception
 
     return user

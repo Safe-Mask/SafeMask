@@ -40,6 +40,26 @@ def _int_env(chave: str, padrao: int) -> int:
 
 CORS_ORIGINS: list[str] = _lista_env("FRONTEND_ORIGINS", _ORIGENS_PADRAO)
 
+
+def _ambiente_desenvolvimento() -> bool:
+    """True em dev/teste, onde localhost e um servidor local sao esperados."""
+    return os.getenv("ENVIRONMENT", "development").lower() in {
+        "development", "dev", "test", "testing", "local",
+    }
+
+
+if not _ambiente_desenvolvimento() and not os.getenv("FRONTEND_ORIGINS"):
+    # Nao quebra o boot: derrubar a aplicacao por falta de variavel de ambiente
+    # seria pior que o risco. Mas deixa o risco visivel no log, porque as
+    # origens de localhost em producao aceitam XHR com credencial de qualquer
+    # coisa rodando na maquina do usuario.
+    logger.warning(
+        "FRONTEND_ORIGINS nao definida; usando o padrao, que inclui "
+        "http://localhost:5500 e http://localhost:3000. Em producao isso "
+        "permite a qualquer aplicacao local ler a API com as credenciais do "
+        "usuario. Defina FRONTEND_ORIGENS com os dominios do frontend."
+    )
+
 # URL publica do frontend, usada nos emails de recuperacao de senha.
 FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://safe-mask.vercel.app").rstrip("/")
 

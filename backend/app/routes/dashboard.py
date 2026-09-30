@@ -55,7 +55,7 @@ def get_dashboard_overview(
         .join(UsuarioEquipe, UsuarioEquipe.user_team_id == Documento.user_team_id)
         .filter(
             UsuarioEquipe.team_id.in_(team_ids),
-            Documento.chave_criptografica.isnot(None)
+            Documento.status_processamento == "CONCLUIDO",
         )
         .scalar()
         or 0

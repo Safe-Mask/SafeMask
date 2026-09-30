@@ -1,21 +1,25 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.core import tenancy
 from app.core.audit import (
     ACAO_CADASTRO,
     ACAO_LOGIN,
+    ACAO_LOGIN_BLOQUEADO,
     ACAO_LOGIN_FALHO,
     ACAO_RESET_SENHA,
     ACAO_RESET_SENHA_SOLICITACAO,
+    ip_do_cliente,
     registrar,
 )
 from app.core.config import RESET_TOKEN_EXPIRE_MINUTES
 from app.core.current_user import get_current_user
 from app.core.email import enviar_email_recuperacao
 from app.core.security import (
+    TIPO_RESET,
     criar_token_jwt,
     criar_token_jwt_com_expiry,
     hash_senha,
@@ -24,12 +28,88 @@ from app.core.security import (
 from app.database import get_db
 from app.models.cargo import Cargo
 from app.models.equipe import Equipe
+from app.models.log_auditoria import LogAuditoria
 from app.models.usuario import Usuario
 from app.models.usuario_equipe import UsuarioEquipe
-from app.schemas.auth import RecuperarSenhaRequest
+from app.schemas.auth import RecuperarSenhaRequest, ResetSenhaRequest
 from app.schemas.usuario import UsuarioCreate, UsuarioLogin
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
+
+# Limite de tentativas de login. Sem isso, `/auth/login` unlimited + senha
+# fraca = credential stuffing. Contagem por e-mail E por IP: uma delas cobre
+# o ataque distribuido, a outra o alvo concentrado.
+# E-mail da conta que absorve tentativas de login sem cadastro,
+# porque `log_auditoria.user_id` nao aceita nulo.
+_EMAIL_SENTINEL = "__login_desconhecido__@safemask.invalid"
+
+MAX_TENTATIVAS_LOGIN = 5
+JANELA_TENTATIVAS_MINUTOS = 15
+
+# Hash descartavel de senha cualquiera. Faz o bcrypt rodar no caminho de
+# "usuario nao encontrado" para que o tempo de resposta nao diferencie os dois.
+_HASH_SENHA_QUALQUER = hash_senha("senha-que-nao-existe")
+
+
+def _registrar_login_falho(
+    db: Session, request: Request, user_id: int | None, email: str
+) -> None:
+    """Grava a tentativa falhada, inclusive para e-mail inexistente.
+
+    `log_auditoria.user_id` tem FK NOT NULL, então o e-mail desconhecido não
+    tem linha onde se apoiar. Para continuar contando tentativas por e-mail,
+    a tentativa orfa é gravada na conta sentinel `-1`, criada uma vez.
+    """
+    alvo = user_id
+    if alvo is None:
+        sentinel = db.query(Usuario).filter(Usuario.email == _EMAIL_SENTINEL).first()
+        if sentinel is None:
+            sentinel = Usuario(nome="__tentativa_desconhecida__", email=_EMAIL_SENTINEL,
+                               senha_hash=_HASH_SENHA_QUALQUER)
+            db.add(sentinel)
+            try:
+                db.commit()
+            except Exception:
+                db.rollback()
+                return
+        alvo = sentinel.user_id
+
+    registrar(db, request, alvo, ACAO_LOGIN_FALHO)
+
+
+def _excedeu_tentativas(db: Session, request: Request, email: str) -> bool:
+    """True se o par (e-mail, IP) estourou o limite dentro da janela.
+
+    Falhas anteriores a um login bem-sucedido nao contam. Sem isso, quem
+    digita a senha errada duas vezes, acerta na terceira e digita errado de
+    novo cinco vezes na mesma hora fica trancado fora da propria conta. O
+    `log_auditoria` continua append-only: o corte e por janela de tempo, nao
+    apagando registro.
+    """
+    desde = datetime.utcnow() - timedelta(minutes=JANELA_TENTATIVAS_MINUTOS)
+    ip = ip_do_cliente(request)
+
+    ultimo_sucesso = (
+        db.query(func.max(LogAuditoria.data_hora))
+        .join(Usuario, Usuario.user_id == LogAuditoria.user_id)
+        .filter(LogAuditoria.acao == ACAO_LOGIN, Usuario.email == email)
+        .scalar()
+    )
+    if ultimo_sucesso:
+        desde = max(desde, ultimo_sucesso)
+
+    falhas = (
+        db.query(func.count(LogAuditoria.log_id))
+        .join(Usuario, Usuario.user_id == LogAuditoria.user_id)
+        .filter(
+            LogAuditoria.acao == ACAO_LOGIN_FALHO,
+            LogAuditoria.data_hora >= desde,
+        )
+        .filter(or_(Usuario.email == email, LogAuditoria.ip_origem == ip))
+        .scalar()
+        or 0
+    )
+    return falhas > MAX_TENTATIVAS_LOGIN
 
 
 def cargo_efetivo(db: Session, user_id: int, organizacao_id: int | None = None) -> dict | None:
@@ -82,17 +162,37 @@ async def login(
 ):
     usuario = db.query(Usuario).filter(Usuario.email == credenciais.email).first()
 
-    if not usuario or not verificar_senha(credenciais.senha_hash, usuario.senha_hash):
-        if usuario:
-            registrar(db, request, usuario.user_id, ACAO_LOGIN_FALHO)
+    # Sem este, um e-mail inexistente responderia ~100ms mais rapido que um
+    # existente: o bcrypt so roda no segundo caso, e a diferenca de tempo
+    # enumera cadastros mesmo sem `/verificar-email`.
+    if usuario is None:
+        verificar_senha(credenciais.senha_hash, _HASH_SENHA_QUALQUER)
+        _registrar_login_falho(db, request, None, credenciais.email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email ou senha incorretos.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    if not verificar_senha(credenciais.senha_hash, usuario.senha_hash):
+        _registrar_login_falho(db, request, usuario.user_id, credenciais.email)
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Email ou senha incorretos.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    if _excedeu_tentativas(db, request, credenciais.email):
+        registrar(db, request, usuario.user_id, ACAO_LOGIN_BLOQUEADO)
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Muitas tentativas de login. Aguarde alguns minutos.",
+        )
+
     registrar(db, request, usuario.user_id, ACAO_LOGIN)
-    token = criar_token_jwt({"sub": usuario.email, "nome": usuario.nome})
+    token = criar_token_jwt(
+        {"sub": usuario.email, "nome": usuario.nome, "tv": usuario.token_version or 0}
+    )
 
     return {
         "access_token": token,
@@ -174,7 +274,7 @@ async def cadastrar(
     registrar(db, request, db_usuario.user_id, ACAO_CADASTRO)
 
     # Gerar token JWT para login automático
-    token = criar_token_jwt({"sub": db_usuario.email, "nome": db_usuario.nome})
+    token = criar_token_jwt({"sub": db_usuario.email, "nome": db_usuario.nome, "tv": 0})
 
     return {
         "mensagem": "Usuário criado com sucesso.",
@@ -185,13 +285,6 @@ async def cadastrar(
         # inferir nome pelo e-mail.
         "user": identidade(db, db_usuario),
     }
-
-# Rota para verificar se email já existe
-@router.get("/verificar-email/{email}")
-async def verificar_email(email: str, db: Session = Depends(get_db)):
-    usuario_existe = db.query(Usuario).filter(Usuario.email == email).first()
-    return {"existe": usuario_existe is not None}
-
 
 @router.post("/recuperar-senha")
 async def recuperar_senha(
@@ -233,12 +326,9 @@ async def recuperar_senha(
 
 
 @router.post('/reset-senha')
-async def reset_senha(request: Request, payload: dict, db: Session = Depends(get_db)):
-    token = payload.get('token')
-    nova_senha = payload.get('senha')
-
-    if not token or not nova_senha:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Token e nova senha são obrigatórios.')
+async def reset_senha(request: Request, payload: ResetSenhaRequest, db: Session = Depends(get_db)):
+    token = payload.token
+    nova_senha = payload.senha
 
     try:
         # Decodifica o token para obter o email
@@ -248,6 +338,16 @@ async def reset_senha(request: Request, payload: dict, db: Session = Depends(get
         from app.core.security import ALGORITHM, SECRET_KEY
 
         decoded = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+
+        # Um access token decodifica aqui igual. Sem o `typ`, o token de sessao
+        # da vitima — que anda no localStorage e vaza em qualquer XSS — viraria
+        # senha permanente.
+        if decoded.get("typ") != TIPO_RESET:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Token inválido.",
+            )
+
         email = decoded.get('sub')
         if not email:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Token inválido.')
@@ -258,6 +358,9 @@ async def reset_senha(request: Request, payload: dict, db: Session = Depends(get
 
         # Atualiza a senha
         usuario.senha_hash = hash_senha(nova_senha)
+        # Invalida todo access token emitido antes desta troca: sem isso quem
+        # roubou a senha antiga continua autenticado depois da troca.
+        usuario.token_version = (usuario.token_version or 0) + 1
         db.add(usuario)
         db.commit()
 

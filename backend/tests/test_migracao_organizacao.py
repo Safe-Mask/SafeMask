@@ -226,3 +226,65 @@ def test_tabela_organizacao_compila_para_postgres():
     assert "organizacao_id SERIAL NOT NULL" in ddl
     assert "PRIMARY KEY (organizacao_id)" in ddl
 
+
+
+# --- Colunas novas em banco legado -----------------------------------------
+
+
+def test_migracao_acrescenta_token_version(banco_legado):
+    """`usuario.token_version` precisa existir depois da migracao.
+
+    Sem a coluna, todo SELECT de `Usuario` quebrava e o backfill — que consulta
+    o modelo inteiro — caia junto. Por isso ela e criada antes do backfill.
+    """
+    garantir_schema_organizacoes()
+
+    colunas = {c["name"] for c in inspect(banco_legado).get_columns("usuario")}
+    assert "token_version" in colunas
+
+
+def test_token_version_existente_val_zero(banco_legado):
+    """Usuario de antes vale versao 0, que e a dos tokens ja emitidos."""
+    garantir_schema_organizacoes()
+
+    versoes = _sessao(banco_legado).execute(
+        text("SELECT DISTINCT token_version FROM usuario")
+    ).scalars().all()
+    assert versoes == [0]
+
+
+def test_token_version_nao_e_nulo(banco_legado):
+    """NOT NULL impede o NULL que faria todo token falhar no `get_current_user`."""
+    garantir_schema_organizacoes()
+
+    nulos = _sessao(banco_legado).execute(
+        text("SELECT COUNT(*) FROM usuario WHERE token_version IS NULL")
+    ).scalar()
+    assert nulos == 0
+
+
+def test_migracao_acrescenta_espaco_coordenadas(banco_legado):
+    garantir_schema_organizacoes()
+
+    colunas = {c["name"] for c in inspect(banco_legado).get_columns("dado_sensivel")}
+    assert "espaco_coordenadas" in colunas
+
+
+def test_espaco_coordenadas_existente_assume_pdf(banco_legado):
+    """Dado gravado antes da coluna nasceu em pontos do PDF."""
+    garantir_schema_organizacoes()
+    db = _sessao(banco_legado)
+    db.execute(
+        text("INSERT INTO documentos (doc_id, user_team_id, nivel_seguranca, cpf_censurados)"
+             " VALUES (1, 1, 1, 0)")
+    )
+    db.execute(
+        text("INSERT INTO dado_sensivel (dado_id, doc_id, tipo_entidade, pagina,"
+             " nivel_requerido) VALUES (1, 1, 'CPF', 0, 1)")
+    )
+    db.commit()
+
+    espacos = db.execute(
+        text("SELECT DISTINCT espaco_coordenadas FROM dado_sensivel")
+    ).scalars().all()
+    assert espacos == ["pdf"]

@@ -177,7 +177,10 @@ def normalizar_team_ids(teams: str) -> list[int]:
                 detail="Teams deve ser um array JSON de ids válidos.",
             ) from exc
 
-    return team_ids
+    # `teams=[1, 1]` criava dois Documentos apontando para o mesmo
+    # user_team_id e o mesmo arquivo. O upload nao sofria disso porque sua query
+    # usa `.in_()`; `/salvar-censurado` itera a lista e sofria.
+    return sorted(set(team_ids))
 
 def gerar_hash_arquivo(conteudo: bytes) -> str:
     """Gera hash SHA256 do arquivo."""
@@ -256,7 +259,12 @@ def buscar_documento_autorizado(db: Session, usuario: Usuario, doc_id: int) -> D
     Membro de outra equipe/organizacao recebe `None` (a rota transforma em
     404), nunca 403: responder "proibido" confirmaria que o documento existe.
     """
-    documento = db.query(Documento).filter(Documento.doc_id == doc_id).first()
+    documento = db.query(Documento).filter(
+        Documento.doc_id == doc_id,
+        # `ativo` era o soft-delete previsto e nenhuma rota o lia: um documento
+        # arquivado continuaria sendo servido e listado.
+        Documento.ativo.is_(True),
+    ).first()
     if not documento:
         return None
 
@@ -377,9 +385,12 @@ def obter_documento_censurado(
         "extensao": documento.extensao,
         "tamanho_bytes": documento.tamanho_bytes,
         "nivel_seguranca": documento.nivel_seguranca,
+        # `hash_documento` e `caminho_storage` ficam no servidor. O hash e a
+        # chave de glob que localiza os arquivos (documentos.py:458 e ss.), e o
+        # caminho entrega o layout do disco: quem tem documento teu nao tem por
+        # que saber onde ele mora. `chave_criptografica` segue exposta porque a
+        # tela a mostra, mas nenhum caminho do codigo criptografa com ela.
         "chave_criptografica": documento.chave_criptografica,
-        "hash_documento": documento.hash_documento,
-        "caminho_storage": documento.caminho_storage,
         "criado_em": documento.criado_em.isoformat() if documento.criado_em else None,
         "status_processamento": documento.status_processamento,
         "autor_nome": autor.nome if autor else None,
@@ -723,7 +734,8 @@ async def listar_documentos_equipe(
     # Listar documentos
     user_team_ids = [ue.user_team_id for ue in usuario_equipe_list]
     documentos = db.query(Documento).filter(
-        Documento.user_team_id.in_(user_team_ids)
+        Documento.user_team_id.in_(user_team_ids),
+        Documento.ativo.is_(True),
     ).all()
 
     registrar(db, request, usuario_atual.user_id, ACAO_LISTAR_DOCUMENTOS)

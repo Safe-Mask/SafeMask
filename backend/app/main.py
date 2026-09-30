@@ -5,6 +5,7 @@ from fastapi.middleware import Middleware
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.config import CORS_ORIGINS, descrever
+from app.core.http_headers import HeadersSegurancaMiddleware
 from app.database import (
     Base,
     SessionLocal,
@@ -20,6 +21,9 @@ from app.routes import auth, dashboard, documentos, equipes
 logger = logging.getLogger(__name__)
 
 middleware = [
+    # Headers primeiro: assim valem tambem para as respostas JSON e para os
+    # arquivos, sem depender de cada rota lembrar de aplica-los.
+    Middleware(HeadersSegurancaMiddleware),
     Middleware(
         CORSMiddleware,
         # Lista explicita: com allow_credentials=True, "*" faria o navegador
