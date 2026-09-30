@@ -3,11 +3,21 @@ import mimetypes
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.core.audit import (
+    ACAO_LISTAR_DOCUMENTOS,
+    ACAO_UPLOAD,
+    ACAO_UPLOAD_CENSURADO,
+    ACAO_VER_CENSURADO,
+    ACAO_VER_ORIGINAL,
+    ACAO_VER_PARCIAL,
+    registrar,
+)
 from app.core.current_user import get_current_user
+from app.core.uploads import ler_e_validar_upload
 from app.database import get_db
 from app.models.cargo import Cargo
 from app.models.dado_sensivel import DadoSensivel
@@ -38,6 +48,7 @@ def get_scanner():
 
 @router.post("/upload", status_code=status.HTTP_201_CREATED)
 async def upload_documento(
+    request: Request,
     file: UploadFile = File(...),
     titulo: str = Form(...),
     nivel_seguranca: int = Form(1),
@@ -45,12 +56,6 @@ async def upload_documento(
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
 ):
-    if not file.filename or not file.filename.lower().endswith('.pdf'):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Apenas arquivos PDF sao aceitos."
-        )
-
     team_ids = normalizar_team_ids(teams)
 
     if nivel_seguranca < 1 or nivel_seguranca > 4:
@@ -73,14 +78,8 @@ async def upload_documento(
             detail="Voce nao faz parte de nenhuma das equipes selecionadas."
         )
 
-    conteudo = await file.read()
-    if not conteudo:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Arquivo vazio."
-        )
-
-    extensao = Path(file.filename).suffix or ".pdf"
+    conteudo, caminho_nome = await ler_e_validar_upload(file, Path(file.filename or ""))
+    extensao = caminho_nome.suffix or ".pdf"
     hash_arquivo = hashlib.sha256(conteudo).hexdigest()
     nome_arquivo = f"{hash_arquivo}{extensao}"
     caminho_original = ORIGINAIS_DIR / nome_arquivo
@@ -127,6 +126,7 @@ async def upload_documento(
         duplicar_itens_sensiveis(db, resultado["doc_id"], docs_compartilhados)
 
         db.commit()
+        registrar(db, request, usuario_atual.user_id, ACAO_UPLOAD)
 
         return {
             "mensagem": "Documento processado e censurado com sucesso.",
@@ -290,6 +290,7 @@ NIVEL_MIN_DESCENSURA = 3
 
 @router.get("/censurados")
 def listar_documentos_censurados(
+    request: Request,
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
 ):
@@ -359,6 +360,7 @@ def listar_documentos_censurados(
 
 @router.get("/censurados/{doc_id}")
 def obter_documento_censurado(
+    request: Request,
     doc_id: int,
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
@@ -385,6 +387,8 @@ def obter_documento_censurado(
 
     cargo = cargo_usuario_no_documento(db, usuario_atual.user_id, documento)
 
+    registrar(db, request, usuario_atual.user_id, ACAO_VER_CENSURADO)
+
     return {
         "doc_id": documento.doc_id,
         "nome_original": documento.nome_original,
@@ -410,6 +414,7 @@ def obter_documento_censurado(
 
 @router.get("/censurados/{doc_id}/arquivo")
 def obter_arquivo_documento_censurado(
+    request: Request,
     doc_id: int,
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
@@ -432,6 +437,7 @@ def obter_arquivo_documento_censurado(
             detail="Arquivo físico não encontrado.",
         )
 
+    registrar(db, request, usuario_atual.user_id, ACAO_VER_CENSURADO)
     media_type, _ = mimetypes.guess_type(caminho.name)
     return FileResponse(
         path=str(caminho),
@@ -443,6 +449,7 @@ def obter_arquivo_documento_censurado(
 
 @router.get("/{doc_id}/original")
 def obter_documento_original(
+    request: Request,
     doc_id: int,
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
@@ -475,6 +482,7 @@ def obter_documento_original(
         )
 
     caminho = candidatos[0]
+    registrar(db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL)
     media_type, _ = mimetypes.guess_type(caminho.name)
     return FileResponse(
         path=str(caminho),
@@ -486,6 +494,7 @@ def obter_documento_original(
 
 @router.get("/{doc_id}/parcial")
 def obter_documento_parcial(
+    request: Request,
     doc_id: int,
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
@@ -519,6 +528,7 @@ def obter_documento_parcial(
                 detail="Arquivo original nao encontrado no armazenamento.",
             )
         caminho = candidatos[0]
+        registrar(db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL)
         media_type, _ = mimetypes.guess_type(caminho.name)
         return FileResponse(
             path=str(caminho),
@@ -555,6 +565,7 @@ def obter_documento_parcial(
     # sempre que o scan nao encontrou nada.
     if not itens_para_cobrir:
         caminho_censurado = caminho_armazenado(documento)
+        registrar(db, request, usuario_atual.user_id, ACAO_VER_PARCIAL)
         media_type, _ = mimetypes.guess_type(caminho_censurado.name)
         return FileResponse(
             path=str(caminho_censurado),
@@ -577,6 +588,7 @@ def obter_documento_parcial(
             detail="Falha ao gerar a descensura parcial.",
         ) from e
 
+    registrar(db, request, usuario_atual.user_id, ACAO_VER_PARCIAL)
     media_type, _ = mimetypes.guess_type(caminho_parcial.name)
     return FileResponse(
         path=str(caminho_parcial),
@@ -588,6 +600,7 @@ def obter_documento_parcial(
 
 @router.post("/salvar-censurado", status_code=status.HTTP_201_CREATED)
 async def salvar_documento_censurado(
+    request: Request,
     file: UploadFile = File(...),
     titulo: str = Form(...),
     nivel_seguranca: int = Form(...),
@@ -616,16 +629,12 @@ async def salvar_documento_censurado(
                 detail="Nível de segurança inválido (1-4)."
             )
 
-        # Ler arquivo
-        conteudo_arquivo = await file.read()
-        if not conteudo_arquivo:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Arquivo vazio."
-            )
+        # Ler e validar arquivo
+        conteudo_arquivo, caminho_nome = await ler_e_validar_upload(
+            file, Path(file.filename or "")
+        )
 
-        # Extrair extensão
-        extensao = Path(file.filename).suffix or ".bin"
+        extensao = caminho_nome.suffix or ".pdf"
 
         # Gerar hash do arquivo
         hash_arquivo = gerar_hash_arquivo(conteudo_arquivo)
@@ -634,15 +643,10 @@ async def salvar_documento_censurado(
         nome_arquivo = f"{hash_arquivo}{extensao}"
         caminho_arquivo = CENSURADOS_DIR / nome_arquivo
 
-        # Salvar arquivo
-        with open(caminho_arquivo, "wb") as f:
-            f.write(conteudo_arquivo)
-
-        # Salvar documento para cada equipe selecionada
-        documentos_criados = []
-
+        # Validar TODAS as equipes antes de gravar qualquer coisa em disco:
+        # caso contrario um 403 no meio do loop deixa arquivo orfao no storage.
+        vinculos = []
         for team_id in team_ids:
-            # Verificar se usuário faz parte da equipe
             usuario_equipe = db.query(UsuarioEquipe).filter(
                 UsuarioEquipe.user_id == usuario_atual.user_id,
                 UsuarioEquipe.team_id == team_id
@@ -653,10 +657,17 @@ async def salvar_documento_censurado(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=f"Você não faz parte da equipe {team_id}."
                 )
+            vinculos.append(usuario_equipe)
 
-            # Gerar chave criptográfica
-            chave_cripto = gerar_chave_criptografica(hash_arquivo, usuario_atual.user_id)
+        # Salvar arquivo
+        with open(caminho_arquivo, "wb") as f:
+            f.write(conteudo_arquivo)
 
+        # Salvar documento para cada equipe selecionada
+        documentos_criados = []
+        chave_cripto = gerar_chave_criptografica(hash_arquivo, usuario_atual.user_id)
+
+        for team_id, usuario_equipe in zip(team_ids, vinculos):
             # Criar registro de Documento
             novo_documento = Documento(
                 user_team_id=usuario_equipe.user_team_id,
@@ -679,6 +690,7 @@ async def salvar_documento_censurado(
 
         # Commit único para todas as mudanças
         db.commit()
+        registrar(db, request, usuario_atual.user_id, ACAO_UPLOAD_CENSURADO)
 
         return {
             "mensagem": "Documento censurado salvo com sucesso.",
@@ -698,6 +710,7 @@ async def salvar_documento_censurado(
 
 @router.get("/listar/{team_id}")
 async def listar_documentos_equipe(
+    request: Request,
     team_id: int,
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
@@ -723,6 +736,8 @@ async def listar_documentos_equipe(
     documentos = db.query(Documento).filter(
         Documento.user_team_id.in_(user_team_ids)
     ).all()
+
+    registrar(db, request, usuario_atual.user_id, ACAO_LISTAR_DOCUMENTOS)
 
     return {
         "total": len(documentos),

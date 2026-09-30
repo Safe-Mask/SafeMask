@@ -42,6 +42,9 @@ from app.models.equipe import Equipe  # noqa: E402
 from app.models.usuario import Usuario  # noqa: E402
 from app.models.usuario_equipe import UsuarioEquipe  # noqa: E402
 
+CONTEUDO_PDF = b"%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n"
+CONTEUDO_CENSURADO = b"%PDF-1.4\nconteudo-tarjado-pelo-scanner\n%%EOF\n"
+
 
 @pytest.fixture
 def db_session(tmp_path):
@@ -100,7 +103,7 @@ def seed(db_session):
     equipe_b = Equipe(nome="Equipe B", descricao="B")
     db_session.add_all([equipe_a, equipe_b])
 
-    usuario = Usuario(nome="Ana", email="ana@safemask.local", senha_hash="hash-de-teste")
+    usuario = Usuario(nome="Ana", email="ana@safemask.example.com", senha_hash="$2b$12$vBdMepuNx2WXFohAlnalx.rRdH2/ccJHnpJ4CuIDz.P2FA9KUV53K")
     db_session.add(usuario)
     db_session.flush()
 
@@ -159,3 +162,87 @@ def documento():
         return Documento(user_team_id=user_team_id, **defaults)
 
     return _criar
+
+
+class ScannerFalso:
+    """Substitui o DocumentScanner para nao depender de torch/pdfplumber.
+
+    Reproduz o contrato real: cria um `Documento`, cria `DadoSensivel` linked
+    a esse unico doc_id e grava o PDF tarjado em `dir_censurado`.
+    """
+
+    def __init__(self, itens_sensiveis, doc_id_atribuido=None):
+        self.itens_sensiveis = itens_sensiveis
+        self.doc_id_atribuido = doc_id_atribuido
+        self.chamadas = 0
+
+    def scan_and_save(self, file_path, db, user_team_id, nome_original,
+                      nivel_seguranca, dir_original, dir_censurado):
+        from pathlib import Path
+
+        self.chamadas += 1
+        import hashlib
+
+        conteudo = Path(file_path).read_bytes()
+        hash_documento = hashlib.sha256(conteudo).hexdigest()
+
+        doc = Documento(
+            user_team_id=user_team_id,
+            nome_original=nome_original,
+            extensao="pdf",
+            tamanho_bytes=len(conteudo),
+            nivel_seguranca=nivel_seguranca,
+            chave_criptografica="chave",
+            hash_documento=hash_documento,
+            caminho_storage=str(Path(dir_censurado) / f"{hash_documento}_tarjado.pdf"),
+            status_processamento="CONCLUIDO",
+            cpf_censurados=len(self.itens_sensiveis),
+        )
+        db.add(doc)
+        db.flush()
+
+        for nivel_requerido, pagina in self.itens_sensiveis:
+            db.add(
+                DadoSensivel(
+                    doc_id=doc.doc_id,
+                    tipo_entidade="CPF",
+                    conteudo_hash="hash",
+                    pagina=pagina,
+                    coordenadas=[10, 10, 100, 20],
+                    nivel_requerido=nivel_requerido,
+                )
+            )
+        db.flush()
+
+        Path(dir_censurado).mkdir(parents=True, exist_ok=True)
+        Path(doc.caminho_storage).write_bytes(CONTEUDO_CENSURADO)
+
+        return {
+            "doc_id": doc.doc_id,
+            "hash": hash_documento,
+            "total_sensiveis": len(self.itens_sensiveis),
+            "cpf_censurados": len(self.itens_sensiveis),
+            "status": "CONCLUIDO",
+        }
+
+    def gerar_pdf_parcial(self, file_path, itens_para_cobrir, dir_destino, nome_saida):
+        from pathlib import Path
+
+        Path(dir_destino).mkdir(parents=True, exist_ok=True)
+        destino = Path(dir_destino) / nome_saida
+        destino.write_bytes(b"%PDF-1.4\nparcial\n%%EOF\n")
+        return destino
+
+
+@pytest.fixture
+def scanner_registrado(monkeypatch):
+    """Instala um ScannerFalso e devolve a fabrica."""
+
+    def _instalar(itens_sensiveis):
+        from app.routes import documentos as documentos_routes
+
+        scanner = ScannerFalso(itens_sensiveis)
+        monkeypatch.setattr(documentos_routes, "get_scanner", lambda: scanner)
+        return scanner
+
+    return _instalar

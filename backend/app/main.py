@@ -1,7 +1,10 @@
+import logging
+
 from fastapi import FastAPI
 from fastapi.middleware import Middleware
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.config import CORS_ORIGINS, descrever
 from app.database import (
     Base,
     SessionLocal,
@@ -13,14 +16,17 @@ from app.database import (
 from app.models.cargo import Cargo
 from app.routes import auth, dashboard, documentos, equipes
 
+logger = logging.getLogger(__name__)
+
 middleware = [
     Middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        # Lista explicita: com allow_credentials=True, "*" faria o navegador
+        # descartar o header e a API responder sem Access-Control-Allow-Origin.
+        allow_origins=CORS_ORIGINS,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-        expose_headers=["*"]
+        allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type"],
     )
 ]
 
@@ -52,6 +58,8 @@ garantir_schema_equipes()
 garantir_schema_documentos()
 garantir_indices()
 seed_cargos()
+
+logger.info("Configuracao ativa: %s", descrever())
 
 app.include_router(auth.router)
 app.include_router(dashboard.router)

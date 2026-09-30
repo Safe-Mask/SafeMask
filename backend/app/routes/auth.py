@@ -1,8 +1,17 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
+from app.core.audit import (
+    ACAO_CADASTRO,
+    ACAO_LOGIN,
+    ACAO_LOGIN_FALHO,
+    ACAO_RESET_SENHA,
+    ACAO_RESET_SENHA_SOLICITACAO,
+    registrar,
+)
+from app.core.config import RESET_TOKEN_EXPIRE_MINUTES
 from app.core.email import enviar_email_recuperacao
 from app.core.security import (
     criar_token_jwt,
@@ -22,23 +31,34 @@ router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
 # Rota para verificar o login do usuário
 @router.post("/login", response_model=dict)
-async def login(credenciais: UsuarioLogin, db: Session = Depends(get_db)):
+async def login(
+    request: Request,
+    credenciais: UsuarioLogin,
+    db: Session = Depends(get_db),
+):
     usuario = db.query(Usuario).filter(Usuario.email == credenciais.email).first()
 
     if not usuario or not verificar_senha(credenciais.senha_hash, usuario.senha_hash):
+        if usuario:
+            registrar(db, request, usuario.user_id, ACAO_LOGIN_FALHO)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email ou senha incorretos.",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    registrar(db, request, usuario.user_id, ACAO_LOGIN)
     token = criar_token_jwt({"sub": usuario.email, "nome": usuario.nome})
 
     return {"access_token": token, "token_type": "bearer"}
 
 # Rota para cadastrar o usuário
 @router.post("/cadastro", status_code=status.HTTP_201_CREATED)
-async def cadastrar(usuario: UsuarioCreate, db: Session = Depends(get_db)):
+async def cadastrar(
+    request: Request,
+    usuario: UsuarioCreate,
+    db: Session = Depends(get_db),
+):
     if db.query(Usuario).filter(Usuario.email == usuario.email).first():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -83,6 +103,8 @@ async def cadastrar(usuario: UsuarioCreate, db: Session = Depends(get_db)):
     db.add(db_usuario_equipe)
     db.commit()
 
+    registrar(db, request, db_usuario.user_id, ACAO_CADASTRO)
+
     # Gerar token JWT para login automático
     token = criar_token_jwt({"sub": db_usuario.email, "nome": db_usuario.nome})
 
@@ -96,23 +118,34 @@ async def verificar_email(email: str, db: Session = Depends(get_db)):
 
 
 @router.post("/recuperar-senha")
-async def recuperar_senha(dados: RecuperarSenhaRequest, db: Session = Depends(get_db)):
+async def recuperar_senha(
+    request: Request,
+    dados: RecuperarSenhaRequest,
+    db: Session = Depends(get_db),
+):
+    """Envia as instrucoes de recuperacao.
+
+    A resposta e sempre a mesma, exista o email ou nao: responder 404 para um
+    cadastro desconhecido permitiria enumerar quem usa o sistema.
+    """
     usuario = db.query(Usuario).filter(Usuario.email == dados.email).first()
 
     if not usuario:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Email não encontrado.",
-        )
+        return {
+            "mensagem": "Se o email estiver cadastrado, as instruções de recuperação foram enviadas."
+        }
+
+    registrar(db, request, usuario.user_id, ACAO_RESET_SENHA_SOLICITACAO)
 
     try:
-        # Gera token de recuperação com expiry curto (30 minutos)
-        token = criar_token_jwt_com_expiry({"sub": usuario.email}, minutes=30)
+        token = criar_token_jwt_com_expiry(
+            {"sub": usuario.email}, minutes=RESET_TOKEN_EXPIRE_MINUTES
+        )
         enviar_email_recuperacao(usuario.email, usuario.nome, token)
     except ValueError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+            detail="Recuperação de senha indisponível no momento.",
         ) from exc
     except Exception as exc:
         raise HTTPException(
@@ -124,7 +157,7 @@ async def recuperar_senha(dados: RecuperarSenhaRequest, db: Session = Depends(ge
 
 
 @router.post('/reset-senha')
-async def reset_senha(payload: dict, db: Session = Depends(get_db)):
+async def reset_senha(request: Request, payload: dict, db: Session = Depends(get_db)):
     token = payload.get('token')
     nova_senha = payload.get('senha')
 
@@ -151,6 +184,8 @@ async def reset_senha(payload: dict, db: Session = Depends(get_db)):
         usuario.senha_hash = hash_senha(nova_senha)
         db.add(usuario)
         db.commit()
+
+        registrar(db, request, usuario.user_id, ACAO_RESET_SENHA)
 
         return {'mensagem': 'Senha atualizada com sucesso.'}
     except ExpiredSignatureError as exc:

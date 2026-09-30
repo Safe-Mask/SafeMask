@@ -4,6 +4,8 @@ import os
 import sib_api_v3_sdk
 from sib_api_v3_sdk.rest import ApiException
 
+from app.core.config import FRONTEND_URL
+
 logger = logging.getLogger(__name__)
 
 
@@ -12,7 +14,7 @@ def enviar_email_recuperacao(destinatario: str, nome: str, token: str) -> None:
     smtp_from = os.getenv("SMTP_FROM")
     smtp_from_name = os.getenv("SMTP_FROM_NAME", "SafeMask")
     support_email = os.getenv("SUPPORT_EMAIL") or smtp_from
-    frontend_url = 'http://safemask-frontend.vercel.app'  # URL do frontend para o link de recuperação
+    frontend_url = FRONTEND_URL
 
     if not api_key:
         raise ValueError("BREVO_API_KEY não configurado.")
