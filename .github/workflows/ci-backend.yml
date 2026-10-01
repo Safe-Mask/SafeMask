@@ -61,7 +61,7 @@ jobs:
         run: ruff check app scanner tests
 
       - name: Testes (pytest)
-        run: pytest -q
+        run: python -m pytest -q
 
       - name: Verificar que a app importa
         run: python -c "from app.main import app; print(app.title)"
