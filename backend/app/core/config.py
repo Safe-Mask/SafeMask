@@ -7,6 +7,7 @@ producao dependa de variavel explicita e nao de edicao de codigo.
 
 import logging
 import os
+from urllib.parse import urlsplit
 
 from dotenv import load_dotenv
 
@@ -25,9 +26,12 @@ _ORIGENS_PADRAO = (
 )
 
 
-def _lista_env(chave: str, padrao: str = "") -> list[str]:
-    bruto = os.getenv(chave, padrao)
+def _normalizar_origens(bruto: str) -> list[str]:
     return [item.strip().rstrip("/") for item in bruto.split(",") if item.strip()]
+
+
+def _lista_env(chave: str, padrao: str = "") -> list[str]:
+    return _normalizar_origens(os.getenv(chave, padrao))
 
 
 def _int_env(chave: str, padrao: int) -> int:
@@ -38,9 +42,6 @@ def _int_env(chave: str, padrao: int) -> int:
         return padrao
 
 
-CORS_ORIGINS: list[str] = _lista_env("FRONTEND_ORIGINS", _ORIGENS_PADRAO)
-
-
 def _ambiente_desenvolvimento() -> bool:
     """True em dev/teste, onde localhost e um servidor local sao esperados."""
     return os.getenv("ENVIRONMENT", "development").lower() in {
@@ -48,17 +49,48 @@ def _ambiente_desenvolvimento() -> bool:
     }
 
 
-if not _ambiente_desenvolvimento() and not os.getenv("FRONTEND_ORIGINS"):
-    # Nao quebra o boot: derrubar a aplicacao por falta de variavel de ambiente
-    # seria pior que o risco. Mas deixa o risco visivel no log, porque as
-    # origens de localhost em producao aceitam XHR com credencial de qualquer
-    # coisa rodando na maquina do usuario.
-    logger.warning(
-        "FRONTEND_ORIGINS nao definida; usando o padrao, que inclui "
-        "http://localhost:5500 e http://localhost:3000. Em producao isso "
-        "permite a qualquer aplicacao local ler a API com as credenciais do "
-        "usuario. Defina FRONTEND_ORIGENS com os dominios do frontend."
-    )
+def _origem_local(origem: str) -> bool:
+    host = urlsplit(origem).hostname or ""
+    return host in {"localhost", "127.0.0.1", "::1"}
+
+
+def _origens_cors() -> list[str]:
+    """Origens efetivas: padrao do projeto **unido** com FRONTEND_ORIGINS.
+
+    Antes a env var substituia o padrao. Em producao ela so trazia
+    safemask-frontend.vercel.app, safe-mask.vercel.app ficou de fora e o login
+    morreu no navegador com "Disallowed CORS origin" (curl passava porque nao
+    impoe CORS). Unir mantem os dominios do projeto sempre ativos e deixa a
+    env var como lugar para acrescentar origens novas.
+
+    Em producao (ENVIRONMENT fora de dev/teste) as origens de localhost sao
+    descartadas: la so as origens reais do frontend tem sentido.
+    """
+    vistas: dict[str, None] = {}
+    for origem in (
+        *_normalizar_origens(_ORIGENS_PADRAO),
+        *_lista_env("FRONTEND_ORIGINS"),
+    ):
+        vistas[origem] = None
+    todas = list(vistas)
+
+    if _ambiente_desenvolvimento():
+        return todas
+
+    reais = [origem for origem in todas if not _origem_local(origem)]
+    if not reais:
+        # Nao quebra o boot: derrubar a aplicacao por falta de variavel de
+        # ambiente seria pior que o risco. Mas deixa o risco visivel no log,
+        # porque localhost em producao aceita XHR de qualquer app local.
+        logger.error(
+            "Nenhuma origem de frontend em producao; mantendo o padrao "
+            "completo (inclui localhost). Defina FRONTEND_ORIGINS."
+        )
+        return todas
+    return reais
+
+
+CORS_ORIGINS: list[str] = _origens_cors()
 
 # URL publica do frontend, usada nos emails de recuperacao de senha.
 FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://safe-mask.vercel.app").rstrip("/")
