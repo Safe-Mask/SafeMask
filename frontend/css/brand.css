@@ -1,11 +1,46 @@
-@import url('tokens.css');
-
 /* ============================================================
    SafeMask Brand System
+   Identidade propria — cyber-dojo / noir japones + verde neon
    Camada compartilhada entre todas as telas internas.
    Carregar SEMPRE depois do dashboard.css.
    ============================================================ */
 
+:root {
+    /* cores de acento da marca */
+    --neon: #00e676;
+    --neon-soft: #3dffb0;
+    --neon-dim: rgba(0, 230, 118, 0.55);
+    --crimson: #ff3b5c;
+    --amber: #ffb020;
+
+    /* neuro: superficie com profundidade */
+    --ink-1: #04060b;
+    --ink-2: #070b14;
+    --ink-3: #0b111f;
+    --ink-4: #101a2c;
+    --hairline: rgba(0, 230, 118, 0.14);
+
+    /* tipo digital */
+    --font-display: "Orbitron", "Inter", sans-serif;
+    --font-body: "Inter", "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+
+    /* angulos + raios da marca (neo-cyber com cantos chanfrados) */
+    --radius-lg: 20px;
+    --radius-md: 14px;
+    --radius-sm: 10px;
+    --clip-panel: polygon(0 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%);
+    --clip-tag: polygon(10px 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+
+    /* ritmo de motion */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --dur-fast: 0.18s;
+    --dur-med: 0.34s;
+    --dur-slow: 0.6s;
+}
+
+/* ---------- base tipografica + rolagem ---------- */
 body {
     font-family: var(--font-body);
     -webkit-font-smoothing: antialiased;
@@ -14,13 +49,13 @@ body {
 
 h1, h2, h3, .menu-title, .brand h1, .topbar h2 {
     font-family: var(--font-display);
-    letter-spacing: -0.01em;
+    letter-spacing: 0.01em;
 }
 
 /* barra de rolagem customizada (identidade) */
 * {
     scrollbar-width: thin;
-    scrollbar-color: var(--texto-fraco) var(--papel-2);
+    scrollbar-color: rgba(0, 230, 118, 0.45) rgba(7, 11, 20, 0.6);
 }
 
 ::-webkit-scrollbar {
@@ -29,23 +64,18 @@ h1, h2, h3, .menu-title, .brand h1, .topbar h2 {
 }
 
 ::-webkit-scrollbar-track {
-    background: var(--papel-2);
-    border-left: 2px solid var(--texto);
+    background: rgba(7, 11, 20, 0.6);
 }
 
 ::-webkit-scrollbar-thumb {
-    background: var(--texto-fraco);
-    border-radius: var(--raio);
-    border: 2px solid var(--papel-2);
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: var(--verde-forte);
+    background: linear-gradient(180deg, rgba(0, 230, 118, 0.5), rgba(0, 230, 118, 0.25));
+    border-radius: 999px;
+    border: 2px solid rgba(7, 11, 20, 0.9);
 }
 
 ::selection {
-    background: var(--amarelo);
-    color: var(--tinta);
+    background: rgba(0, 230, 118, 0.32);
+    color: #eafff5;
 }
 
 /* ---------- conteiner principal ---------- */
@@ -67,16 +97,12 @@ h1, h2, h3, .menu-title, .brand h1, .topbar h2 {
 }
 
 .crumb .crumb-sep {
-    color: var(--texto);
-    font-weight: 800;
+    color: rgba(0, 230, 118, 0.5);
 }
 
 .crumb .crumb-current {
     color: var(--white);
-    font-weight: 800;
-    background: var(--amarelo);
-    border: 2px solid var(--tinta);
-    padding: 0 0.35rem;
+    font-weight: 600;
 }
 
 .topbar .crumb {
@@ -90,27 +116,26 @@ h1, h2, h3, .menu-title, .brand h1, .topbar h2 {
 /* kicker global — rotulo mono da marca */
 .panel-kicker {
     font-family: var(--font-mono);
-    font-size: 0.66rem;
-    letter-spacing: 0.18em;
+    font-size: 0.68rem;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: var(--tinta);
-    background: var(--amarelo);
-    border: 2px solid var(--tinta);
-    display: inline-block;
-    padding: 0.12rem 0.45rem;
-    margin-bottom: 0.4rem;
-    font-weight: 700;
+    color: var(--neon);
+    opacity: 0.9;
+    display: block;
+    margin-bottom: 0.28rem;
+    font-weight: 600;
 }
 
 /* ============================================================
    CABECALHO DA MARCA (por pagina)
+   Titulo grande + kicker mono + estado "ao vivo"
    ============================================================ */
 .brand-head {
     position: relative;
     display: grid;
     gap: 0.35rem;
     padding-bottom: 1rem;
-    border-bottom: var(--borda);
+    border-bottom: 1px solid var(--hairline);
     margin-bottom: 0.2rem;
 }
 
@@ -118,11 +143,11 @@ h1, h2, h3, .menu-title, .brand h1, .topbar h2 {
     content: "";
     position: absolute;
     left: 0;
-    bottom: -8px;
-    width: 96px;
-    height: 8px;
-    background: var(--verde);
-    border: 2px solid var(--tinta);
+    bottom: -1px;
+    width: 88px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--neon), transparent);
+    box-shadow: 0 0 10px var(--neon-dim);
 }
 
 .brand-kicker-row {
@@ -133,37 +158,34 @@ h1, h2, h3, .menu-title, .brand h1, .topbar h2 {
 
 .brand-kicker-row .kicker {
     font-family: var(--font-mono);
-    font-size: 0.7rem;
-    letter-spacing: 0.24em;
+    font-size: 0.72rem;
+    letter-spacing: 0.28em;
     text-transform: uppercase;
-    color: var(--tinta);
-    background: var(--verde);
-    border: 2px solid var(--tinta);
-    padding: 0.12rem 0.5rem;
-    font-weight: 700;
+    color: var(--neon);
+    opacity: 0.9;
 }
 
 .live-dot {
-    width: 12px;
-    height: 12px;
+    width: 8px;
+    height: 8px;
     border-radius: 50%;
-    background: var(--verde);
-    border: 2px solid var(--tinta);
-    box-shadow: 2px 2px 0 var(--tinta);
+    background: var(--neon);
+    box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.6);
     animation: livePulse 1.8s ease-in-out infinite;
 }
 
 @keyframes livePulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.18); }
+    0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.55); }
+    70% { box-shadow: 0 0 0 7px rgba(0, 230, 118, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0); }
 }
 
 .brand-head h2 {
-    font-size: 1.6rem;
+    font-size: 1.55rem;
     font-weight: 800;
     color: var(--white);
     line-height: 1.15;
-    text-transform: uppercase;
+    text-shadow: 0 0 26px rgba(0, 230, 118, 0.12);
 }
 
 .brand-head .subtitle {
@@ -174,18 +196,18 @@ h1, h2, h3, .menu-title, .brand h1, .topbar h2 {
 }
 
 /* ============================================================
-   PAINÉIS COM ASSINATURA
+   PAINÉIS COM ASSINATURA (cantos chanfrados + watermark kanji)
    ============================================================ */
 .panel-sig {
     position: relative;
-    border-radius: var(--raio);
-    border: var(--borda);
-    background: var(--surface);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--hairline);
+    background: linear-gradient(160deg, rgba(12, 18, 32, 0.92), rgba(7, 11, 20, 0.96));
     padding: 1.2rem 1.25rem;
     overflow: hidden;
     isolation: isolate;
-    box-shadow: var(--sombra);
-    transition: box-shadow var(--dur-med) var(--ease-out),
+    transition: border-color var(--dur-med) var(--ease-out),
+                box-shadow var(--dur-med) var(--ease-out),
                 transform var(--dur-med) var(--ease-out);
 }
 
@@ -197,7 +219,7 @@ h1, h2, h3, .menu-title, .brand h1, .topbar h2 {
     font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif;
     font-size: 4.6rem;
     font-weight: 700;
-    color: rgba(233, 231, 224, 0.06);
+    color: rgba(0, 230, 118, 0.05);
     line-height: 1;
     z-index: -1;
     user-select: none;
@@ -208,7 +230,8 @@ h1, h2, h3, .menu-title, .brand h1, .topbar h2 {
     content: "";
     position: absolute;
     inset: 0;
-    background: var(--amarelo);
+    border-radius: inherit;
+    background: linear-gradient(120deg, rgba(0, 230, 118, 0.05), transparent 42%);
     opacity: 0;
     transition: opacity var(--dur-slow) var(--ease-out);
     z-index: -1;
@@ -216,33 +239,33 @@ h1, h2, h3, .menu-title, .brand h1, .topbar h2 {
 }
 
 .panel-sig:hover {
-    transform: translate(-3px, -3px);
-    box-shadow: var(--sombra-lg);
+    border-color: rgba(0, 230, 118, 0.4);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45), inset 0 0 30px rgba(0, 230, 118, 0.04);
 }
 
 .panel-sig:hover::after {
-    opacity: 0.25;
+    opacity: 1;
 }
 
 .panel-sig .panel-header h3 {
     color: var(--white);
-    font-size: 1rem;
-    text-transform: uppercase;
+    font-size: 1.02rem;
 }
 
 .panel-sig .panel-kicker {
     font-family: var(--font-mono);
-    letter-spacing: 0.18em;
+    letter-spacing: 0.2em;
     text-transform: uppercase;
-    font-size: 0.66rem;
-    background: var(--verde);
-    color: var(--tinta);
-    border: 2px solid var(--tinta);
+    font-size: 0.68rem;
+    color: var(--neon);
     margin-bottom: 0.3rem;
+    opacity: 0.9;
 }
 
 /* ============================================================
    NOTAS DE REVELACAO (scroll reveal com cascade)
+   Só oculta quando o <html> tem a classe .js (adicionada por
+   brand.js), evitando conteudo invisivel se o JS nao rodar.
    ============================================================ */
 html.js .reveal {
     opacity: 0;
@@ -266,12 +289,13 @@ html.js .reveal.in {
 }
 
 /* ============================================================
-   METRICAS DA MARCA (numeros contando + destaque no hover)
+   METRICAS DA MARCA (numeros contando + brilho no hover)
    ============================================================ */
 .metric-card {
     position: relative;
     overflow: hidden;
-    transition: transform var(--dur-med) var(--ease-spring),
+    transition: border-color var(--dur-med) var(--ease-out),
+                transform var(--dur-med) var(--ease-spring),
                 box-shadow var(--dur-med) var(--ease-out);
 }
 
@@ -282,15 +306,15 @@ html.js .reveal.in {
     left: -120%;
     width: 60%;
     height: 100%;
-    background: var(--amarelo);
-    opacity: 0.55;
+    background: linear-gradient(105deg, transparent, rgba(0, 230, 118, 0.12), transparent);
     transition: left 0.6s var(--ease-out);
     pointer-events: none;
 }
 
 .metric-card:hover {
-    transform: translate(-3px, -3px);
-    box-shadow: var(--sombra-lg);
+    transform: translateY(-4px);
+    border-color: rgba(0, 230, 118, 0.4);
+    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.5), 0 0 22px rgba(0, 230, 118, 0.12);
 }
 
 .metric-card:hover::after {
@@ -301,22 +325,20 @@ html.js .reveal.in {
     font-family: var(--font-display);
     font-size: 1.9rem;
     font-weight: 800;
-    color: var(--texto);
-    background: none;
-    -webkit-background-clip: border-box;
-    background-clip: border-box;
-    -webkit-text-fill-color: currentColor;
+    background: linear-gradient(180deg, #eafff5, var(--neon-soft));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
 
 /* ============================================================
-   BOTOES COM ASSINATURA
+   BOTOES COM ASSINATURA (shimmer + glow + lift)
    ============================================================ */
 .cta-censor {
     position: relative;
     overflow: hidden;
     font-family: var(--font-display);
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
+    letter-spacing: 0.04em;
     transition: transform var(--dur-fast) var(--ease-spring),
                 box-shadow var(--dur-med) var(--ease-out);
 }
@@ -328,7 +350,7 @@ html.js .reveal.in {
     left: -130%;
     width: 45%;
     height: 100%;
-    background: rgba(255, 255, 255, 0.5);
+    background: linear-gradient(105deg, transparent, rgba(255, 255, 255, 0.55), transparent);
     animation: btnShimmer 3.4s ease-in-out infinite;
     pointer-events: none;
 }
@@ -340,33 +362,22 @@ html.js .reveal.in {
 }
 
 .cta-censor:hover {
-    transform: translate(3px, 3px);
-    box-shadow: var(--sombra-sm);
+    transform: translateY(-2px);
+    box-shadow: 0 14px 28px rgba(0, 230, 118, 0.34);
 }
 
 .cta-censor:active {
-    transform: translate(6px, 6px);
-    box-shadow: 0 0 0 var(--tinta);
+    transform: translateY(0) scale(0.98);
 }
 
 .ghost-button {
-    border: var(--borda-fina);
-    background: var(--surface);
-    color: var(--texto);
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    border-radius: var(--raio);
-    box-shadow: var(--sombra-sm);
     transition: transform var(--dur-fast) var(--ease-out),
                 background var(--dur-fast) var(--ease-out),
-                box-shadow var(--dur-fast) var(--ease-out);
+                border-color var(--dur-fast) var(--ease-out);
 }
 
 .ghost-button:hover {
-    background: var(--amarelo);
-    transform: translate(2px, 2px);
-    box-shadow: 2px 2px 0 var(--tinta);
+    transform: translateY(-1px);
 }
 
 /* ============================================================
@@ -385,9 +396,11 @@ html.js .reveal.in {
     position: absolute;
     left: 0.35rem;
     top: 50%;
-    width: 6px;
-    height: 6px;
-    background: var(--verde);
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--neon);
+    box-shadow: 0 0 10px var(--neon);
     opacity: 0;
     transform: translateY(-50%) scale(0);
     transition: opacity var(--dur-med) var(--ease-out), transform var(--dur-med) var(--ease-spring);
@@ -403,8 +416,7 @@ html.js .reveal.in {
 }
 
 .menu-link.active {
-    color: var(--texto);
-    font-weight: 800;
+    color: var(--neon);
 }
 
 /* ============================================================
@@ -428,30 +440,27 @@ html.js .reveal.in {
 }
 
 /* ============================================================
-   LOADING SCREEN
+   LOADING SCREEN — versao noir japones
    ============================================================ */
 .loading-screen {
-    background-color: var(--bg);
-    background-image: url('../images/bg/noir-japanese.svg');
-    background-size: 900px 900px;
-    background-attachment: fixed;
+    background:
+        radial-gradient(circle at 50% 40%, rgba(0, 230, 118, 0.08), transparent 48%),
+        url('../images/bg/noir-japanese.svg') center/900px 900px fixed,
+        var(--ink-1);
 }
 
 .loading-text {
-    color: var(--tinta);
-    background: var(--amarelo);
-    border: var(--borda);
-    box-shadow: var(--sombra);
+    color: var(--neon);
     font-family: var(--font-display);
-    letter-spacing: 0.05em;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
     font-size: 1rem;
 }
 
 .puzzle-grid {
-    border: 4px solid var(--texto);
-    background: var(--surface);
-    box-shadow: var(--sombra-lg);
+    border-color: var(--neon);
+    background: rgba(0, 230, 118, 0.05);
+    box-shadow: 0 8px 34px rgba(0, 230, 118, 0.22);
 }
 
 /* ============================================================

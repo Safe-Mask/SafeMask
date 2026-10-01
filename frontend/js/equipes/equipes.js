@@ -67,7 +67,6 @@ function setCounted(element, value) {
     const numeric = Number(value) || 0;
     element.setAttribute('data-count', String(numeric));
     element.textContent = String(numeric);
-    element.dispatchEvent(new Event('count:set'));
 }
 
 function renderOverview(overview) {
