@@ -245,7 +245,7 @@ async function loadOverview() {
         teamList.innerHTML = `
             <li class="empty-state">
                 <strong>Erro ao carregar dados</strong>
-                <span>verifique se o backend esta ativo em https://safemask-3.onrender.com</span>
+                <span>verifique se o backend esta ativo em ${API_ROOT}</span>
             </li>
         `;
     }

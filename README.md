@@ -28,8 +28,8 @@ Detecte e censure automaticamente informações confidenciais em documentos, gar
 | Serviço | URL | Status |
 |---------|-----|--------|
 | 🌐 **Frontend (Vercel)** | [https://safe-mask.vercel.app](https://safe-mask.vercel.app) | ✅ Online |
-| 🔙 **Backend (Render)** | [https://safemask-3.onrender.com](https://safemask-3.onrender.com) | ✅ Online |
-| 🗄️ **API Docs** | [https://safemask-3.onrender.com/docs](https://safemask-3.onrender.com/docs) | ✅ Online |
+| 🔙 **Backend (Render)** | [https://safemask-backend.onrender.com](https://safemask-backend.onrender.com) | ✅ Online |
+| 🗄️ **API Docs** | [https://safemask-backend.onrender.com/docs](https://safemask-backend.onrender.com/docs) | ✅ Online |
 | 💾 **Database (Neon)** | PostgreSQL Serverless | ✅ Conectado |
 
 ---
@@ -455,7 +455,7 @@ for u in usuarios:
    ```
 
 4. **Deploy**
-   - Backend em: `https://safemask-3.onrender.com`
+   - Backend em: `https://safemask-backend.onrender.com`
 
 ### Conectar Frontend ao Backend
 
@@ -466,7 +466,7 @@ Após deploy, atualize `frontend/js/` com a URL do backend:
 const API_URL = "http://localhost:8000";
 
 // Produção (Render)
-const API_URL = "https://safemask-3.onrender.com";
+const API_URL = "https://safemask-backend.onrender.com";
 ```
 
 Ou usar variável de ambiente:

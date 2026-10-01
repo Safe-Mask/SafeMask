@@ -224,7 +224,7 @@ async function loadDashboardData() {
             <li>
                 <div>
                     <strong>Erro ao carregar dados</strong>
-                    <p>verifique se o backend esta ativo em https://safemask-3.onrender.com</p>
+                    <p>verifique se o backend esta ativo em ${API_ROOT}</p>
                 </div>
                 <span class="status alert">Erro</span>
             </li>
