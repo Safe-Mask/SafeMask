@@ -1,3 +1,5 @@
+@import url('../tokens.css');
+
 .panel-subtitle {
     color: var(--text-muted);
     font-size: 0.9rem;
@@ -6,8 +8,8 @@
 
 .team-hero {
     margin-bottom: 1rem;
-    border-left: 4px solid var(--primary);
-    background: linear-gradient(120deg, rgba(0, 230, 118, 0.06), rgba(15, 23, 38, 0.96));
+    border-left: 8px solid var(--verde);
+    background: var(--surface);
 }
 
 .team-detail-panel,
@@ -22,9 +24,9 @@
 }
 
 .detail-summary > div {
-    background: rgba(15, 23, 38, 0.8);
-    border: 1px solid var(--line);
-    border-radius: 12px;
+    background: var(--surface-2);
+    border: 3px solid var(--tinta);
+    border-radius: var(--raio);
     padding: 0.85rem;
 }
 
@@ -68,16 +70,17 @@
 .ghost-button,
 .cta-censor {
     border: none;
-    border-radius: 999px;
+    border-radius: var(--raio);
     padding: 0.85rem 1.2rem;
     font-weight: 700;
     cursor: pointer;
 }
 
 .panel-action-button {
-    background: rgba(0, 230, 118, 0.1);
-    color: var(--primary);
-    border: 1px solid var(--line);
+    background: var(--verde);
+    color: var(--tinta);
+    border: var(--borda-fina);
+    box-shadow: var(--sombra-sm);
 }
 
 .add-team-hint {
@@ -93,9 +96,9 @@
 
 .hero-summary > div,
 .info-stack > div {
-    background: rgba(15, 23, 38, 0.8);
-    border: 1px solid var(--line);
-    border-radius: 12px;
+    background: var(--surface-2);
+    border: 3px solid var(--tinta);
+    border-radius: var(--raio);
     padding: 0.85rem;
 }
 
@@ -118,10 +121,10 @@
 }
 
 .team-card {
-    border: 1px solid var(--line);
-    border-radius: 14px;
-    background: linear-gradient(160deg, var(--surface), var(--surface-2));
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    border: 3px solid var(--tinta);
+    border-radius: var(--raio);
+    background: var(--surface);
+    box-shadow: var(--sombra);
     overflow: hidden;
 }
 
@@ -136,7 +139,7 @@
 }
 
 .team-card.active {
-    border-color: var(--primary);
+    border-color: var(--tinta);
     background: rgba(0, 230, 118, 0.08);
 }
 
@@ -171,7 +174,7 @@
 .pill {
     display: inline-flex;
     align-items: center;
-    border-radius: 999px;
+    border-radius: var(--raio);
     padding: 0.22rem 0.6rem;
     font-size: 0.74rem;
     font-weight: 700;
@@ -179,20 +182,22 @@
 }
 
 .pill.ok {
-    color: #051d14;
-    background: rgba(61, 255, 176, 0.9);
+    border: 2px solid var(--tinta);
+    background: var(--verde);
+    color: var(--tinta);
 }
 
 .pill.wait {
-    color: var(--text-muted);
-    background: rgba(138, 163, 184, 0.18);
+    border: 2px solid var(--tinta);
+    background: var(--papel-3);
+    color: var(--texto-fraco);
 }
 
 .member-list li {
     display: flex;
     justify-content: space-between;
     gap: 1rem;
-    border-bottom: 1px solid rgba(0, 230, 118, 0.08);
+    border-bottom: 2px solid rgba(17, 17, 17, 0.18);
     padding: 0.7rem 0;
 }
 
@@ -219,23 +224,23 @@
 }
 
 .team-doc-item {
-    border: 1px solid var(--line);
-    border-radius: 16px;
+    border: 3px solid var(--tinta);
+    border-radius: var(--raio);
     padding: 0.95rem;
     display: grid;
     gap: 0.75rem;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
-    background: linear-gradient(160deg, var(--surface), var(--surface-2));
+    box-shadow: var(--sombra);
+    background: var(--surface);
 }
 
 .team-doc-item.allowed {
-    background: rgba(0, 230, 118, 0.08);
-    border-color: rgba(0, 230, 118, 0.3);
+    background: var(--verde);
+    border-color: var(--tinta);
 }
 
 .team-doc-item.denied {
     background: rgba(255, 59, 92, 0.08);
-    border-color: rgba(255, 59, 92, 0.3);
+    border-color: var(--vermelho);
 }
 
 .team-doc-top {
@@ -273,26 +278,27 @@
 
 .team-doc-action {
     border: none;
-    border-radius: 999px;
+    border-radius: var(--raio);
     padding: 0.72rem 1rem;
     font-weight: 700;
     text-decoration: none;
     cursor: pointer;
-    background: linear-gradient(90deg, var(--primary), var(--primary-strong));
-    color: #04120a;
+    background: var(--primary);
+    color: var(--tinta);
     white-space: nowrap;
 }
 
 .team-doc-action.disabled {
-    background: #aa2e25;
-    color: #fff;
+    background: var(--vermelho);
+    color: var(--tinta);
     cursor: not-allowed;
     opacity: 0.9;
 }
 
 .pill.alert {
-    color: #ff6b88;
-    background: rgba(255, 59, 92, 0.15);
+    border: 2px solid var(--tinta);
+    background: var(--amarelo);
+    color: var(--tinta);
 }
 
 .info-stack {
@@ -308,9 +314,9 @@
 }
 
 .empty-state {
-    border: 1px dashed rgba(0, 230, 118, 0.25);
-    border-radius: 14px;
-    background: rgba(15, 23, 38, 0.6);
+    border: 3px dashed var(--tinta);
+    border-radius: var(--raio);
+    background: var(--surface);
     padding: 1rem;
 }
 
@@ -349,10 +355,10 @@
     width: min(1100px, 100%);
     max-height: 90vh;
     overflow: auto;
-    background: linear-gradient(160deg, var(--surface), var(--surface-2));
-    border: 1px solid var(--line);
-    border-radius: 22px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+    background: var(--surface);
+    border: 3px solid var(--tinta);
+    border-radius: var(--raio);
+    box-shadow: var(--sombra);
     padding: 1.1rem;
 }
 
@@ -375,7 +381,7 @@
 }
 
 .icon-button {
-    border: 1px solid var(--line);
+    border: 3px solid var(--tinta);
     background: var(--surface-2);
     color: var(--text);
     width: 38px;
@@ -410,8 +416,8 @@
 .field input,
 .field textarea {
     width: 100%;
-    border: 1px solid var(--gray);
-    border-radius: 12px;
+    border: 3px solid var(--tinta);
+    border-radius: var(--raio);
     padding: 0.8rem 0.95rem;
     font: inherit;
     background: var(--surface);
@@ -419,14 +425,14 @@
 }
 
 .field input::placeholder {
-    color: #5b7289;
+    color: var(--texto-fraco);
 }
 
 .field input:focus,
 .field textarea:focus {
     outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(0, 230, 118, 0.12), 0 0 16px rgba(0, 230, 118, 0.15);
+    border-color: var(--tinta);
+    box-shadow: none;
 }
 
 .field-full {
@@ -441,10 +447,10 @@
 
 .candidate-card,
 .selected-card {
-    border: 1px solid var(--line);
-    border-radius: 16px;
+    border: 3px solid var(--tinta);
+    border-radius: var(--raio);
     padding: 1rem;
-    background: rgba(15, 23, 38, 0.8);
+    background: var(--surface-2);
 }
 
 .field-search {
@@ -462,14 +468,14 @@
     justify-content: space-between;
     gap: 1rem;
     align-items: center;
-    border: 1px solid var(--line);
-    border-radius: 14px;
+    border: 3px solid var(--tinta);
+    border-radius: var(--raio);
     padding: 0.8rem;
-    background: linear-gradient(160deg, var(--surface), var(--surface-2));
+    background: var(--surface);
 }
 
 .candidate-item.selected {
-    border-color: var(--primary);
+    border-color: var(--tinta);
     background: rgba(0, 230, 118, 0.08);
 }
 
@@ -486,10 +492,10 @@
 }
 
 .candidate-action {
-    border: 1px solid var(--line);
+    border: 3px solid var(--tinta);
     background: rgba(0, 230, 118, 0.1);
-    color: var(--primary);
-    border-radius: 999px;
+    color: var(--tinta);
+    border-radius: var(--raio);
     padding: 0.6rem 0.95rem;
     font-weight: 700;
     cursor: pointer;
@@ -507,22 +513,22 @@
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    border-radius: 999px;
+    border-radius: var(--raio);
     padding: 0.45rem 0.75rem;
     font-size: 0.82rem;
     font-weight: 700;
 }
 
 .selected-chip {
-    border: 1px solid var(--line);
+    border: 3px solid var(--tinta);
     background: rgba(0, 230, 118, 0.1);
     color: var(--white);
     cursor: pointer;
 }
 
 .empty-chip {
-    border: 1px dashed rgba(0, 230, 118, 0.25);
-    background: rgba(15, 23, 38, 0.6);
+    border: 3px dashed var(--tinta);
+    background: var(--surface);
     color: var(--text-muted);
 }
 
@@ -535,13 +541,13 @@
 .ghost-button {
     background: var(--surface-2);
     color: var(--text);
-    border: 1px solid var(--line);
+    border: 3px solid var(--tinta);
 }
 
 .cta-censor {
-    background: linear-gradient(90deg, var(--primary), var(--primary-strong));
-    color: #04120a;
-    box-shadow: 0 8px 16px rgba(0, 230, 118, 0.22);
+    background: var(--primary);
+    color: var(--tinta);
+    box-shadow: var(--sombra-sm);
 }
 
 .team-card-link {
@@ -586,16 +592,16 @@
 
 .bar-track {
     height: 11px;
-    background: #1a2233;
-    border-radius: 999px;
+    background: var(--papel-3);
+    border-radius: var(--raio);
     overflow: hidden;
 }
 
 .bar {
     height: 100%;
-    border-radius: 999px;
-    background: linear-gradient(90deg, var(--primary), #3dffb0);
-    box-shadow: 0 0 12px rgba(0, 230, 118, 0.4);
+    border-radius: var(--raio);
+    background: var(--verde);
+    box-shadow: var(--sombra-sm);
 }
 
 @media (max-width: 1080px) {

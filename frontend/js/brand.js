@@ -38,17 +38,38 @@
 
     /* ---------- 2) Contadores animados (count up) ---------- */
     function animateCount(el, target, suffix) {
+        /* token cancela animacoes antigas do mesmo elemento (evita que uma
+           contagem antiga, iniciada com alvo 0, sobrescreva o valor novo) */
+        el.__countToken = (el.__countToken || 0) + 1;
+        var token = el.__countToken;
         var duration = 950;
         var start = performance.now();
 
         function frame(now) {
+            if (el.__countToken !== token) return;
             var t = Math.min(1, (now - start) / duration);
             var eased = 1 - Math.pow(1 - t, 3);
             var value = Math.round(eased * target);
             el.textContent = (suffix == null ? value : value + suffix);
-            if (t < 1) requestAnimationFrame(frame);
+            if (t < 1) {
+                requestAnimationFrame(frame);
+            } else {
+                el.textContent = (suffix == null ? target : target + suffix);
+            }
         }
         requestAnimationFrame(frame);
+    }
+
+    function runCount(el) {
+        var raw = el.getAttribute('data-count');
+        var target = parseInt(raw, 10);
+        var suffix = el.getAttribute('data-suffix') || '';
+        if (!Number.isFinite(target)) return;
+        if (reduced) {
+            el.textContent = target + suffix;
+            return;
+        }
+        animateCount(el, target, suffix);
     }
 
     function initCounters() {
@@ -58,23 +79,18 @@
         var observer = new IntersectionObserver(function (entries) {
             entries.forEach(function (entry) {
                 if (!entry.isIntersecting) return;
-                var el = entry.target;
-                var raw = el.getAttribute('data-count');
-                var target = parseInt(raw, 10);
-                var suffix = el.getAttribute('data-suffix') || '';
-                if (Number.isFinite(target)) {
-                    if (reduced) {
-                        el.textContent = target + suffix;
-                    } else {
-                        animateCount(el, target, suffix);
-                    }
-                }
-                observer.unobserve(el);
+                runCount(entry.target);
+                observer.unobserve(entry.target);
             });
         }, { threshold: 0.5 });
 
         holders.forEach(function (el) {
             observer.observe(el);
+            /* dados chegam depois do DOMContentLoaded: quando o painel
+               atualiza data-count, reconta com o valor real */
+            el.addEventListener('count:set', function () {
+                runCount(el);
+            });
         });
     }
 

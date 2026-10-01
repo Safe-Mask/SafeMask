@@ -26,8 +26,8 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
 window.addEventListener('scroll', () => {
     const header = document.querySelector('.header');
     if (window.scrollY > 50) {
-        header.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.15)';
+        header.style.boxShadow = '0 6px 0 0 #111111';
     } else {
-        header.style.boxShadow = '0 4px 6px rgba(0, 0, 0, 0.1)';
+        header.style.boxShadow = 'none';
     }
 });

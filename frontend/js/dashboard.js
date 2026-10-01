@@ -68,6 +68,7 @@ function setCounted(element, value) {
     const numeric = Number(value) || 0;
     element.setAttribute('data-count', String(numeric));
     element.textContent = String(numeric);
+    element.dispatchEvent(new Event('count:set'));
 }
 
 function renderTeams(teams) {
@@ -151,9 +152,9 @@ function renderProcessingChart(metrics) {
     const outrosPct = Math.max(0, 100 - censuradosPct - nivelAltoPct);
 
     processingDonut.style.background = `conic-gradient(
-        #00c853 0 ${censuradosPct}%,
-        #ff9f1a ${censuradosPct}% ${censuradosPct + nivelAltoPct}%,
-        #7a7a7a ${censuradosPct + nivelAltoPct}% 100%
+        #00e676 0 ${censuradosPct}%,
+        #ffd93d ${censuradosPct}% ${censuradosPct + nivelAltoPct}%,
+        #111111 ${censuradosPct + nivelAltoPct}% 100%
     )`;
 
     processingLegend.innerHTML = `

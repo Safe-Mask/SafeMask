@@ -1,0 +1,86 @@
+/* ============================================================
+   SafeMask — tema Neobrutalista (creme / preto / verde neon)
+   Fonte unica de variaveis. Todas as folhas importam isto no topo
+   e as folhas antigas deixam de redefinir a paleta escura.
+   ============================================================ */
+
+:root {
+    /* ---------- paleta ---------- */
+    --papel: #f6eedd;
+    --papel-2: #efe4ce;
+    --papel-3: #e8dabc;
+    --cartao: #ffffff;
+    --tinta: #111111;
+    --tinta-2: #2b2b2b;
+
+    --verde: #00e676;
+    --verde-forte: #00c853;
+    --verde-claro: #a9ffd9;
+    --amarelo: #ffd93d;
+    --vermelho: #ff3b5c;
+    --laranja: #ff9f1a;
+    --azul: #4d7cff;
+
+    --texto: #111111;
+    --texto-fraco: #5f5847;
+
+    /* ---------- primitivos neobrutalistas ---------- */
+    --borda: 3px solid var(--tinta);
+    --borda-fina: 2px solid var(--tinta);
+    --sombra: 6px 6px 0 var(--tinta);
+    --sombra-sm: 4px 4px 0 var(--tinta);
+    --sombra-lg: 10px 10px 0 var(--tinta);
+    --raio: 0;
+
+    /* ---------- tipografia ---------- */
+    --font-display: "Archivo Black", "Inter", sans-serif;
+    --font-body: "Inter", "Segoe UI", sans-serif;
+    --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+
+    /* ---------- alias usados pelas folhas antigas ---------- */
+    --primary: var(--verde);
+    --primary-strong: var(--verde-forte);
+    --accent: var(--azul);
+    --dark: var(--tinta);
+    --bg: var(--papel);
+    --surface: var(--cartao);
+    --surface-2: var(--papel-2);
+    --gray: var(--tinta);
+    --black: var(--tinta);
+    --white: var(--tinta);
+    --text: var(--tinta);
+    --text-muted: var(--texto-fraco);
+    --muted: var(--texto-fraco);
+    --line: var(--tinta);
+    --shadow: var(--sombra);
+    --ok: #008f45;
+    --warn: var(--laranja);
+    --err: var(--vermelho);
+    --wait: #8a8578;
+
+    --neon: var(--verde);
+    --neon-soft: var(--verde-claro);
+    --neon-dim: rgba(0, 230, 118, 0.55);
+    --crimson: var(--vermelho);
+    --amber: var(--amarelo);
+
+    --ink-1: var(--papel);
+    --ink-2: var(--cartao);
+    --ink-3: var(--papel-2);
+    --ink-4: var(--papel-3);
+    --hairline: rgba(17, 17, 17, 0.2);
+
+    /* ---------- raios: canto vivo no neobrutalismo ---------- */
+    --radius-lg: 0;
+    --radius-md: 0;
+    --radius-sm: 0;
+    --clip-panel: none;
+    --clip-tag: none;
+
+    /* ---------- ritmo de motion ---------- */
+    --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --dur-fast: 0.18s;
+    --dur-med: 0.34s;
+    --dur-slow: 0.6s;
+}
