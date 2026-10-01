@@ -1,17 +1,20 @@
 /* ============================================================
-   SafeMask — tema Neobrutalista (creme / preto / verde neon)
-   Fonte unica de variaveis. Todas as folhas importam isto no topo
-   e as folhas antigas deixam de redefinir a paleta escura.
+   SafeMask — tema NOIR JAPONES (escuridao + verde neon + kanji)
+   Fonte unica de variaveis. Todas as folhas importam isto no topo.
+   Semantica:
+     --papel*  = superficies escuras (fundo, painel, fill)
+     --tinta   = preto (texto sobre superficies claras, sombras)
+     --texto   = osso (texto e bordas sobre superficies escuras)
    ============================================================ */
 
 :root {
     /* ---------- paleta ---------- */
-    --papel: #f6eedd;
-    --papel-2: #efe4ce;
-    --papel-3: #e8dabc;
-    --cartao: #ffffff;
-    --tinta: #111111;
-    --tinta-2: #2b2b2b;
+    --papel: #0a0c10;
+    --papel-2: #0f1319;
+    --papel-3: #171c24;
+    --cartao: #12161d;
+    --tinta: #05070a;
+    --tinta-2: #0d1015;
 
     --verde: #00e676;
     --verde-forte: #00c853;
@@ -21,15 +24,15 @@
     --laranja: #ff9f1a;
     --azul: #4d7cff;
 
-    --texto: #111111;
-    --texto-fraco: #5f5847;
+    --texto: #e9e7e0;
+    --texto-fraco: #98a0ad;
 
     /* ---------- primitivos neobrutalistas ---------- */
-    --borda: 3px solid var(--tinta);
-    --borda-fina: 2px solid var(--tinta);
-    --sombra: 6px 6px 0 var(--tinta);
-    --sombra-sm: 4px 4px 0 var(--tinta);
-    --sombra-lg: 10px 10px 0 var(--tinta);
+    --borda: 3px solid var(--texto);
+    --borda-fina: 2px solid var(--texto);
+    --sombra: 6px 6px 0 #000000;
+    --sombra-sm: 4px 4px 0 #000000;
+    --sombra-lg: 10px 10px 0 #000000;
     --raio: 0;
 
     /* ---------- tipografia ---------- */
@@ -45,18 +48,18 @@
     --bg: var(--papel);
     --surface: var(--cartao);
     --surface-2: var(--papel-2);
-    --gray: var(--tinta);
-    --black: var(--tinta);
-    --white: var(--tinta);
-    --text: var(--tinta);
+    --gray: #79808d;
+    --black: #05070a;
+    --white: var(--texto);
+    --text: var(--texto);
     --text-muted: var(--texto-fraco);
     --muted: var(--texto-fraco);
-    --line: var(--tinta);
+    --line: rgba(233, 231, 224, 0.22);
     --shadow: var(--sombra);
-    --ok: #008f45;
+    --ok: #3ddc84;
     --warn: var(--laranja);
     --err: var(--vermelho);
-    --wait: #8a8578;
+    --wait: #9aa3b2;
 
     --neon: var(--verde);
     --neon-soft: var(--verde-claro);
@@ -64,13 +67,9 @@
     --crimson: var(--vermelho);
     --amber: var(--amarelo);
 
-    --ink-1: var(--papel);
-    --ink-2: var(--cartao);
-    --ink-3: var(--papel-2);
-    --ink-4: var(--papel-3);
-    --hairline: rgba(17, 17, 17, 0.2);
+    --hairline: rgba(233, 231, 224, 0.16);
 
-    /* ---------- raios: canto vivo no neobrutalismo ---------- */
+    /* ---------- raios: canto vivo ---------- */
     --radius-lg: 0;
     --radius-md: 0;
     --radius-sm: 0;
@@ -83,4 +82,11 @@
     --dur-fast: 0.18s;
     --dur-med: 0.34s;
     --dur-slow: 0.6s;
+}
+
+body {
+    background-color: var(--papel);
+    background-image: url('../images/bg/noir-japanese.svg');
+    background-size: 900px 900px;
+    background-attachment: fixed;
 }

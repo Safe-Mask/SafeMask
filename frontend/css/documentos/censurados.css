@@ -18,7 +18,7 @@
 
 .loading-card {
     border-radius: var(--raio);
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     background: var(--surface);
     box-shadow: var(--shadow);
     padding: 1.2rem;
@@ -42,7 +42,7 @@
 
 .loading-page {
     border-radius: var(--raio);
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     background: var(--surface);
     padding: 1rem;
     min-height: 440px;
@@ -62,7 +62,7 @@
     position: relative;
     border-radius: var(--raio);
     min-height: 360px;
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     background: var(--surface);
     padding: 1.2rem;
     overflow: hidden;
@@ -98,7 +98,7 @@
 
 .loading-badge {
     border-radius: var(--raio);
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     background: var(--surface);
     padding: 0.85rem 0.95rem;
     color: var(--text-muted);
@@ -107,9 +107,9 @@
 }
 
 .loading-badge.active {
-    border-color: var(--tinta);
+    border-color: var(--texto);
     background: rgba(0, 230, 118, 0.08);
-    color: var(--tinta);
+    color: var(--texto);
 }
 
 .hero-panel {
@@ -137,7 +137,7 @@
 }
 
 .doc-card {
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     border-radius: var(--raio);
     background: var(--surface);
     padding: 0.95rem;
@@ -149,7 +149,7 @@
 
 .doc-card:hover,
 .doc-card.active {
-    border-color: var(--tinta);
+    border-color: var(--texto);
     transform: translateY(-1px);
     background: rgba(0, 230, 118, 0.06);
 }
@@ -183,7 +183,7 @@
     border-radius: var(--raio);
     padding: 0.24rem 0.7rem;
     background: rgba(0, 230, 118, 0.12);
-    color: var(--tinta);
+    color: var(--texto);
     font-size: 0.78rem;
     font-weight: 700;
 }
@@ -198,7 +198,7 @@
     border: var(--borda-fina);
     background: var(--surface);
     box-shadow: var(--sombra-sm);
-    color: var(--tinta);
+    color: var(--texto);
     border-radius: var(--raio);
     padding: 0.9rem 1.45rem;
     font-weight: 600;
@@ -208,13 +208,13 @@
 
 .doc-card .ghost-button:hover {
     background: rgba(0, 230, 118, 0.1);
-    border-color: var(--tinta);
+    border-color: var(--texto);
 }
 
 .detail-empty,
 .detail-shell,
 .detail-card {
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     border-radius: var(--raio);
     background: var(--surface);
     padding: 0.95rem;
@@ -245,7 +245,7 @@
     font-size: 0.76rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
-    color: var(--tinta);
+    color: var(--texto);
     margin-bottom: 0.25rem;
     font-weight: 700;
 }
@@ -255,7 +255,7 @@
     min-height: 72vh;
     border-radius: var(--raio);
     overflow: hidden;
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     background: var(--surface);
 }
 
@@ -295,7 +295,7 @@
 .detail-card code {
     display: block;
     word-break: break-all;
-    color: var(--tinta);
+    color: var(--texto);
     font-size: 0.85rem;
 }
 
@@ -311,7 +311,7 @@
 }
 
 .detail-actions .ghost-button {
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     background: var(--surface-2);
     color: var(--text);
     border-radius: var(--raio);
@@ -323,7 +323,7 @@
 
 .detail-actions .ghost-button:hover {
     background: rgba(0, 230, 118, 0.1);
-    border-color: var(--tinta);
+    border-color: var(--texto);
 }
 
 .detail-actions .cta-censor {

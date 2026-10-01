@@ -154,7 +154,7 @@ function renderProcessingChart(metrics) {
     processingDonut.style.background = `conic-gradient(
         #00e676 0 ${censuradosPct}%,
         #ffd93d ${censuradosPct}% ${censuradosPct + nivelAltoPct}%,
-        #111111 ${censuradosPct + nivelAltoPct}% 100%
+        #9aa3b2 ${censuradosPct + nivelAltoPct}% 100%
     )`;
 
     processingLegend.innerHTML = `

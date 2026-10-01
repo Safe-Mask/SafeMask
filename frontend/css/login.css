@@ -3,8 +3,8 @@
 body {
     font-family: "Inter", "Segoe UI", sans-serif;
     background-color: var(--bg);
-    background-image: radial-gradient(rgba(17, 17, 17, 0.16) 1.5px, transparent 1.6px);
-    background-size: 22px 22px;
+    background-image: url('../images/bg/noir-japanese.svg');
+    background-size: 900px 900px;
     background-attachment: fixed;
     margin: 0;
     display: flex;
@@ -36,7 +36,7 @@ body {
     top: 15px;
     left: 15px;
     text-decoration: none;
-    color: var(--tinta);
+    color: var(--texto);
     font-weight: 800;
     font-size: 0.85rem;
     text-transform: uppercase;
@@ -82,7 +82,7 @@ body {
     font-family: var(--font-display);
     text-transform: uppercase;
     letter-spacing: -0.02em;
-    color: var(--tinta);
+    color: var(--texto);
     margin: 18px 0 20px;
 }
 
@@ -103,7 +103,7 @@ body {
     font-size: 0.95rem;
     font-weight: 800;
     text-transform: uppercase;
-    color: var(--tinta);
+    color: var(--texto);
     transition: 0.12s;
     box-shadow: var(--sombra-sm);
 }
@@ -138,7 +138,7 @@ body {
 
 .input-group label {
     font-size: 0.8rem;
-    color: var(--tinta);
+    color: var(--texto);
     font-weight: 800;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -152,17 +152,17 @@ body {
     font-size: 1rem;
     outline: none;
     background: var(--surface);
-    color: var(--tinta);
+    color: var(--texto);
     transition: 0.12s;
     box-shadow: var(--sombra-sm);
 }
 
 .input-group input::placeholder {
-    color: #8d8674;
+    color: #9aa3b2;
 }
 
 .input-group input:focus {
-    border-color: var(--tinta);
+    border-color: var(--texto);
     box-shadow: 4px 4px 0 var(--verde);
 }
 
@@ -201,7 +201,7 @@ body {
 .strength-bar {
     height: 8px;
     background: var(--papel-3);
-    border: 2px solid var(--tinta);
+    border: 2px solid var(--texto);
     border-radius: var(--raio);
     overflow: hidden;
     margin-bottom: 5px;

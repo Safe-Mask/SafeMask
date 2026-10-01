@@ -11,8 +11,8 @@ body {
     line-height: 1.6;
     color: var(--white);
     background-color: var(--bg);
-    background-image: radial-gradient(rgba(17, 17, 17, 0.16) 1.5px, transparent 1.6px);
-    background-size: 22px 22px;
+    background-image: url('../images/bg/noir-japanese.svg');
+    background-size: 900px 900px;
     background-attachment: fixed;
 }
 
@@ -43,7 +43,7 @@ body {
 
 .header h1 {
     font-family: var(--font-display);
-    color: var(--tinta);
+    color: var(--texto);
     font-size: 1.3rem;
     text-transform: uppercase;
     letter-spacing: -0.01em;
@@ -70,7 +70,7 @@ body {
 }
 
 .nav-link {
-    color: var(--tinta);
+    color: var(--texto);
     text-decoration: none;
     font-weight: 700;
     text-transform: uppercase;
@@ -117,7 +117,7 @@ body {
 
 .btn-cadastrar {
     background: var(--surface);
-    color: var(--tinta);
+    color: var(--texto);
     border: var(--borda);
     padding: 0.7rem 1.8rem;
     border-radius: var(--raio);
@@ -254,7 +254,7 @@ body {
 .info-section h2 {
     font-family: var(--font-display);
     text-transform: uppercase;
-    color: var(--tinta);
+    color: var(--texto);
     border-bottom: var(--borda);
     display: inline-block;
     padding-bottom: 0.3rem;
@@ -340,7 +340,7 @@ body {
 .footer {
     background: var(--black);
     border-top: var(--borda);
-    color: var(--papel);
+    color: var(--texto);
     padding: 3rem 0 1rem;
     margin-top: 3rem;
 }
@@ -362,7 +362,7 @@ body {
 
 .footer-section p,
 .footer-section a {
-    color: var(--papel);
+    color: var(--texto);
 }
 
 .footer-section a {
@@ -391,7 +391,7 @@ body {
     height: 40px;
     background: var(--primary);
     color: var(--tinta);
-    border: 2px solid var(--papel);
+    border: 2px solid var(--texto);
     border-radius: var(--raio);
     text-decoration: none;
     font-weight: bold;
@@ -406,8 +406,8 @@ body {
 .footer-bottom {
     text-align: center;
     padding-top: 2rem;
-    border-top: 1px solid rgba(246, 238, 221, 0.35);
-    color: var(--papel);
+    border-top: 1px solid rgba(233, 231, 224, 0.28);
+    color: var(--texto);
 }
 
 /* Responsive */

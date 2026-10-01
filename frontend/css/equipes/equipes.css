@@ -25,7 +25,7 @@
 
 .detail-summary > div {
     background: var(--surface-2);
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     border-radius: var(--raio);
     padding: 0.85rem;
 }
@@ -97,7 +97,7 @@
 .hero-summary > div,
 .info-stack > div {
     background: var(--surface-2);
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     border-radius: var(--raio);
     padding: 0.85rem;
 }
@@ -121,7 +121,7 @@
 }
 
 .team-card {
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     border-radius: var(--raio);
     background: var(--surface);
     box-shadow: var(--sombra);
@@ -139,7 +139,7 @@
 }
 
 .team-card.active {
-    border-color: var(--tinta);
+    border-color: var(--texto);
     background: rgba(0, 230, 118, 0.08);
 }
 
@@ -188,7 +188,7 @@
 }
 
 .pill.wait {
-    border: 2px solid var(--tinta);
+    border: 2px solid var(--texto);
     background: var(--papel-3);
     color: var(--texto-fraco);
 }
@@ -197,7 +197,7 @@
     display: flex;
     justify-content: space-between;
     gap: 1rem;
-    border-bottom: 2px solid rgba(17, 17, 17, 0.18);
+    border-bottom: 2px solid rgba(233, 231, 224, 0.18);
     padding: 0.7rem 0;
 }
 
@@ -224,7 +224,7 @@
 }
 
 .team-doc-item {
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     border-radius: var(--raio);
     padding: 0.95rem;
     display: grid;
@@ -314,7 +314,7 @@
 }
 
 .empty-state {
-    border: 3px dashed var(--tinta);
+    border: 3px dashed var(--texto);
     border-radius: var(--raio);
     background: var(--surface);
     padding: 1rem;
@@ -356,7 +356,7 @@
     max-height: 90vh;
     overflow: auto;
     background: var(--surface);
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     border-radius: var(--raio);
     box-shadow: var(--sombra);
     padding: 1.1rem;
@@ -381,7 +381,7 @@
 }
 
 .icon-button {
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     background: var(--surface-2);
     color: var(--text);
     width: 38px;
@@ -416,7 +416,7 @@
 .field input,
 .field textarea {
     width: 100%;
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     border-radius: var(--raio);
     padding: 0.8rem 0.95rem;
     font: inherit;
@@ -431,7 +431,7 @@
 .field input:focus,
 .field textarea:focus {
     outline: none;
-    border-color: var(--tinta);
+    border-color: var(--texto);
     box-shadow: none;
 }
 
@@ -447,7 +447,7 @@
 
 .candidate-card,
 .selected-card {
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     border-radius: var(--raio);
     padding: 1rem;
     background: var(--surface-2);
@@ -468,14 +468,14 @@
     justify-content: space-between;
     gap: 1rem;
     align-items: center;
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     border-radius: var(--raio);
     padding: 0.8rem;
     background: var(--surface);
 }
 
 .candidate-item.selected {
-    border-color: var(--tinta);
+    border-color: var(--texto);
     background: rgba(0, 230, 118, 0.08);
 }
 
@@ -492,9 +492,9 @@
 }
 
 .candidate-action {
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     background: rgba(0, 230, 118, 0.1);
-    color: var(--tinta);
+    color: var(--texto);
     border-radius: var(--raio);
     padding: 0.6rem 0.95rem;
     font-weight: 700;
@@ -520,14 +520,14 @@
 }
 
 .selected-chip {
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
     background: rgba(0, 230, 118, 0.1);
     color: var(--white);
     cursor: pointer;
 }
 
 .empty-chip {
-    border: 3px dashed var(--tinta);
+    border: 3px dashed var(--texto);
     background: var(--surface);
     color: var(--text-muted);
 }
@@ -541,7 +541,7 @@
 .ghost-button {
     background: var(--surface-2);
     color: var(--text);
-    border: 3px solid var(--tinta);
+    border: 3px solid var(--texto);
 }
 
 .cta-censor {
