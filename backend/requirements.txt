@@ -14,5 +14,8 @@ sib-api-v3-sdk
 pdfplumber>=0.11.0
 pytesseract>=0.3.10
 Pillow>=10.0.0
-transformers>=4.30.0
-torch>=2.0.0
+
+# IA (torch/transformers) ficam em requirements-ia.txt para caber no
+# disco 1 GB do Render Free. O scanner já roda em modo regex-only sem eles
+# (ver backend/scanner/scanner.py:165-187).
+# Para IA local: pip install -r requirements-ia.txt
