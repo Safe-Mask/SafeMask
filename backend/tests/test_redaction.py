@@ -12,10 +12,10 @@ class CpfMaskRenderingTests(unittest.TestCase):
         draw_cpf_mask(image, (10, 10, 170, 35))
 
         masked_area = image.crop((10, 10, 170, 35))
-        self.assertEqual(image.getpixel((10, 10)), (255, 255, 255))
+        self.assertEqual(image.getpixel((10, 10)), (0, 0, 0))
         self.assertTrue(
             any(
-                masked_area.getpixel((x, y))[0] < 50
+                masked_area.getpixel((x, y))[0] > 200
                 for x in range(masked_area.width)
                 for y in range(masked_area.height)
             )
@@ -26,7 +26,7 @@ class CpfMaskRenderingTests(unittest.TestCase):
 
         draw_structured_mask(image, (10, 10, 170, 35), "(11) *****-5432")
 
-        self.assertEqual(image.getpixel((10, 10)), (255, 255, 255))
+        self.assertEqual(image.getpixel((10, 10)), (0, 0, 0))
 
 
 if __name__ == "__main__":

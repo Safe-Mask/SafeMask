@@ -22,6 +22,7 @@ from scanner.coordenadas import (
 from scanner.scanner import (
     ENTIDADES_DESCARTADAS,
     MAPA_ENTIDADES_NER,
+    DocumentScanner,
     _desempacotar_caixa,
     entidades_saidas_do_modelo,
     entidades_sem_mapa,
@@ -192,6 +193,7 @@ def test_niveis_do_regex_sao_os_niveis_documentados():
     assert _niveis_do_regex() == {
         "CPF": 3, "CNPJ": 1, "EMAIL": 2, "TELEFONE": 2, "CNS": 3,
         "CID10": 3, "CRM": 3, "RG": 3, "PROCESSO": 1, "DATA_NASC": 2,
+        "ENDERECO": 1,
     }
 
 
@@ -200,3 +202,77 @@ def test_entidade_descartada_exige_motivacao_escrita():
     assert ENTIDADES_DESCARTADAS, "esperado ao menos o rotulo vazio do tokenizer"
     for rotulo, motivo in ENTIDADES_DESCARTADAS.items():
         assert motivo.strip(), f"'{rotulo}' descartada sem motivo"
+
+
+# --- contagem de dados salvos ---------------------------------------------
+
+
+def _scanner_sem_modelo() -> DocumentScanner:
+    """Instancia sem __init__: os testes aqui nao devem carregar o NER."""
+    return DocumentScanner.__new__(DocumentScanner)
+
+
+class _PaginaStub:
+    """Simula a pagina do pdfplumber: largura, altura e `search()`."""
+
+    width = 595.0
+    height = 842.0
+
+    def __init__(self, resultado):
+        self._resultado = resultado
+
+    def search(self, _termo):
+        return self._resultado
+
+
+def test_salvar_dado_conta_cada_caixa_persistida(db_session):
+    """`salvos` precisa somar as caixas gravadas, nao ficar preso em zero.
+
+    Regressao do commit ca859a3: o incremento foi perdido quando o corpo
+    migrou para `_salvar_caixa`, e `total_sensiveis`/`cpf_censurados`
+    voltavam sempre 0 na resposta do upload.
+    """
+    scanner = _scanner_sem_modelo()
+    pagina = _PaginaStub([
+        {"x0": 10, "top": 20, "x1": 100, "bottom": 60},
+        {"x0": 200, "top": 300, "x1": 320, "bottom": 340},
+    ])
+
+    salvos, coordenadas = scanner._salvar_dado(
+        db_session, 1, pagina, 0, "123.456.789-00", "CPF", 3
+    )
+
+    assert salvos == 2
+    assert len(coordenadas) == 2
+
+
+def test_salvar_dado_nao_conta_caixa_degenerada(db_session):
+    """Caixa sem cobertura nao vai para o banco e nao conta como salva."""
+    scanner = _scanner_sem_modelo()
+    pagina = _PaginaStub([{"x0": 10, "top": 20, "x1": 10, "bottom": 60}])
+
+    salvos, coordenadas = scanner._salvar_dado(
+        db_session, 1, pagina, 0, "123.456.789-00", "CPF", 3
+    )
+
+    assert salvos == 0
+    assert coordenadas == []
+
+
+def test_salvar_dado_conta_caixas_do_ocr(db_session):
+    """No caminho de OCR, cada palavra do segredo vira uma caixa contada."""
+    scanner = _scanner_sem_modelo()
+    pagina = _PaginaStub([])
+    ocr_data = {
+        "text": ["CPF", "123.456.789-00", "e", "nome"],
+        "left": [10, 50, 0, 0], "top": [20, 30, 0, 0],
+        "width": [30, 120, 0, 0], "height": [15, 15, 0, 0],
+    }
+
+    salvos, coordenadas = scanner._salvar_dado(
+        db_session, 1, pagina, 0, "123.456.789-00", "CPF", 3,
+        usando_ocr=True, ocr_data=ocr_data,
+    )
+
+    assert salvos == 1
+    assert len(coordenadas) == 1

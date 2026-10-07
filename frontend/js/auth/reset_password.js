@@ -52,8 +52,8 @@ form.addEventListener('submit', async (e) => {
         }
 
         feedback.textContent = data.mensagem || 'Senha alterada com sucesso.';
-        // opcional: redirecionar para login
-        setTimeout(() => { window.location.href = '/html/auth/login.html'; }, 1500);
+        // Caminho relativo: funciona servindo da raiz (Vercel) ou so de frontend/.
+        setTimeout(() => { window.location.href = 'login.html'; }, 1500);
     } catch (err) {
         console.error(err);
         feedback.textContent = 'Erro ao comunicar com o servidor.';

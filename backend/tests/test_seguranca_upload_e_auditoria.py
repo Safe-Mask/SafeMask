@@ -2,6 +2,7 @@
 
 import pytest
 
+import app.core.email as email_mod
 from app.core.config import MAX_UPLOAD_BYTES
 from app.core.security import criar_token_jwt
 from app.models.log_auditoria import LogAuditoria
@@ -10,6 +11,10 @@ TOKEN = criar_token_jwt({"sub": "ana@safemask.example.com", "nome": "Ana"})
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
 
 PDF_VALIDO = b"%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n"
+
+# O fixture autouse `sem_envio_de_email_real` troca a funcao por um fake durante
+# cada teste; guardamos a ORIGINAL na coleta para poder testa-la em isolamento.
+_ENVIAR_EMAIL_ORIGINAL = email_mod.enviar_email_recuperacao
 
 
 def _upload(client, teams, conteudo=PDF_VALIDO, filename="contrato.pdf"):
@@ -196,6 +201,18 @@ def test_cors_nao_usa_curinga_com_credentials(client, seed):
     assert resp.headers.get("access-control-allow-origin") != "*"
 
 
+def test_cors_em_dev_aceita_localhost_de_qualquer_porta(client, seed):
+    """Bancadas locais servem o frontend em 8080, 5501, 3000...; todas devem
+    passar em desenvolvimento (mas nunca uma origem hostil externa)."""
+    for origem in (
+        "http://localhost:8080",
+        "http://localhost:5501",
+        "http://127.0.0.1:3000",
+    ):
+        resp = client.get("/", headers={"Origin": origem})
+        assert resp.headers.get("access-control-allow-origin") == origem, origem
+
+
 # --- Recuperacao de senha nao enumera usuarios ---------------------------
 
 
@@ -215,3 +232,32 @@ def test_recuperar_senha_nao_revela_quem_existe(client, seed, email, status_espe
     assert "existe" not in resp.text.lower()
     if email == "nao-cadastrado@safemask.example.com":
         assert resp.status_code == 200, resp.text
+
+
+def test_email_de_recuperacao_aponta_para_rota_real_do_vercel(monkeypatch):
+    """O link no email precisa existir de verdade.
+
+    O Vercel serve a raiz do repositorio: a pagina vive em
+    /frontend/html/auth/reset_password.html. O caminho antigo (/html/auth/...)
+    dava 404 e ninguem conseguia redefinir a senha em producao.
+    """
+    capturados: list = []
+
+    class EnvioFalso:  # noqa: D401
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def send_transac_email(self, email):
+            capturados.append(email)
+
+    monkeypatch.setattr(email_mod.sib_api_v3_sdk, "TransactionalEmailsApi", EnvioFalso)
+    monkeypatch.setattr(email_mod, "FRONTEND_URL", "https://safe-mask.vercel.app")
+
+    _ENVIAR_EMAIL_ORIGINAL("ana@teste.local", "Ana", "TOK123")
+
+    assert capturados, "email nao foi 'enviado'"
+    texto = capturados[0].text_content
+    assert (
+        "https://safe-mask.vercel.app"
+        "/frontend/html/auth/reset_password.html?token=TOK123&email=ana@teste.local"
+    ) in texto

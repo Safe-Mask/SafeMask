@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from fastapi.middleware import Middleware
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.config import CORS_ORIGINS, descrever
+from app.core.config import CORS_ORIGIN_REGEX, CORS_ORIGINS, descrever
 from app.core.http_headers import HeadersSegurancaMiddleware
 from app.database import (
     Base,
@@ -29,6 +29,7 @@ middleware = [
         # Lista explicita: com allow_credentials=True, "*" faria o navegador
         # descartar o header e a API responder sem Access-Control-Allow-Origin.
         allow_origins=CORS_ORIGINS,
+        allow_origin_regex=CORS_ORIGIN_REGEX,
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],

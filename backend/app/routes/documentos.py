@@ -229,6 +229,7 @@ def duplicar_itens_sensiveis(db: Session, doc_id_origem: int, documentos_destino
                     conteudo_hash=item.conteudo_hash,
                     pagina=item.pagina,
                     coordenadas=item.coordenadas,
+                    espaco_coordenadas=item.espaco_coordenadas,
                     nivel_requerido=item.nivel_requerido,
                 )
             )

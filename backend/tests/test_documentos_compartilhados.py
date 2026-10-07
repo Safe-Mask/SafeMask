@@ -127,3 +127,49 @@ def test_parcial_de_lider_ainda_recebe_o_original(client, seed, scanner_registra
 
     assert resp.status_code == 200, resp.text
     assert resp.content == CONTEUDO_PDF
+
+
+# --- Regressao 3: a copia nao pode perder o espaco das coordenadas ---------
+
+
+def test_duplicar_itens_preserva_o_espaco_coordenadas(seed):
+    """A copia para outra equipe carrega o `espaco_coordenadas` de origem.
+
+    Sem ela, um PDF escaneado (coordenadas em pixels) compartilhado com outra
+    equipe era lido como pontos do PDF na descensura parcial e a tarja saia
+    deslocada — o dado ficava visivel. Ela e o item de tudo que a Fatia 6
+    corrigiu no documento original.
+    """
+    from app.models.dado_sensivel import DadoSensivel
+    from app.routes.documentos import duplicar_itens_sensiveis
+
+    db = seed["db"]
+    origem = Documento(
+        user_team_id=seed["user_team_a"], nome_original="scan.pdf",
+        extensao="pdf", tamanho_bytes=10, nivel_seguranca=1,
+        chave_criptografica="x", hash_documento="h1", caminho_storage="",
+        status_processamento="CONCLUIDO", cpf_censurados=0,
+    )
+    destino = Documento(
+        user_team_id=seed["user_team_b"], nome_original="scan.pdf",
+        extensao="pdf", tamanho_bytes=10, nivel_seguranca=1,
+        chave_criptografica="x", hash_documento="h1", caminho_storage="",
+        status_processamento="CONCLUIDO", cpf_censurados=0,
+    )
+    db.add_all([origem, destino])
+    db.flush()
+    db.add(
+        DadoSensivel(
+            doc_id=origem.doc_id, tipo_entidade="CPF", conteudo_hash="h",
+            pagina=0, coordenadas=[150, 300, 450, 600],
+            espaco_coordenadas="pixel", nivel_requerido=3,
+        )
+    )
+    db.commit()
+
+    duplicar_itens_sensiveis(db, origem.doc_id, [destino])
+    db.flush()
+
+    copias = db.query(DadoSensivel).filter(DadoSensivel.doc_id == destino.doc_id).all()
+    assert len(copias) == 1
+    assert copias[0].espaco_coordenadas == "pixel"

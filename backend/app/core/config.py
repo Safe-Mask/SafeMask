@@ -92,6 +92,21 @@ def _origens_cors() -> list[str]:
 
 CORS_ORIGINS: list[str] = _origens_cors()
 
+# Em desenvolvimento as bancadas servem o frontend em portas variadas
+# (python -m http.server 8080, Live Server 5501, Vite 3000...). Em vez de
+# listar porta por porta, aceitamos qualquer origem localhost/127.0.0.1 com
+# regex — que é desativado em produção, onde só valem os domínios reais.
+_RegexLocalHost = r"^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$"
+
+
+def _cors_origin_regex() -> str | None:
+    if _ambiente_desenvolvimento():
+        return _RegexLocalHost
+    return None
+
+
+CORS_ORIGIN_REGEX: str | None = _cors_origin_regex()
+
 # URL publica do frontend, usada nos emails de recuperacao de senha.
 FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://safe-mask.vercel.app").rstrip("/")
 

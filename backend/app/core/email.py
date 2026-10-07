@@ -36,9 +36,12 @@ def enviar_email_recuperacao(destinatario: str, nome: str, token: str) -> None:
         "",
     ]
 
-    # Monta o link de redefinição apontando para o frontend com token e email
+    # Monta o link de redefinição apontando para o frontend com token e email.
+    # No Vercel o rootDirectory é a raiz do repositório, então a página vive
+    # em /frontend/html/... (e não /html/..., que só vale quando o frontend é
+    # servido isolado).
     if frontend_url:
-        reset_path = "/html/auth/reset_password.html"
+        reset_path = "/frontend/html/auth/reset_password.html"
         link = f"{frontend_url.rstrip('/')}{reset_path}?token={token}&email={destinatario}"
         linhas.extend([f"Redefinir senha: {link}", ""])
     else:

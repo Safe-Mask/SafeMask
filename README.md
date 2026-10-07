@@ -265,7 +265,14 @@ venv\Scripts\activate
 source venv/bin/activate
 
 # Instale dependências
+# Base (igual ao deploy):
 pip install -r requirements.txt
+
+# ATENÇÃO: para rodar a rede neural (NER) localmente, instale também as
+# dependências de IA. Elas ficam separadas de propósito: no Render Free
+# (1 GB de disco) só a base é instalada, e o scanner roda em modo regex-only.
+# Detalhes em backend/requirements-ia.txt e backend/scanner/scanner.py.
+pip install -r requirements-ia.txt
 
 # Crie arquivo .env
 # Windows:
@@ -304,18 +311,32 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 - Swagger Docs: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
+> O scanner carrega a IA automaticamente quando existem os pesos em
+> `backend/scanner/safemask-ner/model.safetensors`. Sem os pesos, ele degrada
+> para detecção apenas por regex (log de aviso no boot) — mesmo comportamento
+> do ambiente de produção.
+
 ### Passo 4: Configure o Frontend
 
-```bash
-cd ../frontend
+No deploy (Vercel) a raiz do site é a **raiz do repositório**: o landing
+`index.html` e as páginas do app ficam em `/frontend/html/...`. Para o ambiente
+local replicar isso e o CORS funcionar, sirva a raiz do repositório (não a
+pasta `frontend/`):
 
-# Inicie servidor local
+```bash
+# Da raiz do repositório:
 python -m http.server 8080
 
-# Ou use Live Server do VS Code (F5)
+# Ou use Live Server do VS Code na raiz do repositório (porta 5501 etc.)
 ```
 
-Frontend em: `http://localhost:8080`
+Frontend em: `http://localhost:8080` — e o login em
+`http://localhost:8080/frontend/html/auth/login.html`
+
+> O `frontend/js/config.js` aponta para `http://localhost:8000` quando o
+> hostname é localhost, e para `https://safemask-backend.onrender.com` em
+> produção. Em desenvolvimento o backend aceita qualquer porta de
+> localhost/127.0.0.1 via CORS.
 
 ---
 
@@ -414,19 +435,21 @@ for u in usuarios:
 
 3. **Configure Deploy**
    - **Framework**: "Other"
-   - **Root Directory**: `./frontend`
+   - **Root Directory**: raiz do repositório (`./`) — o `index.html` (landing) vive na raiz e as páginas do app em `frontend/html/`
    - **Build Command**: deixe em branco
-   - **Output Directory**: `./`
+   - **Output Directory**: deixe em branco (site estático, sem build)
 
-4. **Variables (opcional)**
-   ```
-   REACT_APP_API_URL=https://seu-backend-url.com
-   ```
-
-5. **Deploy!**
+4. **Deploy!**
    - Seu frontend está em: `https://safe-mask.vercel.app`
 
-**Atualizações automáticas:** Qualquer push para `main` redeploya.
+**Atualizações automáticas:** Qualquer push para `main` redeploya (workflow
+`.github/workflows/vercel-merge.yml`).
+
+> A URL do backend em produção é resolvida automaticamente por
+> `frontend/js/config.js`: `localhost`/`127.0.0.1` → `http://localhost:8000`;
+> qualquer outro hostname → `https://safemask-backend.onrender.com`. Não é
+> preciso configurar `REACT_APP_API_URL` (o frontend não usa variáveis de
+> ambiente).
 
 ### Backend (Render.com - Recomendado)
 
@@ -436,44 +459,28 @@ for u in usuarios:
 
 **Passos:**
 
-1. **Criar Web Service**
-   - Dashboard → "New +" → "Web Service"
-   - Conectar GitHub
+1. **Criar Web Service a partir do Blueprint**
+   - Dashboard → "New +" → "Blueprint"
+   - Conectar GitHub e selecionar o repositório SafeMask
+   - O `render.yaml` na raiz define tudo: `rootDir: backend`, build
+     `pip install -r requirements.txt`, start
+     `uvicorn app.main:app --host 0.0.0.0 --port $PORT` e os pacotes apt
+     (`tesseract-ocr`/`tesseract-ocr-por`) para o OCR.
 
-2. **Configurar Build**
-   ```
-   Name: safemask-backend
-   Runtime: Python 3
-   Build Command: pip install -r backend/requirements.txt
-   Start Command: cd backend && uvicorn app.main:app --host 0.0.0.0 --port 8000
-   ```
-
-3. **Environment Variables**
+2. **Environment Variables** (definidas no dashboard do Render)
    ```
    DATABASE_URL=postgresql://seu_usuario:senha@host/banco?sslmode=require
    SECRET_KEY=sua-chave-secreta-super-segura
    ```
 
-4. **Deploy**
+3. **Deploy**
    - Backend em: `https://safemask-backend.onrender.com`
+   - Toda alteração no `render.yaml` exige "Sync" do Blueprint no dashboard.
 
 ### Conectar Frontend ao Backend
 
-Após deploy, atualize `frontend/js/` com a URL do backend:
-
-```javascript
-// Desenvolvimento
-const API_URL = "http://localhost:8000";
-
-// Produção (Render)
-const API_URL = "https://safemask-backend.onrender.com";
-```
-
-Ou usar variável de ambiente:
-
-```javascript
-const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8000";
-```
+Não é preciso editar nada manualmente: `frontend/js/config.js` escolhe a URL
+por hostname (ver acima).
 
 ---
 

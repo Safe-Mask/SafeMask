@@ -150,6 +150,10 @@ def configuracoes_regex() -> dict:
         "RG": {"pattern": r'\b\d{1,2}\.?\d{3}\.?\d{3}-?[A-Za-z0-9]{1,2}(?:/[A-Z]{2})?\b|\b\d{7,9}\b', "level": 3},
         "PROCESSO": {"pattern": r'\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b|\b\d{3}/\d\.\d{2}\.\d{7}-\d\b', "level": 1},
         "DATA_NASC": {"pattern": r'\b\d{2}/\d{2}/\d{4}\b', "level": 2},
+        # CEP canonico 00000-000. O NER deveria achar, mas na pratica nao emite
+        # a entidade CEP nesta versao do modelo; sem regex o CEP ficava visivel.
+        # `(?!\d)` exclui "98765-432..." (parte de um telefone com DDD).
+        "ENDERECO": {"pattern": r'(?<!\d)\d{5}-\d{3}(?!\d)', "level": 1},
     }
 
 
@@ -225,23 +229,25 @@ class DocumentScanner:
                 x1 = x0 + ocr_data['width'][i]
                 y1 = y0 + ocr_data['height'][i]
 
-                self._salvar_caixa(
+                if self._salvar_caixa(
                     db, doc_id, page_num, entity_type, valor_hash, level, espaco,
                     [x0, y0, x1, y1], largura_pagina, altura_pagina,
                     coordenadas,
-                )
+                ):
+                    salvos += 1
         else:
             espaco = ESPACO_PDF
             largura_pagina = float(page.width)
             altura_pagina = float(page.height)
 
             for res in page.search(re.escape(texto_secreto)):
-                self._salvar_caixa(
+                if self._salvar_caixa(
                     db, doc_id, page_num, entity_type, valor_hash, level, espaco,
                     [res['x0'], res['top'], res['x1'], res['bottom']],
                     largura_pagina, altura_pagina,
                     coordenadas,
-                )
+                ):
+                    salvos += 1
 
         return salvos, coordenadas
 
@@ -255,7 +261,7 @@ class DocumentScanner:
         descensura parcial e faz o gerador reprojetar um valor invalido.
         """
         if normalizar(coord, espaco, largura_pagina, altura_pagina) is None:
-            return
+            return False
         db.add(
             DadoSensivel(
                 doc_id=doc_id,
@@ -268,6 +274,7 @@ class DocumentScanner:
             )
         )
         acumulador.append(list(coord))
+        return True
 
     def _desenhar_caixa_pil(
         self,
@@ -487,7 +494,11 @@ class DocumentScanner:
                 if usando_ocr:
                     paginas_para_pdf.append(img_pagina.original.convert("RGB"))
                 else:
-                    paginas_para_pdf.append(img_pagina.annotated.convert("RGB"))
+                    # `annotated` e a copia do raster feita por `to_image()` ANTES
+                    # de `_desenhar_caixa_pil` pintar as tarjas em `original`:
+                    # salvar dela entregava o PDF sem nenhuma tarja em paginas
+                    # com camada de texto. Salvar `original` preserva as tarjas.
+                    paginas_para_pdf.append(img_pagina.original.convert("RGB"))
 
         logger.info(f"Total de segredos encontrados: {sensitive_count}")
 
