@@ -27,7 +27,7 @@ from app.models.equipe import Equipe
 from app.models.usuario import Usuario
 from app.models.usuario_equipe import UsuarioEquipe
 from scanner.coordenadas import ESPACO_PDF
-from scanner.scanner import DocumentScanner, NenhumaMascaraAplicavel
+from scanner.scanner import DocumentScanner, NenhumaMascaraAplicavel, OcrIndisponivel
 
 router = APIRouter(prefix="/documentos", tags=["Documentos"])
 logger = logging.getLogger(__name__)
@@ -139,6 +139,12 @@ async def upload_documento(
             "cpf_censurados": resultado["cpf_censurados"],
             "status": resultado["status"]
         }
+
+    except OcrIndisponivel as e:
+        # Falta de instalacao no servidor, nao defeito do arquivo: o usuario
+        # recebe o motivo em vez do "Erro ao processar documento" generico.
+        db.rollback()
+        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
 
     except Exception as e:
         db.rollback()
