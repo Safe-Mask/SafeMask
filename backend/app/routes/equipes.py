@@ -4,7 +4,13 @@ from sqlalchemy import desc, func, or_
 from sqlalchemy.orm import Session
 
 from app.core import autorizacao, tenancy
-from app.core.audit import ACAO_ADICIONAR_MEMBRO, ACAO_REMOVER_MEMBRO, RESULTADO_NEGADO, registrar
+from app.core.audit import (
+    ACAO_ADICIONAR_MEMBRO,
+    ACAO_ALTERAR_CARGO,
+    ACAO_REMOVER_MEMBRO,
+    RESULTADO_NEGADO,
+    registrar,
+)
 from app.core.current_user import get_current_user
 from app.core.datas import iso_utc
 from app.database import get_db
@@ -13,7 +19,7 @@ from app.models.documentos import Documento
 from app.models.equipe import Equipe
 from app.models.usuario import Usuario
 from app.models.usuario_equipe import UsuarioEquipe
-from app.schemas.equipe import EquipeCreate, EquipeMembroAdd
+from app.schemas.equipe import EquipeCreate, EquipeMembroAdd, EquipeMembroCargo
 
 router = APIRouter(prefix="/equipes", tags=["Equipes"])
 
@@ -168,6 +174,11 @@ def _load_team_detail(db: Session, current_user: Usuario, team_id: int):
         "membros_lista": [_serialize_member(member) for member in members],
         # A tela usa para mostrar (ou nao) o formulario de membros e os botoes
         # de remover. A API confere de novo em cada operacao.
+        # Opcoes do seletor de cargo, do maior nivel para o menor.
+        "cargos": [
+            {"nome": cargo.nome, "nivel": int(cargo.nivel)}
+            for cargo in db.query(Cargo).order_by(Cargo.nivel.desc(), Cargo.nome).all()
+        ],
         "pode_gerenciar_membros": any(
             m.user_id == current_user.user_id and int(m.cargo_nivel or 0) >= autorizacao.NIVEL_LIDER
             for m in members
@@ -630,5 +641,61 @@ def remover_membro(
     )
     return {
         "mensagem": "Membro removido da equipe.",
+        "equipe": _load_team_detail(db, current_user, team_id),
+    }
+
+
+@router.patch("/{team_id}/membros/{user_id}", response_model=dict)
+def alterar_cargo_membro(
+    team_id: int,
+    user_id: int,
+    payload: EquipeMembroCargo,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Altera o cargo de um membro da equipe.
+
+    O cargo decide o que a pessoa ve do documento (parcial e, para o lider, o
+    original); a mudanca vale ja no proximo acesso. Recusas: so o lider altera
+    (404/403, com evento "negado"); cargo inexistente ou igual ao atual (400);
+    rebaixar o ultimo lider (400).
+    """
+    lider = _exigir_lider(db, current_user, team_id, ACAO_ALTERAR_CARGO, request)
+    # Lido antes da alteracao: o lider pode estar rebaixando a si mesmo, e o
+    # evento registra o cargo com que agiu.
+    cargo_do_lider = lider.cargo_id
+
+    alvo = _vinculo_na_equipe(db, user_id, team_id)
+    if not alvo:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Este usuário não faz parte da equipe.")
+
+    novo_cargo = db.query(Cargo).filter(func.lower(Cargo.nome) == payload.cargo.strip().lower()).first()
+    if not novo_cargo:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cargo inexistente.")
+
+    if alvo.cargo_id == novo_cargo.cargo_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Este membro já tem o cargo {novo_cargo.nome}.",
+        )
+
+    cargo_lider = _get_cargo_lider(db)
+    if alvo.cargo_id == cargo_lider.cargo_id and _outros_lideres(db, team_id, user_id, cargo_lider) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A equipe ficaria sem líder. Promova outro membro a líder antes.",
+        )
+
+    alvo.cargo_id = novo_cargo.cargo_id
+    db.commit()
+
+    registrar(
+        db, request, current_user.user_id, ACAO_ALTERAR_CARGO,
+        team_id=team_id, cargo_id=cargo_do_lider, alvo_user_id=user_id,
+    )
+    nome_alvo = db.query(Usuario.nome).filter(Usuario.user_id == user_id).scalar()
+    return {
+        "mensagem": f"{nome_alvo} agora tem o cargo {novo_cargo.nome}.",
         "equipe": _load_team_detail(db, current_user, team_id),
     }

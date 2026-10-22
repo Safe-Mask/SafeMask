@@ -657,3 +657,7 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
 }
+
+.member-list .member-role-select {
+    min-width: 130px;
+}

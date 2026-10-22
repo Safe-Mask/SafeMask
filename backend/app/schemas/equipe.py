@@ -40,3 +40,9 @@ class EquipeMembroAdd(BaseModel):
     """Corpo de POST /equipes/{team_id}/membros: a pessoa pelo e-mail."""
 
     email: EmailStr
+
+
+class EquipeMembroCargo(BaseModel):
+    """Corpo de PATCH /equipes/{team_id}/membros/{user_id}: o cargo pelo nome."""
+
+    cargo: str = Field(min_length=1, max_length=50)
