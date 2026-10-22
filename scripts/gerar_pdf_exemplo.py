@@ -16,7 +16,7 @@ from pathlib import Path
 LINHAS_RELATORIO = [
     (72, 740, "RELATORIO MEDICO - HOSPITAL SANTA CASA DE SAO PAULO"),
     (72, 712, "Paciente: Joao Carlos da Silva"),
-    (72, 684, "CPF: 123.456.789-00   RG: 12345678-SSP"),
+    (72, 684, "CPF: 123.456.789-09   RG: 12345678-SSP"),
     (72, 656, "Nascimento: 15/03/1985   CNS: 123456789012345"),
     (72, 628, "Endereco: Rua das Flores, 123 - Sao Paulo/SP   CEP: 01310-100"),
     (72, 600, "Contato: joao.silva@email.com   Telefone: (11) 98765-4321"),
@@ -113,7 +113,7 @@ def main() -> int:
     texto_scan = (
         "RECEITA MEDICA\n"
         "Paciente: Joao Carlos da Silva\n"
-        "CPF: 123.456.789-00\n"
+        "CPF: 123.456.789-09\n"
         "Prescricao: Amoxicilina 500mg - 1 caixa\n"
     )
     receita = destino / "receita_escaneada.pdf"
