@@ -34,6 +34,7 @@ from scanner.patterns import (
     valor_detectado,
 )
 from scanner.redaction import draw_structured_mask
+from scanner.validadores import VALIDADORES
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -416,6 +417,13 @@ class DocumentScanner:
                 for tipo, config in self.regex_config.items():
                     for match in re.finditer(config['pattern'], texto):
                         segredo = valor_detectado(match)
+                        # CPF e CNPJ: o formato bateu, mas so e dado pessoal se
+                        # o digito verificador conferir (evita tarjar numeros
+                        # de exemplo, sequencias repetidas e outros codigos).
+                        validador = VALIDADORES.get(tipo)
+                        if validador is not None and not validador(segredo):
+                            logger.info(f"{tipo} com digito verificador incorreto ignorado (pagina {page_num})")
+                            continue
                         if segredo not in segredos_encontrados:
                             count, coords = self._salvar_dado(
                                 db, novo_doc.doc_id, page, page_num,

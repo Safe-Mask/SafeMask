@@ -153,6 +153,23 @@ def _ddl_adicionar_coluna_espaco(dialecto: str) -> str:
     return sql
 
 
+def corrigir_extensao_documentos(bind=None):
+    """Grava a extensao sem ponto nos documentos antigos.
+
+    O documento principal do upload ficava com a extensao vazia (o upload so
+    aceita PDF) e a rota salvar-censurado a gravava com ponto. Idempotente:
+    sem registro afetado, nada muda. `bind` existe para o teste.
+    """
+    bind = bind if bind is not None else engine
+    if "documentos" not in inspect(bind).get_table_names():
+        return
+    with bind.begin() as conn:
+        conn.execute(text("UPDATE documentos SET extensao = 'pdf' WHERE extensao = ''"))
+        conn.execute(
+            text("UPDATE documentos SET extensao = LOWER(SUBSTR(extensao, 2)) WHERE extensao LIKE '.%'")
+        )
+
+
 def garantir_schema_organizacoes():
     """Cria as colunas de tenant e alinha os dados ja existentes.
 

@@ -25,7 +25,7 @@ def _pdf_com_cpf() -> bytes:
     ]
     linhas = [
         (72, 760, "RELATORIO MEDICO - TESTE SAFEMASK"),
-        (72, 730, "CPF: 123.456.789-00"),
+        (72, 730, "CPF: 123.456.789-09"),
         (72, 700, "CEP: 01310-100"),
     ]
     bt = ["BT /F1 11 Tf"]
@@ -110,7 +110,7 @@ def test_pdf_censurado_contem_as_tarjas(tmp_path, db_session):
     rend_origem = _renderizar(origem, escala)
     rend_tarjado = _renderizar(tarjados[0], 1.0)
 
-    for segredo, rotulo in (("123.456.789-00", "CPF"), ("01310-100", "CEP")):
+    for segredo, rotulo in (("123.456.789-09", "CPF"), ("01310-100", "CEP")):
         caixa = _caixa_do(origem, segredo)
         fracao_origem = _fracao_escura(rend_origem, *caixa, escala=escala)
         fracao_tarjado = _fracao_escura(rend_tarjado, *caixa, escala=escala)
