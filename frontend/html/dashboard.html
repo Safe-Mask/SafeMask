@@ -23,30 +23,17 @@
                     <p class="subtitle">Acompanhe equipes, uploads e indicadores de seguranca em tempo real.</p>
                 </section>
 
-                <section class="metrics">
-                    <article class="metric-card metric-priority reveal">
-                        <p>Documentos Censurados</p>
-                        <h3 data-count="0" id="metricDocsCensurados">0</h3>
-                        <span class="metric-delta up" id="metricTaxaCensura">0% de censura aplicada</span>
-                    </article>
-                    <article class="metric-card reveal">
-                        <p>Documentos Processados</p>
-                        <h3 data-count="0" id="metricTotalDocs">0</h3>
-                        <span class="metric-delta up">documentos no sistema</span>
-                    </article>
-                    <article class="metric-card reveal">
-                        <p>Total de Equipes</p>
-                        <h3 data-count="0" id="metricTotalEquipes">0</h3>
-                        <span class="metric-delta up">equipes com acesso</span>
-                    </article>
-                    <article class="metric-card reveal">
-                        <p>Nivel Medio de Seguranca</p>
-                        <h3 data-count="0" id="metricNivelSeguranca">0</h3>
-                        <span class="metric-delta up" id="metricNivelAlto">0 docs com nivel alto</span>
-                    </article>
-                </section>
-
                 <section class="grid-panels">
+                    <article class="panel panel-sig reveal mindmap-panel">
+                        <div class="panel-header">
+                            <div>
+                                <span class="panel-kicker">Visao Geral</span>
+                                <h3>Mapa Mental dos Documentos</h3>
+                            </div>
+                            <a href="documentos/index.html" class="panel-action">Ver todos</a>
+                        </div>
+                        <div class="mindmap" id="mindmapContainer"></div>
+                    </article>
                     <article class="panel panel-sig reveal" id="equipes-principais">
                         <div class="panel-header">
                             <div>

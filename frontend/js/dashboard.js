@@ -3,23 +3,16 @@ const userNameElement = document.getElementById('userName');
 const userIcon = document.getElementById('userIcon');
 const API_URL = `${API_ROOT}/dashboard/overview`;
 
-const metricTotalEquipes = document.getElementById('metricTotalEquipes');
-const metricTotalDocs = document.getElementById('metricTotalDocs');
-const metricDocsCensurados = document.getElementById('metricDocsCensurados');
-const metricTaxaCensura = document.getElementById('metricTaxaCensura');
-const metricNivelSeguranca = document.getElementById('metricNivelSeguranca');
-const metricNivelAlto = document.getElementById('metricNivelAlto');
 
-const highlightTotalCensurados = document.getElementById('highlightTotalCensurados');
-const highlightTaxaCensura = document.getElementById('highlightTaxaCensura');
-const highlightNivelAlto = document.getElementById('highlightNivelAlto');
+
+
 
 const teamList = document.getElementById('teamList');
 const docList = document.getElementById('docList');
 const barChartTeams = document.getElementById('barChartTeams');
 const processingDonut = document.getElementById('processingDonut');
 const processingLegend = document.getElementById('processingLegend');
-const docsPanel = document.getElementById('docs-enviados');
+
 
 function escapeHtml(value) {
     return String(value)
@@ -64,11 +57,7 @@ function statusBySecurityLevel(level) {
     return { label: 'Baixa Protecao', css: 'alert' };
 }
 
-function setCounted(element, value) {
-    const numeric = Number(value) || 0;
-    element.setAttribute('data-count', String(numeric));
-    element.textContent = String(numeric);
-}
+
 
 function renderTeams(teams) {
     if (!teams.length) {
@@ -140,6 +129,42 @@ function renderRecentDocs(docs) {
         .join('');
 }
 
+
+function renderMindmap(data) {
+    const metrics = data?.metrics || {};
+    const equipes = data?.equipes || [];
+    if (!mindmapContainer) return;
+    const totalDocs = metrics.total_documentos || 0;
+    const censurados = metrics.documentos_censurados || 0;
+    const nivelAlto = metrics.documentos_nivel_alto || 0;
+    let html = '<div class="mindmap-root">\n';
+    html += '  <div class="mindmap-node root">\n';
+    html += `    <span class="node-title">SafeMask</span>\n`;
+    html += `    <span class="node-meta">${totalDocs} documentos · ${equipes.length} equipes</span>\n`;
+    html += '    <div class="node-badges">\n';
+    html += `      <span class="badge info">Censurados: ${censurados}</span>\n`;
+    html += `      <span class="badge warn">Nivel Alto: ${nivelAlto}</span>\n`;
+    html += `      <span class="badge neutral">Taxa: ${metrics.taxa_censura || 0}%</span>\n`;
+    html += '    </div>\n  </div>\n';
+    html += '  <div class="mindmap-branches">\n';
+    if (equipes.length === 0) {
+        html += '<div class="mindmap-empty">Nenhuma equipe encontrada</div>\n';
+    } else {
+        equipes.slice(0, 8).forEach(eq => {
+            html += '    <div class="mindmap-branch">\n';
+            html += '      <div class="mindmap-node">\n';
+            html += `        <span class="node-title">${escapeHtml(eq.nome)}</span>\n`;
+            html += `        <span class="node-meta">${eq.documentos} documentos</span>\n`;
+            html += '        <div class="node-badges">\n';
+            html += eq.documentos > 0 ? '<span class="badge ok">Ativos</span>\n' : '<span class="badge neutral">Vazio</span>\n';
+            html += '        </div>\n      </div>\n    </div>\n';
+        });
+    }
+    html += '  </div>\n</div>';
+    mindmapContainer.innerHTML = html;
+}
+
+
 function renderProcessingChart(metrics) {
     const totalDocs = metrics.total_documentos || 0;
     const censurados = metrics.documentos_censurados || 0;
@@ -163,24 +188,7 @@ function renderProcessingChart(metrics) {
     `;
 }
 
-function applyMetrics(metrics) {
-    setCounted(metricTotalEquipes, metrics.total_equipes);
-    setCounted(metricTotalDocs, metrics.total_documentos);
-    setCounted(metricDocsCensurados, metrics.documentos_censurados);
-    setCounted(metricNivelSeguranca, metrics.media_nivel_seguranca);
-    metricTaxaCensura.textContent = `${metrics.taxa_censura ?? 0}% de censura aplicada`;
-    metricNivelAlto.textContent = `${metrics.documentos_nivel_alto ?? 0} docs com nivel alto`;
 
-    if (highlightTotalCensurados) {
-        highlightTotalCensurados.textContent = metrics.documentos_censurados ?? 0;
-    }
-    if (highlightTaxaCensura) {
-        highlightTaxaCensura.textContent = `${metrics.taxa_censura ?? 0}%`;
-    }
-    if (highlightNivelAlto) {
-        highlightNivelAlto.textContent = metrics.documentos_nivel_alto ?? 0;
-    }
-}
 
 async function loadDashboardData() {
     const token = localStorage.getItem('token');
@@ -214,10 +222,11 @@ async function loadDashboardData() {
             userIcon.textContent = backendUserName.charAt(0).toUpperCase();
         }
 
-        applyMetrics(data.metrics || {});
+        
         renderTeams(data.equipes || []);
         renderRecentDocs(data.documentos_recentes || []);
         renderProcessingChart(data.metrics || {});
+        renderMindmap(data);
     } catch (error) {
         console.error(error);
         docList.innerHTML = `
@@ -233,4 +242,5 @@ async function loadDashboardData() {
 }
 
 // Sidebar, dropdown de usuario, logout e CTA sao gerenciados por app-shell.js.
+renderMindmap({metrics:{},equipes:[],documentos_recentes:[]});
 loadDashboardData();
