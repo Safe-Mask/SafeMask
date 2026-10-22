@@ -16,6 +16,11 @@ const memberAddForm = document.getElementById('memberAddForm');
 const memberEmailInput = document.getElementById('memberEmailInput');
 const memberAddButton = document.getElementById('memberAddButton');
 const memberFeedback = document.getElementById('memberFeedback');
+const policyPanel = document.getElementById('policyPanel');
+const policyForm = document.getElementById('policyForm');
+const policyRows = document.getElementById('policyRows');
+const policyFeedback = document.getElementById('policyFeedback');
+const policySaveButton = document.getElementById('policySaveButton');
 
 const API_BASE = `${API_ROOT}/equipes`;
 const storedName = localStorage.getItem('userName') || 'Usuario';
@@ -334,6 +339,85 @@ detailMemberList.addEventListener('change', async (event) => {
     }
 });
 
+// ------------------------------------------------------- politica de niveis
+
+const ROTULO_NIVEL = {
+    1: 'Nível 1 · todos os membros',
+    2: 'Nível 2 · supervisor e líder',
+    3: 'Nível 3 · só o líder',
+};
+
+function avisoPolitica(mensagem, erro = false) {
+    policyFeedback.textContent = mensagem;
+    policyFeedback.classList.toggle('erro', erro);
+    policyFeedback.hidden = !mensagem;
+}
+
+async function chamarPolitica(opcoes) {
+    const response = await fetch(`${API_BASE}/${getTeamId()}/politica-niveis`, {
+        ...opcoes,
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
+        },
+    });
+    const corpo = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(typeof corpo.detail === 'string' ? corpo.detail : 'Não foi possível carregar a política.');
+    }
+    return corpo;
+}
+
+function renderPolitica(politica) {
+    const podeEditar = Boolean(politica.pode_editar);
+    policySaveButton.hidden = !podeEditar;
+    policyRows.innerHTML = (politica.tipos || [])
+        .map((linha) => {
+            const nivel = podeEditar
+                ? `<label class="sr-only" for="nivel-${escapeHtml(linha.tipo)}">Nível exigido para ${escapeHtml(linha.rotulo)}</label>
+                   <select class="member-role-select policy-select" id="nivel-${escapeHtml(linha.tipo)}" data-tipo="${escapeHtml(linha.tipo)}">
+                       ${[1, 2, 3].map((n) => `<option value="${n}" ${n === linha.nivel ? 'selected' : ''}>${ROTULO_NIVEL[n]}</option>`).join('')}
+                   </select>`
+                : escapeHtml(ROTULO_NIVEL[linha.nivel] || String(linha.nivel));
+            const situacao = linha.nivel === linha.padrao ? 'padrão' : `ajustado (padrão: nível ${linha.padrao})`;
+            return `
+                <tr>
+                    <th scope="row">${escapeHtml(linha.rotulo)}</th>
+                    <td>${nivel}</td>
+                    <td>${escapeHtml(situacao)}</td>
+                </tr>`;
+        })
+        .join('');
+    policyPanel.hidden = false;
+}
+
+async function carregarPolitica() {
+    try {
+        renderPolitica(await chamarPolitica({ method: 'GET' }));
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+policyForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const niveis = {};
+    policyRows.querySelectorAll('.policy-select').forEach((seletor) => {
+        niveis[seletor.dataset.tipo] = Number(seletor.value);
+    });
+    policySaveButton.disabled = true;
+    avisoPolitica('');
+    try {
+        const resultado = await chamarPolitica({ method: 'PUT', body: JSON.stringify({ niveis }) });
+        renderPolitica(resultado.politica);
+        avisoPolitica(resultado.mensagem);
+    } catch (error) {
+        avisoPolitica(error.message, true);
+    } finally {
+        policySaveButton.disabled = false;
+    }
+});
+
 async function loadTeam() {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -374,6 +458,7 @@ async function loadTeam() {
         }
 
         renderTeam(data);
+        carregarPolitica();
     } catch (error) {
         console.error(error);
         renderTeam(null);

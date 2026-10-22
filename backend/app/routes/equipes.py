@@ -3,10 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import desc, func, or_
 from sqlalchemy.orm import Session
 
-from app.core import autorizacao, tenancy
+from app.core import autorizacao, politica_niveis, tenancy
 from app.core.audit import (
     ACAO_ADICIONAR_MEMBRO,
     ACAO_ALTERAR_CARGO,
+    ACAO_ALTERAR_POLITICA_NIVEIS,
     ACAO_REMOVER_MEMBRO,
     RESULTADO_NEGADO,
     registrar,
@@ -19,7 +20,12 @@ from app.models.documentos import Documento
 from app.models.equipe import Equipe
 from app.models.usuario import Usuario
 from app.models.usuario_equipe import UsuarioEquipe
-from app.schemas.equipe import EquipeCreate, EquipeMembroAdd, EquipeMembroCargo
+from app.schemas.equipe import (
+    EquipeCreate,
+    EquipeMembroAdd,
+    EquipeMembroCargo,
+    PoliticaNiveisUpdate,
+)
 
 router = APIRouter(prefix="/equipes", tags=["Equipes"])
 
@@ -698,4 +704,68 @@ def alterar_cargo_membro(
     return {
         "mensagem": f"{nome_alvo} agora tem o cargo {novo_cargo.nome}.",
         "equipe": _load_team_detail(db, current_user, team_id),
+    }
+
+
+# ------------------------------------------------------- politica de niveis
+
+
+def _politica_da_equipe(db: Session, team_id: int, vinculo: UsuarioEquipe) -> dict:
+    cargo = db.query(Cargo).filter(Cargo.cargo_id == vinculo.cargo_id).first()
+    return {
+        "team_id": team_id,
+        "pode_editar": bool(cargo and cargo.nivel >= autorizacao.NIVEL_LIDER),
+        "tipos": politica_niveis.descrever(politica_niveis.niveis_da_equipe(db, team_id)),
+    }
+
+
+@router.get("/{team_id}/politica-niveis", response_model=dict)
+def obter_politica_niveis(
+    team_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Nivel exigido de cada tipo de dado nesta equipe.
+
+    Qualquer membro consulta: e o que define o que cada cargo ve. Quem nao
+    pertence a equipe (ou e de outra organizacao) recebe 404.
+    """
+    vinculo = autorizacao.equipe_do_usuario(db, current_user, team_id)
+    if not vinculo:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Equipe não encontrada para o usuário atual.")
+    return _politica_da_equipe(db, team_id, vinculo)
+
+
+@router.put("/{team_id}/politica-niveis", response_model=dict)
+def alterar_politica_niveis(
+    team_id: int,
+    payload: PoliticaNiveisUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Ajusta o nivel exigido de tipos de dado na equipe. So o lider altera.
+
+    Vale para os documentos enviados depois da alteracao: os ja processados
+    mantem o nivel gravado em `dado_sensivel`.
+    """
+    lider = _exigir_lider(
+        db, current_user, team_id, ACAO_ALTERAR_POLITICA_NIVEIS, request,
+        mensagem="Apenas o líder da equipe pode alterar a política de níveis.",
+    )
+    try:
+        niveis = politica_niveis.validar(payload.niveis)
+    except politica_niveis.PoliticaInvalida as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    politica_niveis.definir(db, team_id, niveis)
+    db.commit()
+
+    registrar(
+        db, request, current_user.user_id, ACAO_ALTERAR_POLITICA_NIVEIS,
+        team_id=team_id, cargo_id=lider.cargo_id,
+    )
+    return {
+        "mensagem": "Níveis atualizados. Valem para os documentos enviados a partir de agora.",
+        "politica": _politica_da_equipe(db, team_id, lider),
     }

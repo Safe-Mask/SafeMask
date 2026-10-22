@@ -377,7 +377,8 @@ class DocumentScanner:
 
     def scan_and_save(self, file_path: str, db: Session, user_team_id: int,
                       nome_original: str = None, nivel_seguranca: int = 1,
-                      dir_original: Path = None, dir_censurado: Path = None) -> dict:
+                      dir_original: Path = None, dir_censurado: Path = None,
+                      niveis: dict | None = None) -> dict:
         """Escaneia e persiste, garantindo que o Documento nao fique pendurado.
 
         Um PDF corrompido, um tesseract ausente ou um erro de OCR no meio do
@@ -390,7 +391,7 @@ class DocumentScanner:
         """
         try:
             return self._scan(file_path, db, user_team_id, nome_original,
-                              nivel_seguranca, dir_original, dir_censurado)
+                              nivel_seguranca, dir_original, dir_censurado, niveis)
         except Exception:
             self._marcar_erro(db, user_team_id, nome_original or file_path)
             raise
@@ -418,7 +419,11 @@ class DocumentScanner:
 
     def _scan(self, file_path: str, db: Session, user_team_id: int,
               nome_original: str = None, nivel_seguranca: int = 1,
-              dir_original: Path = None, dir_censurado: Path = None) -> dict:
+              dir_original: Path = None, dir_censurado: Path = None,
+              niveis: dict | None = None) -> dict:
+        # Politica da equipe de destino (tipo -> nivel exigido); tipo ausente
+        # fica com o nivel padrao de configuracoes_regex() ou do mapa do NER.
+        niveis = niveis or {}
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Arquivo não encontrado: {file_path}")
 
@@ -485,7 +490,7 @@ class DocumentScanner:
                         if segredo not in segredos_encontrados:
                             count, coords = self._salvar_dado(
                                 db, novo_doc.doc_id, page, page_num,
-                                segredo, tipo, config['level'],
+                                segredo, tipo, niveis.get(tipo, config['level']),
                                 usando_ocr, ocr_data
                             )
                             sensitive_count += count
@@ -546,6 +551,7 @@ class DocumentScanner:
 
                         if tipo_ia in MAPA_ENTIDADES_NER and len(palavra_exata) > 2:
                             nivel, tipo_banco = MAPA_ENTIDADES_NER[tipo_ia]
+                            nivel = niveis.get(tipo_banco, nivel)
                             if palavra_exata not in segredos_encontrados:
                                 count, coords = self._salvar_dado(
                                     db, novo_doc.doc_id, page, page_num,

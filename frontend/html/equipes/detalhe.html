@@ -80,6 +80,30 @@
                     </ul>
                 </article>
             </section>
+
+            <section class="panel panel-sig policy-panel reveal" id="policyPanel" hidden>
+                <div class="panel-header">
+                    <div>
+                        <span class="panel-kicker">Política de acesso</span>
+                        <h3>Nível exigido por tipo de dado</h3>
+                        <p class="panel-subtitle">Na versão parcial, cada dado só aparece para quem tem cargo do nível exigido ou acima: nível 1, todos os membros; nível 2, supervisor e líder; nível 3, só o líder. A mudança vale para os documentos enviados depois dela; os já enviados não mudam.</p>
+                    </div>
+                </div>
+                <form id="policyForm">
+                    <table class="policy-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Tipo de dado</th>
+                                <th scope="col">Nível exigido</th>
+                                <th scope="col">Situação</th>
+                            </tr>
+                        </thead>
+                        <tbody id="policyRows"></tbody>
+                    </table>
+                    <p class="member-feedback" id="policyFeedback" role="status" hidden></p>
+                    <button type="submit" class="ghost-button" id="policySaveButton" hidden>Salvar níveis</button>
+                </form>
+            </section>
     </main>
 
     <script>window.APP_SHELL = { crumb: { id: 'teamNameHeader', texto: 'Equipe' }, subtitulo: { id: 'teamSubtitle', texto: 'Carregando...' } };</script>

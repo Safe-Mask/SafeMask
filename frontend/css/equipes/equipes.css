@@ -661,3 +661,38 @@
 .member-list .member-role-select {
     min-width: 130px;
 }
+
+/* Politica de niveis por equipe. */
+.policy-panel {
+    margin-top: 1rem;
+}
+
+.policy-panel[hidden] {
+    display: none;
+}
+
+.policy-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.4rem 0 0.9rem;
+}
+
+.policy-table th,
+.policy-table td {
+    text-align: left;
+    padding: 0.65rem 0.5rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.policy-table thead th {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.policy-table td:last-child {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}

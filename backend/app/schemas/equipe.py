@@ -46,3 +46,12 @@ class EquipeMembroCargo(BaseModel):
     """Corpo de PATCH /equipes/{team_id}/membros/{user_id}: o cargo pelo nome."""
 
     cargo: str = Field(min_length=1, max_length=50)
+
+
+class PoliticaNiveisUpdate(BaseModel):
+    """Corpo de PUT /equipes/{team_id}/politica-niveis: tipo -> nivel (1 a 3).
+
+    Ex.: {"niveis": {"TELEFONE": 3}}. So os tipos informados mudam.
+    """
+
+    niveis: dict[str, int]
