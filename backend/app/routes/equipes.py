@@ -176,8 +176,11 @@ def _load_team_detail(db: Session, current_user: Usuario, team_id: int):
                 "autor_nome": row.autor_nome,
                 "cargo_nome": row.cargo_nome,
                 "user_team_id": row.user_team_id,
-                "tem_acesso": row.user_team_id in user_team_ids,
-                "preview_url": f"/documentos/censurados/{row.doc_id}/arquivo" if row.user_team_id in user_team_ids else None,
+                # Todo membro da equipe acessa o documento; o cargo decide nas
+                # rotas de documento o que ele recebe. Antes so quem enviou o
+                # documento via o botao liberado.
+                "tem_acesso": bool(user_team_ids),
+                "preview_url": f"/documentos/censurados/{row.doc_id}/arquivo" if user_team_ids else None,
             }
             for row in documentos_rows
         ],
