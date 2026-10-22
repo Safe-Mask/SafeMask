@@ -28,5 +28,12 @@ class Usuario(Base):
 
     # Relacionamento com UsuarioEquipe
     equipes_assoc = relationship("UsuarioEquipe", back_populates="usuario", cascade="all, delete-orphan")
-    logs_auditoria = relationship("LogAuditoria", back_populates="usuario", cascade="all, delete-orphan")
+    logs_auditoria = relationship(
+        "LogAuditoria",
+        back_populates="usuario",
+        cascade="all, delete-orphan",
+        # log_auditoria tem duas FKs para usuario (quem agiu e o alvo); a
+        # relacao e com quem agiu.
+        foreign_keys="LogAuditoria.user_id",
+    )
 

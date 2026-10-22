@@ -14,6 +14,7 @@ from app.core.audit import (
     ACAO_VER_CENSURADO,
     ACAO_VER_ORIGINAL,
     ACAO_VER_PARCIAL,
+    RESULTADO_NEGADO,
     registrar,
 )
 from app.core.autorizacao import NIVEL_MIN_DESCENSURA, cargo_na_equipe
@@ -136,7 +137,11 @@ async def upload_documento(
         )
 
         db.commit()
-        registrar(db, request, usuario_atual.user_id, ACAO_UPLOAD)
+        # Um evento por documento criado: cada equipe de destino encontra o
+        # seu no proprio historico.
+        for doc_criado in [db.get(Documento, resultado["doc_id"]), *docs_compartilhados]:
+            if doc_criado is not None:
+                registrar(db, request, usuario_atual.user_id, ACAO_UPLOAD, documento=doc_criado)
 
         return {
             "mensagem": "Documento processado e censurado com sucesso.",
@@ -304,6 +309,25 @@ def buscar_documento_autorizado(db: Session, usuario: Usuario, doc_id: int) -> D
 
     return documento if cargo_na_equipe(db, usuario, equipe.team_id) else None
 
+
+def registrar_acesso_negado(db: Session, request, usuario: Usuario, doc_id: int, acao: str) -> None:
+    """Registra a tentativa de quem e da organizacao mas nao da equipe do documento.
+
+    Documento inexistente ou de outra organizacao nao gera evento: o
+    historico da organizacao dona nao deve receber nomes de outra empresa, e
+    para quem tentou a resposta continua 404.
+    """
+    documento = db.query(Documento).filter(Documento.doc_id == doc_id).first()
+    if not documento:
+        return
+    equipe = equipe_do_documento(db, documento)
+    if not equipe or equipe.organizacao_id != usuario.organizacao_id:
+        return
+    registrar(
+        db, request, usuario.user_id, acao,
+        documento=documento, team_id=equipe.team_id, resultado=RESULTADO_NEGADO,
+    )
+
 @router.get("/censurados")
 def listar_documentos_censurados(
     request: Request,
@@ -384,6 +408,7 @@ def obter_documento_censurado(
     documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
 
     if not documento:
+        registrar_acesso_negado(db, request, usuario_atual, doc_id, ACAO_VER_CENSURADO)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Documento não encontrado ou sem acesso.",
@@ -403,7 +428,7 @@ def obter_documento_censurado(
 
     cargo = cargo_na_equipe(db, usuario_atual, equipe.team_id) if equipe else None
 
-    registrar(db, request, usuario_atual.user_id, ACAO_VER_CENSURADO)
+    registrar(db, request, usuario_atual.user_id, ACAO_VER_CENSURADO, documento=documento)
 
     return {
         "doc_id": documento.doc_id,
@@ -441,6 +466,7 @@ def obter_arquivo_documento_censurado(
     documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
 
     if not documento:
+        registrar_acesso_negado(db, request, usuario_atual, doc_id, ACAO_VER_CENSURADO)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Arquivo não encontrado ou sem acesso.",
@@ -456,7 +482,7 @@ def obter_arquivo_documento_censurado(
             detail="Arquivo físico não encontrado.",
         )
 
-    registrar(db, request, usuario_atual.user_id, ACAO_VER_CENSURADO)
+    registrar(db, request, usuario_atual.user_id, ACAO_VER_CENSURADO, documento=documento)
     return responder_arquivo(
         caminho,
         nome_para_download(documento.nome_original, documento.extensao),
@@ -478,6 +504,7 @@ def obter_documento_original(
     documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
 
     if not documento:
+        registrar_acesso_negado(db, request, usuario_atual, doc_id, ACAO_VER_ORIGINAL)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Documento não encontrado ou sem acesso.",
@@ -486,6 +513,10 @@ def obter_documento_original(
     equipe = equipe_do_documento(db, documento)
     cargo = cargo_na_equipe(db, usuario_atual, equipe.team_id) if equipe else None
     if not cargo or cargo["nivel"] < NIVEL_MIN_DESCENSURA:
+        registrar(
+            db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL,
+            documento=documento, resultado=RESULTADO_NEGADO,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Seu cargo nao permite acessar a versao original do documento.",
@@ -500,7 +531,7 @@ def obter_documento_original(
         )
 
     caminho = candidatos[0]
-    registrar(db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL)
+    registrar(db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL, documento=documento)
     return responder_arquivo(
         caminho,
         f"{documento.nome_original}_original.pdf",
@@ -522,6 +553,7 @@ def obter_documento_parcial(
     """
     documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
     if not documento:
+        registrar_acesso_negado(db, request, usuario_atual, doc_id, ACAO_VER_PARCIAL)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Documento não encontrado ou sem acesso.",
@@ -544,7 +576,7 @@ def obter_documento_parcial(
                 detail="Arquivo original nao encontrado no armazenamento.",
             )
         caminho = candidatos[0]
-        registrar(db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL)
+        registrar(db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL, documento=documento)
         return responder_arquivo(
             caminho,
             f"{documento.nome_original}_original.pdf",
@@ -583,7 +615,7 @@ def obter_documento_parcial(
     # sempre que o scan nao encontrou nada.
     if not itens_para_cobrir:
         caminho_censurado = caminho_armazenado(documento)
-        registrar(db, request, usuario_atual.user_id, ACAO_VER_PARCIAL)
+        registrar(db, request, usuario_atual.user_id, ACAO_VER_PARCIAL, documento=documento)
         return responder_arquivo(
             caminho_censurado,
             f"{documento.nome_original}_censurado.pdf",
@@ -606,7 +638,7 @@ def obter_documento_parcial(
             f"Doc {documento.doc_id}: nenhuma caixa aplicavel na descensura "
             "parcial; servindo a versao censurada."
         )
-        registrar(db, request, usuario_atual.user_id, ACAO_VER_PARCIAL)
+        registrar(db, request, usuario_atual.user_id, ACAO_VER_PARCIAL, documento=documento)
         return responder_arquivo(
             caminho_armazenado(documento),
             f"{documento.nome_original}_censurado.pdf",
@@ -617,7 +649,7 @@ def obter_documento_parcial(
             detail="Falha ao gerar a descensura parcial.",
         ) from e
 
-    registrar(db, request, usuario_atual.user_id, ACAO_VER_PARCIAL)
+    registrar(db, request, usuario_atual.user_id, ACAO_VER_PARCIAL, documento=documento)
     return responder_arquivo(
         caminho_parcial,
         f"{documento.nome_original}_parcial_nivel{nivel}.pdf",
@@ -691,6 +723,7 @@ async def salvar_documento_censurado(
 
         # Salvar documento para cada equipe selecionada
         documentos_criados = []
+        documentos_novos = []
         chave_cripto = gerar_chave_criptografica(hash_arquivo, usuario_atual.user_id)
 
         for team_id, usuario_equipe in zip(team_ids, vinculos, strict=True):
@@ -708,6 +741,7 @@ async def salvar_documento_censurado(
             )
 
             db.add(novo_documento)
+            documentos_novos.append(novo_documento)
             documentos_criados.append({
                 "team_id": team_id,
                 "titulo": titulo,
@@ -716,7 +750,8 @@ async def salvar_documento_censurado(
 
         # Commit único para todas as mudanças
         db.commit()
-        registrar(db, request, usuario_atual.user_id, ACAO_UPLOAD_CENSURADO)
+        for novo_documento in documentos_novos:
+            registrar(db, request, usuario_atual.user_id, ACAO_UPLOAD_CENSURADO, documento=novo_documento)
 
         return {
             "mensagem": "Documento censurado salvo com sucesso.",
