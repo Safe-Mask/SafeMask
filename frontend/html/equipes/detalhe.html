@@ -47,6 +47,13 @@
                         <h3>Membros da Equipe</h3>
                         <span class="panel-action">ordenados por cargo</span>
                     </div>
+                    <!-- So o lider ve: a API confere de novo em cada operacao. -->
+                    <form class="member-add-form" id="memberAddForm" hidden>
+                        <label class="sr-only" for="memberEmailInput">E-mail de quem você quer adicionar</label>
+                        <input type="email" id="memberEmailInput" placeholder="E-mail de quem você quer adicionar" required>
+                        <button type="submit" class="ghost-button" id="memberAddButton">Adicionar</button>
+                    </form>
+                    <p class="member-feedback" id="memberFeedback" role="status" hidden></p>
                     <ul class="member-list detail-member-list" id="detailMemberList">
                         <li class="empty-state">
                             <strong>Carregando membros</strong>
