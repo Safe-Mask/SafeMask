@@ -622,3 +622,77 @@
         flex-direction: column;
     }
 }
+
+/* Gestao de membros (lider): adicionar por e-mail e remover. */
+.member-add-form {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.member-add-form input {
+    flex: 1;
+    min-width: 0;
+}
+
+.member-feedback {
+    margin: 0 0 12px;
+    font-size: 0.9rem;
+    color: var(--primary);
+}
+
+.member-feedback.erro {
+    color: var(--crimson, #ff6b6b);
+}
+
+.member-list .member-remove {
+    margin-left: 8px;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
+
+.member-list .member-role-select {
+    min-width: 130px;
+}
+
+/* Politica de niveis por equipe. */
+.policy-panel {
+    margin-top: 1rem;
+}
+
+.policy-panel[hidden] {
+    display: none;
+}
+
+.policy-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.4rem 0 0.9rem;
+}
+
+.policy-table th,
+.policy-table td {
+    text-align: left;
+    padding: 0.65rem 0.5rem;
+    border-bottom: 1px solid var(--line);
+}
+
+.policy-table thead th {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.policy-table td:last-child {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}

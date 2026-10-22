@@ -249,10 +249,12 @@ class ScannerFalso:
         self.itens_para_cobrir = None
 
     def scan_and_save(self, file_path, db, user_team_id, nome_original,
-                      nivel_seguranca, dir_original, dir_censurado):
+                      nivel_seguranca, dir_original, dir_censurado, niveis=None):
         from pathlib import Path
 
         self.chamadas += 1
+        # Politica recebida, para o teste conferir o que a rota mandou.
+        self.niveis = niveis
         import hashlib
 
         conteudo = Path(file_path).read_bytes()

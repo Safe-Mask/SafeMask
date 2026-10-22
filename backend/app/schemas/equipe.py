@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 class EquipeBase(BaseModel):
@@ -34,3 +34,24 @@ class EquipeDetailResponse(BaseModel):
     membros_lista: list[EquipeMemberResponse]
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class EquipeMembroAdd(BaseModel):
+    """Corpo de POST /equipes/{team_id}/membros: a pessoa pelo e-mail."""
+
+    email: EmailStr
+
+
+class EquipeMembroCargo(BaseModel):
+    """Corpo de PATCH /equipes/{team_id}/membros/{user_id}: o cargo pelo nome."""
+
+    cargo: str = Field(min_length=1, max_length=50)
+
+
+class PoliticaNiveisUpdate(BaseModel):
+    """Corpo de PUT /equipes/{team_id}/politica-niveis: tipo -> nivel (1 a 3).
+
+    Ex.: {"niveis": {"TELEFONE": 3}}. So os tipos informados mudam.
+    """
+
+    niveis: dict[str, int]

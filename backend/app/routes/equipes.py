@@ -1,9 +1,17 @@
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import desc, func, or_
 from sqlalchemy.orm import Session
 
-from app.core import autorizacao, tenancy
+from app.core import autorizacao, politica_niveis, tenancy
+from app.core.audit import (
+    ACAO_ADICIONAR_MEMBRO,
+    ACAO_ALTERAR_CARGO,
+    ACAO_ALTERAR_POLITICA_NIVEIS,
+    ACAO_REMOVER_MEMBRO,
+    RESULTADO_NEGADO,
+    registrar,
+)
 from app.core.current_user import get_current_user
 from app.core.datas import iso_utc
 from app.database import get_db
@@ -12,7 +20,12 @@ from app.models.documentos import Documento
 from app.models.equipe import Equipe
 from app.models.usuario import Usuario
 from app.models.usuario_equipe import UsuarioEquipe
-from app.schemas.equipe import EquipeCreate
+from app.schemas.equipe import (
+    EquipeCreate,
+    EquipeMembroAdd,
+    EquipeMembroCargo,
+    PoliticaNiveisUpdate,
+)
 
 router = APIRouter(prefix="/equipes", tags=["Equipes"])
 
@@ -165,6 +178,17 @@ def _load_team_detail(db: Session, current_user: Usuario, team_id: int):
         "membros": len(members),
         "documentos": int(documentos),
         "membros_lista": [_serialize_member(member) for member in members],
+        # A tela usa para mostrar (ou nao) o formulario de membros e os botoes
+        # de remover. A API confere de novo em cada operacao.
+        # Opcoes do seletor de cargo, do maior nivel para o menor.
+        "cargos": [
+            {"nome": cargo.nome, "nivel": int(cargo.nivel)}
+            for cargo in db.query(Cargo).order_by(Cargo.nivel.desc(), Cargo.nome).all()
+        ],
+        "pode_gerenciar_membros": any(
+            m.user_id == current_user.user_id and int(m.cargo_nivel or 0) >= autorizacao.NIVEL_LIDER
+            for m in members
+        ),
         "documentos_lista": [
             {
                 "doc_id": row.doc_id,
@@ -457,3 +481,291 @@ def get_team_detail(
         )
 
     return detail
+
+
+# ------------------------------------------------------- gestao de membros
+
+
+def _exigir_lider(
+    db: Session,
+    usuario: Usuario,
+    team_id: int,
+    acao: str,
+    request: Request,
+    mensagem: str = "Apenas o lider da equipe pode gerenciar os membros.",
+) -> UsuarioEquipe:
+    """Garante que quem chama e lider da equipe, na propria organizacao.
+
+    Quem nao pertence a equipe recebe 404, e nao 403: confirmar que a equipe
+    existe ja seria informacao para quem nao deveria ve-la. As duas recusas
+    entram na trilha como "negado" (a de fora, so se a equipe for da mesma
+    organizacao).
+    """
+    vinculo = autorizacao.equipe_do_usuario(db, usuario, team_id)
+    if not vinculo:
+        equipe = (
+            db.query(Equipe.team_id)
+            .filter(Equipe.team_id == team_id, Equipe.organizacao_id == usuario.organizacao_id)
+            .first()
+        )
+        if equipe:
+            registrar(db, request, usuario.user_id, acao, team_id=team_id, resultado=RESULTADO_NEGADO)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Equipe não encontrada para o usuário atual.",
+        )
+
+    cargo = db.query(Cargo).filter(Cargo.cargo_id == vinculo.cargo_id).first()
+    if not cargo or cargo.nivel < autorizacao.NIVEL_LIDER:
+        registrar(
+            db, request, usuario.user_id, acao,
+            team_id=team_id, cargo_id=vinculo.cargo_id, resultado=RESULTADO_NEGADO,
+        )
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=mensagem)
+    return vinculo
+
+
+def _vinculo_na_equipe(db: Session, user_id: int, team_id: int) -> UsuarioEquipe | None:
+    return (
+        db.query(UsuarioEquipe)
+        .filter(UsuarioEquipe.team_id == team_id, UsuarioEquipe.user_id == user_id)
+        .first()
+    )
+
+
+def _outros_lideres(db: Session, team_id: int, user_id: int, cargo_lider: Cargo) -> int:
+    return (
+        db.query(func.count(UsuarioEquipe.user_team_id))
+        .filter(
+            UsuarioEquipe.team_id == team_id,
+            UsuarioEquipe.user_id != user_id,
+            UsuarioEquipe.cargo_id == cargo_lider.cargo_id,
+        )
+        .scalar()
+        or 0
+    )
+
+
+@router.post("/{team_id}/membros", response_model=dict, status_code=status.HTTP_201_CREATED)
+def adicionar_membro(
+    team_id: int,
+    payload: EquipeMembroAdd,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Adiciona uma pessoa da mesma organizacao a equipe, no cargo de membro.
+
+    Entrar no menor privilegio e a escolha segura; promover e outra operacao.
+    E-mail de outra organizacao recebe a mesma resposta de e-mail inexistente,
+    para nao revelar quem esta cadastrado em outra empresa.
+    """
+    lider = _exigir_lider(db, current_user, team_id, ACAO_ADICIONAR_MEMBRO, request)
+
+    email = payload.email.strip().lower()
+    usuario = (
+        db.query(Usuario)
+        .filter(
+            func.lower(Usuario.email) == email,
+            Usuario.organizacao_id == current_user.organizacao_id,
+        )
+        .first()
+    )
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Não existe usuário com este e-mail na sua organização.",
+        )
+
+    if _vinculo_na_equipe(db, usuario.user_id, team_id):
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Este usuário já faz parte da equipe.")
+
+    db.add(UsuarioEquipe(user_id=usuario.user_id, team_id=team_id, cargo_id=_get_cargo_membro(db).cargo_id))
+    db.commit()
+
+    # O alvo vai como user_id, nunca como o e-mail digitado.
+    registrar(
+        db, request, current_user.user_id, ACAO_ADICIONAR_MEMBRO,
+        team_id=team_id, cargo_id=lider.cargo_id, alvo_user_id=usuario.user_id,
+    )
+    return {
+        "mensagem": f"{usuario.nome} foi adicionado à equipe.",
+        "equipe": _load_team_detail(db, current_user, team_id),
+    }
+
+
+@router.delete("/{team_id}/membros/{user_id}", response_model=dict)
+def remover_membro(
+    team_id: int,
+    user_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Remove um membro da equipe.
+
+    Duas recusas deliberadas:
+    1. O ultimo lider nao sai: sem lider ninguem administra a equipe nem abre
+       o original.
+    2. Membro com documentos na equipe nao sai: o vinculo e o dono dos
+       documentos (`Documento.user_team_id`), e apagar o vinculo apagaria os
+       documentos junto.
+    """
+    lider = _exigir_lider(db, current_user, team_id, ACAO_REMOVER_MEMBRO, request)
+    # Lido antes do delete: se o lider remover a si mesmo, o objeto some.
+    cargo_do_lider = lider.cargo_id
+
+    alvo = _vinculo_na_equipe(db, user_id, team_id)
+    if not alvo:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Este usuário não faz parte da equipe.")
+
+    cargo_lider = _get_cargo_lider(db)
+    if alvo.cargo_id == cargo_lider.cargo_id and _outros_lideres(db, team_id, user_id, cargo_lider) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A equipe ficaria sem líder. Promova outro membro antes de remover este.",
+        )
+
+    documentos = (
+        db.query(func.count(Documento.doc_id)).filter(Documento.user_team_id == alvo.user_team_id).scalar() or 0
+    )
+    if documentos:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                f"Este membro possui {documentos} documento(s) na equipe. Remover o vínculo "
+                "excluiria esses documentos, então a operação foi recusada."
+            ),
+        )
+
+    db.delete(alvo)
+    db.commit()
+
+    registrar(
+        db, request, current_user.user_id, ACAO_REMOVER_MEMBRO,
+        team_id=team_id, cargo_id=cargo_do_lider, alvo_user_id=user_id,
+    )
+    return {
+        "mensagem": "Membro removido da equipe.",
+        "equipe": _load_team_detail(db, current_user, team_id),
+    }
+
+
+@router.patch("/{team_id}/membros/{user_id}", response_model=dict)
+def alterar_cargo_membro(
+    team_id: int,
+    user_id: int,
+    payload: EquipeMembroCargo,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Altera o cargo de um membro da equipe.
+
+    O cargo decide o que a pessoa ve do documento (parcial e, para o lider, o
+    original); a mudanca vale ja no proximo acesso. Recusas: so o lider altera
+    (404/403, com evento "negado"); cargo inexistente ou igual ao atual (400);
+    rebaixar o ultimo lider (400).
+    """
+    lider = _exigir_lider(db, current_user, team_id, ACAO_ALTERAR_CARGO, request)
+    # Lido antes da alteracao: o lider pode estar rebaixando a si mesmo, e o
+    # evento registra o cargo com que agiu.
+    cargo_do_lider = lider.cargo_id
+
+    alvo = _vinculo_na_equipe(db, user_id, team_id)
+    if not alvo:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Este usuário não faz parte da equipe.")
+
+    novo_cargo = db.query(Cargo).filter(func.lower(Cargo.nome) == payload.cargo.strip().lower()).first()
+    if not novo_cargo:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cargo inexistente.")
+
+    if alvo.cargo_id == novo_cargo.cargo_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Este membro já tem o cargo {novo_cargo.nome}.",
+        )
+
+    cargo_lider = _get_cargo_lider(db)
+    if alvo.cargo_id == cargo_lider.cargo_id and _outros_lideres(db, team_id, user_id, cargo_lider) == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A equipe ficaria sem líder. Promova outro membro a líder antes.",
+        )
+
+    alvo.cargo_id = novo_cargo.cargo_id
+    db.commit()
+
+    registrar(
+        db, request, current_user.user_id, ACAO_ALTERAR_CARGO,
+        team_id=team_id, cargo_id=cargo_do_lider, alvo_user_id=user_id,
+    )
+    nome_alvo = db.query(Usuario.nome).filter(Usuario.user_id == user_id).scalar()
+    return {
+        "mensagem": f"{nome_alvo} agora tem o cargo {novo_cargo.nome}.",
+        "equipe": _load_team_detail(db, current_user, team_id),
+    }
+
+
+# ------------------------------------------------------- politica de niveis
+
+
+def _politica_da_equipe(db: Session, team_id: int, vinculo: UsuarioEquipe) -> dict:
+    cargo = db.query(Cargo).filter(Cargo.cargo_id == vinculo.cargo_id).first()
+    return {
+        "team_id": team_id,
+        "pode_editar": bool(cargo and cargo.nivel >= autorizacao.NIVEL_LIDER),
+        "tipos": politica_niveis.descrever(politica_niveis.niveis_da_equipe(db, team_id)),
+    }
+
+
+@router.get("/{team_id}/politica-niveis", response_model=dict)
+def obter_politica_niveis(
+    team_id: int,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Nivel exigido de cada tipo de dado nesta equipe.
+
+    Qualquer membro consulta: e o que define o que cada cargo ve. Quem nao
+    pertence a equipe (ou e de outra organizacao) recebe 404.
+    """
+    vinculo = autorizacao.equipe_do_usuario(db, current_user, team_id)
+    if not vinculo:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Equipe não encontrada para o usuário atual.")
+    return _politica_da_equipe(db, team_id, vinculo)
+
+
+@router.put("/{team_id}/politica-niveis", response_model=dict)
+def alterar_politica_niveis(
+    team_id: int,
+    payload: PoliticaNiveisUpdate,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user),
+):
+    """Ajusta o nivel exigido de tipos de dado na equipe. So o lider altera.
+
+    Vale para os documentos enviados depois da alteracao: os ja processados
+    mantem o nivel gravado em `dado_sensivel`.
+    """
+    lider = _exigir_lider(
+        db, current_user, team_id, ACAO_ALTERAR_POLITICA_NIVEIS, request,
+        mensagem="Apenas o líder da equipe pode alterar a política de níveis.",
+    )
+    try:
+        niveis = politica_niveis.validar(payload.niveis)
+    except politica_niveis.PoliticaInvalida as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+    politica_niveis.definir(db, team_id, niveis)
+    db.commit()
+
+    registrar(
+        db, request, current_user.user_id, ACAO_ALTERAR_POLITICA_NIVEIS,
+        team_id=team_id, cargo_id=lider.cargo_id,
+    )
+    return {
+        "mensagem": "Níveis atualizados. Valem para os documentos enviados a partir de agora.",
+        "politica": _politica_da_equipe(db, team_id, lider),
+    }

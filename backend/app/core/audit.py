@@ -32,6 +32,8 @@ ACAO_CRIAR_EQUIPE = "criar_equipe"
 ACAO_ATUALIZAR_EQUIPE = "atualizar_equipe"
 ACAO_ADICIONAR_MEMBRO = "adicionar_membro"
 ACAO_REMOVER_MEMBRO = "remover_membro"
+ACAO_ALTERAR_CARGO = "alterar_cargo"
+ACAO_ALTERAR_POLITICA_NIVEIS = "alterar_politica_niveis"
 
 # Resultado: "negado" e a recusa por permissao (cargo insuficiente, ou pessoa
 # da mesma organizacao fora da equipe dona do documento). Uma trilha que so

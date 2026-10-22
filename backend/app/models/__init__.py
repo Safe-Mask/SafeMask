@@ -4,6 +4,7 @@ from .documentos import Documento
 from .equipe import Equipe
 from .log_auditoria import LogAuditoria
 from .organizacao import Organizacao
+from .politica_nivel import PoliticaNivel
 from .usuario import Usuario
 from .usuario_equipe import UsuarioEquipe
 
@@ -16,6 +17,7 @@ __all__ = [
     "Equipe",
     "LogAuditoria",
     "Organizacao",
+    "PoliticaNivel",
     "Usuario",
     "UsuarioEquipe",
 ]

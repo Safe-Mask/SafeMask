@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.core import tenancy
+from app.core import politica_niveis, tenancy
 from app.core.audit import (
     ACAO_LISTAR_DOCUMENTOS,
     ACAO_UPLOAD,
@@ -92,6 +92,7 @@ async def upload_documento(
     with open(caminho_original, "wb") as f:
         f.write(conteudo)
 
+    niveis_principal = politica_niveis.niveis_da_equipe(db, usuario_equipes[0].team_id)
     try:
         # O scanner roda UMA vez e gera o PDF tarjado a partir do primeiro vínculo.
         resultado = get_scanner().scan_and_save(
@@ -101,7 +102,9 @@ async def upload_documento(
             nome_original=titulo,
             nivel_seguranca=nivel_seguranca,
             dir_original=ORIGINAIS_DIR,
-            dir_censurado=CENSURADOS_DIR
+            dir_censurado=CENSURADOS_DIR,
+            # Nivel exigido de cada tipo de dado: politica da equipe de destino.
+            niveis=niveis_principal,
         )
 
         # Compartilha o mesmo documento com as demais equipes selecionadas.
@@ -129,6 +132,10 @@ async def upload_documento(
         # Sem esta copia, /parcial de uma equipe secundaria nao acha nada a
         # cobrir e devolve o PDF original sem censura.
         duplicar_itens_sensiveis(db, resultado["doc_id"], docs_compartilhados)
+        # Cada copia segue a politica da propria equipe; tipo que a politica
+        # nao conhece (ex.: do NER) mantem o nivel detectado.
+        for doc_copia, vinculo in zip(docs_compartilhados, usuario_equipes[1:], strict=True):
+            aplicar_politica_da_equipe(db, doc_copia, vinculo.team_id, niveis_principal)
 
         # O scanner tira a extensao do `nome_original`, que aqui e o titulo
         # digitado e nao tem extensao: o principal ficava com ela vazia.
@@ -266,6 +273,24 @@ def duplicar_itens_sensiveis(db: Session, doc_id_origem: int, documentos_destino
             copiados += 1
     db.flush()
     return copiados
+
+
+def aplicar_politica_da_equipe(
+    db: Session, documento: Documento, team_id: int, niveis_origem: dict[str, int]
+) -> None:
+    """Ajusta os itens de uma copia a politica da equipe dela.
+
+    So muda o tipo em que a politica desta equipe difere da equipe de origem
+    (a do scan); o resto fica como o scan gravou.
+    """
+    niveis = politica_niveis.niveis_da_equipe(db, team_id)
+    diferentes = {tipo: nivel for tipo, nivel in niveis.items() if niveis_origem.get(tipo) != nivel}
+    if not diferentes:
+        return
+    for item in db.query(DadoSensivel).filter(DadoSensivel.doc_id == documento.doc_id).all():
+        if item.tipo_entidade in diferentes:
+            item.nivel_requerido = diferentes[item.tipo_entidade]
+    db.flush()
 
 
 def equipe_do_documento(db: Session, documento: Documento) -> Equipe | None:

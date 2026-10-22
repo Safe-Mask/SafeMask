@@ -12,6 +12,15 @@ const detailMemberList = document.getElementById('detailMemberList');
 const detailDocumentList = document.getElementById('detailDocumentList');
 const teamDocsCount = document.getElementById('teamDocsCount');
 const teamUploadLink = document.getElementById('teamUploadLink');
+const memberAddForm = document.getElementById('memberAddForm');
+const memberEmailInput = document.getElementById('memberEmailInput');
+const memberAddButton = document.getElementById('memberAddButton');
+const memberFeedback = document.getElementById('memberFeedback');
+const policyPanel = document.getElementById('policyPanel');
+const policyForm = document.getElementById('policyForm');
+const policyRows = document.getElementById('policyRows');
+const policyFeedback = document.getElementById('policyFeedback');
+const policySaveButton = document.getElementById('policySaveButton');
 
 const API_BASE = `${API_ROOT}/equipes`;
 const storedName = localStorage.getItem('userName') || 'Usuario';
@@ -108,6 +117,7 @@ function renderTeam(team) {
     }
 
     teamNameHeader.textContent = team.nome;
+    memberAddForm.hidden = !team.pode_gerenciar_membros;
     // Abre o upload com esta equipe ja marcada.
     teamUploadLink.href = `../documentos/censurar.html?equipe=${encodeURIComponent(team.team_id)}`;
     teamUploadLink.hidden = false;
@@ -134,9 +144,19 @@ function renderTeam(team) {
             </li>
         `;
     } else {
+        const podeGerenciar = Boolean(team.pode_gerenciar_membros);
         detailMemberList.innerHTML = members
             .map((member) => {
                 const role = roleLabel(member.cargo_nome);
+                // Lider ve um seletor no lugar do rotulo; a API confere de novo.
+                const cargoMarkup = podeGerenciar
+                    ? `<select class="member-role-select" data-cargo-member="${escapeHtml(member.user_id)}" data-cargo-atual="${escapeHtml(member.cargo_nome)}" aria-label="Cargo de ${escapeHtml(member.nome)}">
+                        ${(team.cargos || []).map((cargo) => `<option value="${escapeHtml(cargo.nome)}" ${cargo.nome === member.cargo_nome ? 'selected' : ''}>${escapeHtml(roleLabel(cargo.nome).label)}</option>`).join('')}
+                       </select>`
+                    : `<span class="pill ${role.css} member-role">${escapeHtml(role.label)}</span>`;
+                const remover = podeGerenciar
+                    ? `<button type="button" class="ghost-button member-remove" data-remove-member="${escapeHtml(member.user_id)}" data-member-name="${escapeHtml(member.nome)}">Remover</button>`
+                    : '';
                 return `
                     <li>
                         <div class="member-body">
@@ -144,7 +164,8 @@ function renderTeam(team) {
                             <p class="member-email">${escapeHtml(member.email)}</p>
                             <p>${escapeHtml(role.label)}</p>
                         </div>
-                        <span class="pill ${role.css} member-role">${escapeHtml(role.label)}</span>
+                        ${cargoMarkup}
+                        ${remover}
                     </li>
                 `;
             })
@@ -223,6 +244,180 @@ detailDocumentList.addEventListener('click', (event) => {
     }
 });
 
+// ------------------------------------------------------- gestao de membros
+
+function showMemberFeedback(message, erro = false) {
+    memberFeedback.textContent = message;
+    memberFeedback.classList.toggle('erro', erro);
+    memberFeedback.hidden = !message;
+}
+
+async function chamarMembros(caminho, opcoes) {
+    const response = await fetch(`${API_BASE}/${getTeamId()}/membros${caminho}`, {
+        ...opcoes,
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
+        },
+    });
+    if (response.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '../auth/login.html';
+        return null;
+    }
+    const corpo = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(typeof corpo.detail === 'string' ? corpo.detail : 'Não foi possível concluir a operação.');
+    }
+    return corpo;
+}
+
+memberAddForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    memberAddButton.disabled = true;
+    showMemberFeedback('');
+    try {
+        const resultado = await chamarMembros('', {
+            method: 'POST',
+            body: JSON.stringify({ email: memberEmailInput.value.trim() }),
+        });
+        if (resultado) {
+            memberEmailInput.value = '';
+            renderTeam(resultado.equipe);
+            showMemberFeedback(resultado.mensagem);
+        }
+    } catch (error) {
+        showMemberFeedback(error.message, true);
+    } finally {
+        memberAddButton.disabled = false;
+    }
+});
+
+detailMemberList.addEventListener('click', async (event) => {
+    const botao = event.target.closest('[data-remove-member]');
+    if (!botao) {
+        return;
+    }
+    if (!window.confirm(`Remover ${botao.dataset.memberName} da equipe?`)) {
+        return;
+    }
+    botao.disabled = true;
+    showMemberFeedback('');
+    try {
+        const resultado = await chamarMembros(`/${encodeURIComponent(botao.dataset.removeMember)}`, { method: 'DELETE' });
+        if (resultado) {
+            renderTeam(resultado.equipe);
+            showMemberFeedback(resultado.mensagem);
+        }
+    } catch (error) {
+        botao.disabled = false;
+        showMemberFeedback(error.message, true);
+    }
+});
+
+detailMemberList.addEventListener('change', async (event) => {
+    const seletor = event.target.closest('[data-cargo-member]');
+    if (!seletor) {
+        return;
+    }
+    seletor.disabled = true;
+    showMemberFeedback('');
+    try {
+        const resultado = await chamarMembros(`/${encodeURIComponent(seletor.dataset.cargoMember)}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ cargo: seletor.value }),
+        });
+        if (resultado) {
+            renderTeam(resultado.equipe);
+            showMemberFeedback(resultado.mensagem);
+        }
+    } catch (error) {
+        // Volta o seletor ao cargo que ainda vale.
+        seletor.value = seletor.dataset.cargoAtual;
+        seletor.disabled = false;
+        showMemberFeedback(error.message, true);
+    }
+});
+
+// ------------------------------------------------------- politica de niveis
+
+const ROTULO_NIVEL = {
+    1: 'Nível 1 · todos os membros',
+    2: 'Nível 2 · supervisor e líder',
+    3: 'Nível 3 · só o líder',
+};
+
+function avisoPolitica(mensagem, erro = false) {
+    policyFeedback.textContent = mensagem;
+    policyFeedback.classList.toggle('erro', erro);
+    policyFeedback.hidden = !mensagem;
+}
+
+async function chamarPolitica(opcoes) {
+    const response = await fetch(`${API_BASE}/${getTeamId()}/politica-niveis`, {
+        ...opcoes,
+        headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json',
+        },
+    });
+    const corpo = await response.json().catch(() => ({}));
+    if (!response.ok) {
+        throw new Error(typeof corpo.detail === 'string' ? corpo.detail : 'Não foi possível carregar a política.');
+    }
+    return corpo;
+}
+
+function renderPolitica(politica) {
+    const podeEditar = Boolean(politica.pode_editar);
+    policySaveButton.hidden = !podeEditar;
+    policyRows.innerHTML = (politica.tipos || [])
+        .map((linha) => {
+            const nivel = podeEditar
+                ? `<label class="sr-only" for="nivel-${escapeHtml(linha.tipo)}">Nível exigido para ${escapeHtml(linha.rotulo)}</label>
+                   <select class="member-role-select policy-select" id="nivel-${escapeHtml(linha.tipo)}" data-tipo="${escapeHtml(linha.tipo)}">
+                       ${[1, 2, 3].map((n) => `<option value="${n}" ${n === linha.nivel ? 'selected' : ''}>${ROTULO_NIVEL[n]}</option>`).join('')}
+                   </select>`
+                : escapeHtml(ROTULO_NIVEL[linha.nivel] || String(linha.nivel));
+            const situacao = linha.nivel === linha.padrao ? 'padrão' : `ajustado (padrão: nível ${linha.padrao})`;
+            return `
+                <tr>
+                    <th scope="row">${escapeHtml(linha.rotulo)}</th>
+                    <td>${nivel}</td>
+                    <td>${escapeHtml(situacao)}</td>
+                </tr>`;
+        })
+        .join('');
+    policyPanel.hidden = false;
+}
+
+async function carregarPolitica() {
+    try {
+        renderPolitica(await chamarPolitica({ method: 'GET' }));
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+policyForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const niveis = {};
+    policyRows.querySelectorAll('.policy-select').forEach((seletor) => {
+        niveis[seletor.dataset.tipo] = Number(seletor.value);
+    });
+    policySaveButton.disabled = true;
+    avisoPolitica('');
+    try {
+        const resultado = await chamarPolitica({ method: 'PUT', body: JSON.stringify({ niveis }) });
+        renderPolitica(resultado.politica);
+        avisoPolitica(resultado.mensagem);
+    } catch (error) {
+        avisoPolitica(error.message, true);
+    } finally {
+        policySaveButton.disabled = false;
+    }
+});
+
 async function loadTeam() {
     const token = localStorage.getItem('token');
     if (!token) {
@@ -263,6 +458,7 @@ async function loadTeam() {
         }
 
         renderTeam(data);
+        carregarPolitica();
     } catch (error) {
         console.error(error);
         renderTeam(null);
