@@ -143,6 +143,12 @@ function renderTeam(team) {
         detailMemberList.innerHTML = members
             .map((member) => {
                 const role = roleLabel(member.cargo_nome);
+                // Lider ve um seletor no lugar do rotulo; a API confere de novo.
+                const cargoMarkup = podeGerenciar
+                    ? `<select class="member-role-select" data-cargo-member="${escapeHtml(member.user_id)}" data-cargo-atual="${escapeHtml(member.cargo_nome)}" aria-label="Cargo de ${escapeHtml(member.nome)}">
+                        ${(team.cargos || []).map((cargo) => `<option value="${escapeHtml(cargo.nome)}" ${cargo.nome === member.cargo_nome ? 'selected' : ''}>${escapeHtml(roleLabel(cargo.nome).label)}</option>`).join('')}
+                       </select>`
+                    : `<span class="pill ${role.css} member-role">${escapeHtml(role.label)}</span>`;
                 const remover = podeGerenciar
                     ? `<button type="button" class="ghost-button member-remove" data-remove-member="${escapeHtml(member.user_id)}" data-member-name="${escapeHtml(member.nome)}">Remover</button>`
                     : '';
@@ -153,7 +159,7 @@ function renderTeam(team) {
                             <p class="member-email">${escapeHtml(member.email)}</p>
                             <p>${escapeHtml(role.label)}</p>
                         </div>
-                        <span class="pill ${role.css} member-role">${escapeHtml(role.label)}</span>
+                        ${cargoMarkup}
                         ${remover}
                     </li>
                 `;
@@ -300,6 +306,30 @@ detailMemberList.addEventListener('click', async (event) => {
         }
     } catch (error) {
         botao.disabled = false;
+        showMemberFeedback(error.message, true);
+    }
+});
+
+detailMemberList.addEventListener('change', async (event) => {
+    const seletor = event.target.closest('[data-cargo-member]');
+    if (!seletor) {
+        return;
+    }
+    seletor.disabled = true;
+    showMemberFeedback('');
+    try {
+        const resultado = await chamarMembros(`/${encodeURIComponent(seletor.dataset.cargoMember)}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ cargo: seletor.value }),
+        });
+        if (resultado) {
+            renderTeam(resultado.equipe);
+            showMemberFeedback(resultado.mensagem);
+        }
+    } catch (error) {
+        // Volta o seletor ao cargo que ainda vale.
+        seletor.value = seletor.dataset.cargoAtual;
+        seletor.disabled = false;
         showMemberFeedback(error.message, true);
     }
 });
