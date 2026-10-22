@@ -11,6 +11,7 @@ const detailTotalDocs = document.getElementById('detailTotalDocs');
 const detailMemberList = document.getElementById('detailMemberList');
 const detailDocumentList = document.getElementById('detailDocumentList');
 const teamDocsCount = document.getElementById('teamDocsCount');
+const teamUploadLink = document.getElementById('teamUploadLink');
 
 const API_BASE = `${API_ROOT}/equipes`;
 const storedName = localStorage.getItem('userName') || 'Usuario';
@@ -107,6 +108,9 @@ function renderTeam(team) {
     }
 
     teamNameHeader.textContent = team.nome;
+    // Abre o upload com esta equipe ja marcada.
+    teamUploadLink.href = `../documentos/censurar.html?equipe=${encodeURIComponent(team.team_id)}`;
+    teamUploadLink.hidden = false;
     teamSubtitle.textContent = `${team.membros} membro(s) · ${team.documentos} documento(s)`;
     detailTeamName.textContent = team.nome;
     detailTeamDescription.textContent = team.descricao || 'Sem descricao cadastrada.';

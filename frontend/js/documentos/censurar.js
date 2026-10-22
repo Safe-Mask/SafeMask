@@ -16,7 +16,6 @@ const selectedTeamsCount = document.getElementById('selectedTeamsCount');
 const selectedTeamsNames = document.getElementById('selectedTeamsNames');
 const docTitleInput = document.getElementById('docTitleInput');
 const securityLevelInput = document.getElementById('securityLevelInput');
-const docNotesInput = document.getElementById('docNotesInput');
 const uploadStep = document.getElementById('uploadStep');
 const loadingStep = document.getElementById('loadingStep');
 const reviewStep = document.getElementById('reviewStep');
@@ -143,7 +142,6 @@ function setFileSummaryMarkup(target, file) {
             </div>
             <div class="file-meta">
                 <span>Tamanho: ${escapeHtml(sizeLabel)}</span>
-                <span>Persistencia: somente versao criptografada</span>
                 <span>Status: pronto para revisao</span>
             </div>
         </div>
@@ -201,11 +199,16 @@ function renderTeams() {
         });
     });
 
-    if (options[0]) {
-        const firstCheckbox = options[0].querySelector('input');
-        firstCheckbox.checked = true;
-        firstCheckbox.dispatchEvent(new Event('change'));
-    }
+    // Nenhuma equipe vem marcada: o envio exige a escolha. Vindo do botao
+    // "Enviar documento" da pagina da equipe (?equipe=<id>), ela ja vem marcada.
+    const equipeDaUrl = Number(new URLSearchParams(window.location.search).get('equipe'));
+    options.forEach((option) => {
+        const checkbox = option.querySelector('input');
+        if (equipeDaUrl && Number(checkbox.value) === equipeDaUrl) {
+            checkbox.checked = true;
+            checkbox.dispatchEvent(new Event('change'));
+        }
+    });
 }
 
 async function loadUserTeams() {
@@ -294,13 +297,10 @@ async function startUpload() {
         return;
     }
 
+    // Sem equipe escolhida nada e enviado (antes ia para a primeira da lista).
     if (!state.selectedTeams.size) {
-        if (state.teams.length) {
-            state.selectedTeams.add(Number(state.teams[0].id));
-        } else {
-            alert('Selecione ao menos uma equipe para vincular o documento.');
-            return;
-        }
+        alert('Selecione ao menos uma equipe para vincular o documento.');
+        return;
     }
 
     const token = localStorage.getItem('token');
@@ -401,7 +401,14 @@ dropzone.addEventListener('drop', (event) => {
     handleFileChange(event.dataTransfer.files);
 });
 
-censorStartBtn.addEventListener('click', startUpload);
+// O envio so acontece depois da revisao de equipe, titulo e nivel.
+censorStartBtn.addEventListener('click', () => {
+    if (!state.currentFile) {
+        alert('Selecione um arquivo para continuar.');
+        return;
+    }
+    setStep('review');
+});
 saveCensoredDocBtn.addEventListener('click', startUpload);
 
 docTitleInput.addEventListener('input', () => {

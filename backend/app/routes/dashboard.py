@@ -3,6 +3,7 @@ from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
 from app.core.current_user import get_current_user
+from app.core.datas import iso_utc
 from app.database import get_db
 from app.models.documentos import Documento
 from app.models.equipe import Equipe
@@ -112,7 +113,7 @@ def get_dashboard_overview(
             "extensao": row.extensao,
             "nivel_seguranca": row.nivel_seguranca,
             "equipe_nome": row.equipe_nome,
-            "criado_em": row.criado_em.isoformat() if row.criado_em else None
+            "criado_em": iso_utc(row.criado_em)
         }
         for row in recent_docs
     ]
