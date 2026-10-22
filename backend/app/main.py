@@ -9,6 +9,7 @@ from app.core.http_headers import HeadersSegurancaMiddleware
 from app.database import (
     Base,
     SessionLocal,
+    corrigir_extensao_documentos,
     engine,
     garantir_indices,
     garantir_schema_documentos,
@@ -62,6 +63,7 @@ def seed_cargos():
 Base.metadata.create_all(bind=engine)
 garantir_schema_equipes()
 garantir_schema_documentos()
+corrigir_extensao_documentos()
 # Antes de garantir_indices(): os indices de tenant so podem ser criados
 # depois que as colunas organizacao_id existirem.
 garantir_schema_organizacoes()
