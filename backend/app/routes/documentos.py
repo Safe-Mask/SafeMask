@@ -18,6 +18,7 @@ from app.core.audit import (
 )
 from app.core.autorizacao import NIVEL_MIN_DESCENSURA, cargo_na_equipe
 from app.core.current_user import get_current_user
+from app.core.datas import iso_utc
 from app.core.file_responses import responder_arquivo
 from app.core.uploads import ler_e_validar_upload
 from app.database import get_db
@@ -339,7 +340,7 @@ def listar_documentos_censurados(
                 "extensao": row.extensao,
                 "nivel_seguranca": row.nivel_seguranca,
                 "tamanho_bytes": row.tamanho_bytes,
-                "criado_em": row.criado_em.isoformat() if row.criado_em else None,
+                "criado_em": iso_utc(row.criado_em),
                 "team_id": row.team_id,
                 "equipe_nome": row.equipe_nome,
                 "user_team_id": row.user_team_id,
@@ -392,7 +393,7 @@ def obter_documento_censurado(
         # que saber onde ele mora. `chave_criptografica` segue exposta porque a
         # tela a mostra, mas nenhum caminho do codigo criptografa com ela.
         "chave_criptografica": documento.chave_criptografica,
-        "criado_em": documento.criado_em.isoformat() if documento.criado_em else None,
+        "criado_em": iso_utc(documento.criado_em),
         "status_processamento": documento.status_processamento,
         "autor_nome": autor.nome if autor else None,
         "equipe": {

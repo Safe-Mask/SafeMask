@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core import autorizacao, tenancy
 from app.core.current_user import get_current_user
+from app.core.datas import iso_utc
 from app.database import get_db
 from app.models.cargo import Cargo
 from app.models.documentos import Documento
@@ -70,7 +71,7 @@ def _serialize_member(member_row) -> dict:
         "email": member_row.email,
         "cargo_nome": member_row.cargo_nome,
         "cargo_nivel": int(member_row.cargo_nivel or 0),
-        "criado_em": member_row.criado_em.isoformat() if member_row.criado_em else None,
+        "criado_em": iso_utc(member_row.criado_em),
     }
 
 
@@ -160,7 +161,7 @@ def _load_team_detail(db: Session, current_user: Usuario, team_id: int):
         "organizacao_id": team_row.organizacao_id,
         "nome": team_row.nome,
         "descricao": team_row.descricao,
-        "criado_em": team_row.criado_em.isoformat() if team_row.criado_em else None,
+        "criado_em": iso_utc(team_row.criado_em),
         "membros": len(members),
         "documentos": int(documentos),
         "membros_lista": [_serialize_member(member) for member in members],
@@ -172,7 +173,7 @@ def _load_team_detail(db: Session, current_user: Usuario, team_id: int):
                 "tamanho_bytes": int(row.tamanho_bytes or 0),
                 "nivel_seguranca": row.nivel_seguranca,
                 "status_processamento": row.status_processamento,
-                "criado_em": row.criado_em.isoformat() if row.criado_em else None,
+                "criado_em": iso_utc(row.criado_em),
                 "autor_nome": row.autor_nome,
                 "cargo_nome": row.cargo_nome,
                 "user_team_id": row.user_team_id,
@@ -253,7 +254,7 @@ def get_equipes_overview(
             "team_id": row.team_id,
             "nome": row.nome,
             "descricao": row.descricao,
-            "criado_em": row.criado_em.isoformat() if row.criado_em else None,
+            "criado_em": iso_utc(row.criado_em),
             "membros": len(membros),
             "documentos": int(total_documentos or 0),
             "cargo_usuario": cargo_usuario,
