@@ -7,10 +7,12 @@ Eventos sem equipe (login, cadastro, redefinicao de senha) nao aparecem aqui.
 Trazido do PI-III (CAMPUSCEUB/SafeMask#13).
 """
 
+import csv
+import io
 from datetime import UTC, datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session, aliased
 
 from app.core import tenancy
@@ -169,3 +171,65 @@ def consultar_historico(
         "paginas": (total + por_pagina - 1) // por_pagina,
         "eventos": [_serializar(*linha) for linha in linhas],
     }
+
+
+# ------------------------------------------------------- exportacao em CSV
+
+COLUNAS_CSV = [
+    "ID do evento", "Data e hora (UTC)", "Ação", "Resultado", "Usuário",
+    "Cargo", "Equipe", "Documento", "Alvo", "IP de origem",
+]
+
+# Texto que comeca com estes caracteres vira formula ao abrir na planilha
+# (injecao de CSV). Nomes e titulos sao digitados por usuarios, entao saem
+# com um apostrofo na frente, que a planilha mostra como texto.
+_INICIO_DE_FORMULA = ("=", "+", "-", "@", "\t", "\r")
+
+
+def _texto_seguro(valor) -> str:
+    if valor is None:
+        return ""
+    texto = str(valor)
+    return f"'{texto}" if texto.startswith(_INICIO_DE_FORMULA) else texto
+
+
+@router.get("/exportar")
+def exportar_historico(
+    team_id: FiltroEquipe = None,
+    doc_id: FiltroDocumento = None,
+    acao: FiltroAcao = None,
+    data_inicio: FiltroInicio = None,
+    data_fim: FiltroFim = None,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(get_current_user),
+):
+    """Historico em CSV, com os mesmos filtros e a mesma permissao da consulta.
+
+    Todos os eventos do filtro, sem paginacao. UTF-8 com BOM e separador `;`,
+    para abrir com acentos no Excel em portugues; data em UTC com fuso.
+    """
+    filtros = filtros_da_consulta(db, usuario_atual, team_id, doc_id, acao, data_inicio, data_fim)
+
+    saida = io.StringIO()
+    escritor = csv.writer(saida, delimiter=";")
+    escritor.writerow(COLUNAS_CSV)
+    for evento, usuario_nome, cargo_nome, documento_nome, equipe_nome, alvo_nome in eventos_da_consulta(db, filtros).all():
+        escritor.writerow([
+            evento.log_id,
+            iso_utc(evento.data_hora) or "",
+            evento.acao,
+            evento.resultado,
+            _texto_seguro(usuario_nome),
+            cargo_nome or "",
+            _texto_seguro(equipe_nome),
+            _texto_seguro(documento_nome),
+            _texto_seguro(alvo_nome),
+            evento.ip_origem,
+        ])
+
+    nome = f"auditoria-safemask-{datetime.now(UTC):%Y-%m-%d}.csv"
+    return Response(
+        content=("\ufeff" + saida.getvalue()).encode("utf-8"),
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{nome}"'},
+    )
