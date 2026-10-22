@@ -8,6 +8,7 @@ const filterAction = document.getElementById('filterAction');
 const filterFrom = document.getElementById('filterFrom');
 const filterTo = document.getElementById('filterTo');
 const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+const exportCsvBtn = document.getElementById('exportCsvBtn');
 const totalPill = document.getElementById('totalPill');
 const pageLabel = document.getElementById('pageLabel');
 const feedback = document.getElementById('feedback');
@@ -113,6 +114,39 @@ function buildQuery() {
     params.set('pagina', state.pagina);
     params.set('por_pagina', POR_PAGINA);
     return params.toString();
+}
+
+// Exportacao: os eventos dos filtros aplicados, sem paginacao.
+async function exportCsv() {
+    exportCsvBtn.disabled = true;
+    showFeedback('');
+    try {
+        const response = await fetch(`${API_AUDITORIA}/exportar?${filterParams().toString()}`, { headers: authHeaders() });
+        if (response.status === 401) {
+            redirectToLogin();
+            return;
+        }
+        if (!response.ok) {
+            const corpo = await response.json().catch(() => ({}));
+            throw new Error(corpo.detail || 'Não foi possível exportar o histórico.');
+        }
+
+        const disposicao = response.headers.get('content-disposition') || '';
+        const nome = disposicao.match(/filename="([^"]+)"/)?.[1] || 'auditoria-safemask.csv';
+        const url = URL.createObjectURL(await response.blob());
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = nome;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+    } catch (error) {
+        console.error(error);
+        showFeedback(error.message);
+    } finally {
+        exportCsvBtn.disabled = false;
+    }
 }
 
 function describeTarget(evento) {
@@ -246,6 +280,8 @@ filtersForm.addEventListener('submit', (event) => {
     state.pagina = 1;
     loadEvents();
 });
+
+exportCsvBtn.addEventListener('click', exportCsv);
 
 clearFiltersBtn.addEventListener('click', () => {
     filtersForm.reset();

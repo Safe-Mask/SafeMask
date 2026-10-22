@@ -35,6 +35,9 @@ middleware = [
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
+        # Sem isso o navegador esconde o nome do arquivo nos downloads feitos
+        # por fetch (ex.: exportacao da auditoria em CSV).
+        expose_headers=["Content-Disposition"],
     )
 ]
 
