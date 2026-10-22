@@ -10,6 +10,7 @@ from fastapi import Request
 from sqlalchemy.orm import Session
 
 from app.models.log_auditoria import LogAuditoria
+from app.models.usuario_equipe import UsuarioEquipe
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +33,12 @@ ACAO_ATUALIZAR_EQUIPE = "atualizar_equipe"
 ACAO_ADICIONAR_MEMBRO = "adicionar_membro"
 ACAO_REMOVER_MEMBRO = "remover_membro"
 
+# Resultado: "negado" e a recusa por permissao (cargo insuficiente, ou pessoa
+# da mesma organizacao fora da equipe dona do documento). Uma trilha que so
+# registra sucesso nao serve para investigar incidente.
+RESULTADO_SUCESSO = "sucesso"
+RESULTADO_NEGADO = "negado"
+
 
 def ip_do_cliente(request: Request | None) -> str:
     """IP de origem, respeitando X-Forwarded-For quando atras de proxy."""
@@ -46,6 +53,25 @@ def ip_do_cliente(request: Request | None) -> str:
     return (request.client.host if request.client else "desconhecido")[:45]
 
 
+def _equipe_do_documento(db: Session, documento) -> int | None:
+    vinculo = (
+        db.query(UsuarioEquipe)
+        .filter(UsuarioEquipe.user_team_id == documento.user_team_id)
+        .first()
+    )
+    return vinculo.team_id if vinculo else None
+
+
+def _cargo_na_equipe(db: Session, user_id: int, team_id: int) -> int | None:
+    """Cargo de quem agiu na equipe; None se a pessoa nao pertence a ela."""
+    vinculo = (
+        db.query(UsuarioEquipe)
+        .filter(UsuarioEquipe.user_id == user_id, UsuarioEquipe.team_id == team_id)
+        .first()
+    )
+    return vinculo.cargo_id if vinculo else None
+
+
 def registrar(
     db: Session,
     request: Request | None,
@@ -53,16 +79,39 @@ def registrar(
     acao: str,
     *,
     commit: bool = True,
+    documento=None,
+    team_id: int | None = None,
+    cargo_id: int | None = None,
+    alvo_user_id: int | None = None,
+    resultado: str = RESULTADO_SUCESSO,
 ) -> LogAuditoria:
     """Grava uma linha de auditoria.
+
+    O contexto (documento, equipe, cargo de quem agiu, alvo e resultado) e o
+    que permite responder "quem acessou este documento, com que cargo, e quem
+    tentou sem permissao". Equipe e cargo sao deduzidos do documento quando
+    nao informados. Nunca grava conteudo, titulo ou dado pessoal.
 
     Nunca levanta excecao: perder um log nao pode derrubar a requisição que o
     originou. Falhas sao logadas para investigacao.
     """
+    try:
+        if documento is not None and team_id is None:
+            team_id = _equipe_do_documento(db, documento)
+        if cargo_id is None and team_id is not None:
+            cargo_id = _cargo_na_equipe(db, user_id, team_id)
+    except Exception:
+        logger.exception("Falha ao montar o contexto da auditoria: acao=%s", acao)
+
     entrada = LogAuditoria(
         user_id=user_id,
         acao=acao[:100],
         ip_origem=ip_do_cliente(request),
+        doc_id=documento.doc_id if documento is not None else None,
+        team_id=team_id,
+        cargo_id=cargo_id,
+        alvo_user_id=alvo_user_id,
+        resultado=resultado,
     )
     try:
         db.add(entrada)

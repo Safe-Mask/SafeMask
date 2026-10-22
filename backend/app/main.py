@@ -12,6 +12,7 @@ from app.database import (
     corrigir_extensao_documentos,
     engine,
     garantir_indices,
+    garantir_schema_auditoria,
     garantir_schema_documentos,
     garantir_schema_equipes,
     garantir_schema_organizacoes,
@@ -67,6 +68,8 @@ corrigir_extensao_documentos()
 # Antes de garantir_indices(): os indices de tenant so podem ser criados
 # depois que as colunas organizacao_id existirem.
 garantir_schema_organizacoes()
+# Colunas de contexto e indices da trilha de auditoria.
+garantir_schema_auditoria()
 garantir_indices()
 seed_cargos()
 

@@ -78,6 +78,46 @@ def garantir_indices():
             conn.execute(text(ddl))
 
 
+# Colunas de contexto da trilha de auditoria. create_all nao altera tabela que
+# ja existe, entao um banco criado antes delas as recebe por ALTER TABLE.
+_COLUNAS_AUDITORIA = {
+    "doc_id": "INTEGER REFERENCES documentos(doc_id) ON DELETE SET NULL",
+    "team_id": "INTEGER REFERENCES equipe(team_id) ON DELETE SET NULL",
+    "cargo_id": "INTEGER REFERENCES cargo(cargo_id) ON DELETE SET NULL",
+    "alvo_user_id": "INTEGER REFERENCES usuario(user_id) ON DELETE SET NULL",
+    "resultado": "VARCHAR(20) NOT NULL DEFAULT 'sucesso'",
+}
+
+
+def garantir_schema_auditoria(bind=None):
+    """Acrescenta a `log_auditoria` as colunas de contexto que faltarem e os
+    indices da consulta (por equipe, documento e data).
+
+    Os indices ficam aqui, e nao em garantir_indices(), porque dependem das
+    colunas novas. Idempotente. `bind` existe para o teste.
+    """
+    bind = bind if bind is not None else engine
+    inspector = inspect(bind)
+    if "log_auditoria" not in inspector.get_table_names():
+        return
+
+    existentes = {coluna["name"] for coluna in inspector.get_columns("log_auditoria")}
+    faltantes = [(nome, ddl) for nome, ddl in _COLUNAS_AUDITORIA.items() if nome not in existentes]
+
+    with bind.begin() as conn:
+        for nome, ddl in faltantes:
+            if bind.dialect.name == "postgresql":
+                conn.execute(text(f"ALTER TABLE log_auditoria ADD COLUMN IF NOT EXISTS {nome} {ddl}"))
+            elif bind.dialect.name == "sqlite":
+                conn.execute(text(f"ALTER TABLE log_auditoria ADD COLUMN {nome} {ddl}"))
+        for ddl in (
+            "CREATE INDEX IF NOT EXISTS idx_log_auditoria_team_id ON log_auditoria(team_id)",
+            "CREATE INDEX IF NOT EXISTS idx_log_auditoria_doc_id ON log_auditoria(doc_id)",
+            "CREATE INDEX IF NOT EXISTS idx_log_auditoria_data_hora ON log_auditoria(data_hora DESC)",
+        ):
+            conn.execute(text(ddl))
+
+
 def garantir_schema_equipes():
     inspector = inspect(engine)
     if "equipe" not in inspector.get_table_names():
