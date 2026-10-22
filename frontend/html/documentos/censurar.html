@@ -43,7 +43,7 @@
                             <div class="dropzone-icon">⬆</div>
                             <strong>Arraste o arquivo aqui</strong>
                             <span>ou clique para selecionar do seu computador</span>
-                            <small>O upload sera tratado como temporario ate a geracao da versao criptografada.</small>
+                            <small>Nada é enviado antes da revisão: depois do arquivo, você confere a equipe, o título e o nível.</small>
                         </div>
                         <div class="file-summary dropzone-summary" id="fileSummary">
                             <div class="empty-state small">
@@ -56,7 +56,7 @@
 
                     <div class="modal-actions upload-actions">
                         <button type="button" class="ghost-button" id="goToDashboardBtnInline">Cancelar</button>
-                        <button type="button" class="cta-censor" id="censorStartBtn" disabled>Censurar</button>
+                        <button type="button" class="cta-censor" id="censorStartBtn" disabled>Continuar</button>
                     </div>
                 </article>
             </section>
@@ -156,7 +156,7 @@
                                 <h3>Equipes para associar</h3>
                                 <span class="panel-action">multiselecao</span>
                             </div>
-                            <p class="panel-subtitle">Selecione as equipes que devem receber acesso ao documento censurado.</p>
+                            <p class="panel-subtitle">Selecione as equipes que devem receber acesso ao documento censurado. Nenhuma vem marcada: o envio exige a sua escolha.</p>
 
                             <div class="team-picker" id="teamPicker"></div>
 
@@ -169,7 +169,7 @@
                         <article class="panel save-panel">
                             <div class="panel-header">
                                 <h3>Salvar documento censurado</h3>
-                                <span class="panel-action">armazenamento criptografado</span>
+                                <span class="panel-action">título e nível</span>
                             </div>
 
                             <div class="save-form">
@@ -188,15 +188,12 @@
                                     </select>
                                 </label>
 
-                                <label class="field field-full">
-                                    <span>Observacoes internas</span>
-                                    <textarea id="docNotesInput" rows="4" placeholder="Detalhe o que deve ser preservado, redigido ou revisado antes de salvar."></textarea>
-                                </label>
                             </div>
 
                             <div class="security-note">
-                                <strong>Regra de privacidade</strong>
-                                <p>Somente a versao censurada e criptografada deve ser persistida. O original nao deve ficar salvo em claro.</p>
+                                <strong>Quem vê o quê</strong>
+                                <p>Os membros das equipes escolhidas veem a versão com tarja. Remover a tarja depende do cargo de cada um na equipe.</p>
+                                <p>O original fica guardado no servidor e só é entregue a quem tem cargo para isso.</p>
                             </div>
 
                             <div class="modal-actions">

@@ -18,6 +18,7 @@ from app.core.audit import (
 )
 from app.core.autorizacao import NIVEL_MIN_DESCENSURA, cargo_na_equipe
 from app.core.current_user import get_current_user
+from app.core.datas import iso_utc
 from app.core.file_responses import responder_arquivo
 from app.core.uploads import ler_e_validar_upload
 from app.database import get_db
@@ -109,7 +110,7 @@ async def upload_documento(
             doc_compartilhado = Documento(
                 user_team_id=usuario_equipe.user_team_id,
                 nome_original=titulo,
-                extensao=extensao.replace(".", ""),
+                extensao=extensao.lstrip(".").lower(),
                 tamanho_bytes=len(conteudo),
                 nivel_seguranca=nivel_seguranca,
                 chave_criptografica=chave_cripto,
@@ -127,6 +128,12 @@ async def upload_documento(
         # Sem esta copia, /parcial de uma equipe secundaria nao acha nada a
         # cobrir e devolve o PDF original sem censura.
         duplicar_itens_sensiveis(db, resultado["doc_id"], docs_compartilhados)
+
+        # O scanner tira a extensao do `nome_original`, que aqui e o titulo
+        # digitado e nao tem extensao: o principal ficava com ela vazia.
+        db.query(Documento).filter(Documento.doc_id == resultado["doc_id"]).update(
+            {Documento.extensao: extensao.lstrip(".").lower()}, synchronize_session=False
+        )
 
         db.commit()
         registrar(db, request, usuario_atual.user_id, ACAO_UPLOAD)
@@ -148,6 +155,18 @@ async def upload_documento(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Erro ao processar documento."
         ) from e
+
+
+def nome_para_download(nome: str, extensao: str | None) -> str:
+    """Nome do arquivo entregue: `<titulo>.<extensao>`.
+
+    A extensao e gravada sem ponto; o titulo digitado normalmente nao tem
+    extensao, mas o nome tirado do arquivo pode ja terminar com ela.
+    """
+    extensao = (extensao or "").lstrip(".")
+    if not extensao or nome.lower().endswith(f".{extensao.lower()}"):
+        return nome
+    return f"{nome}.{extensao}"
 
 
 def normalizar_team_ids(teams: str) -> list[int]:
@@ -339,7 +358,7 @@ def listar_documentos_censurados(
                 "extensao": row.extensao,
                 "nivel_seguranca": row.nivel_seguranca,
                 "tamanho_bytes": row.tamanho_bytes,
-                "criado_em": row.criado_em.isoformat() if row.criado_em else None,
+                "criado_em": iso_utc(row.criado_em),
                 "team_id": row.team_id,
                 "equipe_nome": row.equipe_nome,
                 "user_team_id": row.user_team_id,
@@ -392,7 +411,7 @@ def obter_documento_censurado(
         # que saber onde ele mora. `chave_criptografica` segue exposta porque a
         # tela a mostra, mas nenhum caminho do codigo criptografa com ela.
         "chave_criptografica": documento.chave_criptografica,
-        "criado_em": documento.criado_em.isoformat() if documento.criado_em else None,
+        "criado_em": iso_utc(documento.criado_em),
         "status_processamento": documento.status_processamento,
         "autor_nome": autor.nome if autor else None,
         "equipe": {
@@ -434,7 +453,7 @@ def obter_arquivo_documento_censurado(
     registrar(db, request, usuario_atual.user_id, ACAO_VER_CENSURADO)
     return responder_arquivo(
         caminho,
-        f"{documento.nome_original}{documento.extensao}",
+        nome_para_download(documento.nome_original, documento.extensao),
         inline=True,
     )
 
@@ -673,7 +692,7 @@ async def salvar_documento_censurado(
             novo_documento = Documento(
                 user_team_id=usuario_equipe.user_team_id,
                 nome_original=titulo,
-                extensao=extensao,
+                extensao=extensao.lstrip(".").lower(),
                 tamanho_bytes=len(conteudo_arquivo),
                 nivel_seguranca=nivel_seguranca,
                 chave_criptografica=chave_cripto,
