@@ -63,52 +63,6 @@ def test_upload_rejeita_arquivo_vazio(client, seed, scanner_registrado):
     assert resp.status_code == 400, resp.text
 
 
-def test_salvar_censurado_rejeita_conteudo_nao_pdf(client, seed):
-    """`salvar-censurado` aceitava qualquer arquivo; agora valida tambem."""
-    resp = client.post(
-        "/documentos/salvar-censurado",
-        headers=AUTH,
-        files={"file": ("nota.txt", b"segredo em texto puro", "text/plain")},
-        data={
-            "titulo": "Nota",
-            "nivel_seguranca": "1",
-            "teams": f"[{seed['equipe_a'].team_id}]",
-        },
-    )
-
-    assert resp.status_code == 400, resp.text
-
-
-def test_salvar_censurado_nao_deixa_arquivo_orfao(client, seed, tmp_path):
-    """403 no meio do loop nao pode deixar arquivo gravado em disco."""
-    db = seed["db"]
-    # equipe B existe no banco, mas Ana nao e membro dela.
-    import hashlib
-
-    from app.models.equipe import Equipe
-
-    equipe_c = Equipe(nome="Equipe C", descricao="C")
-    db.add(equipe_c)
-    db.commit()
-
-    resp = client.post(
-        "/documentos/salvar-censurado",
-        headers=AUTH,
-        files={"file": ("contrato.pdf", PDF_VALIDO, "application/pdf")},
-        data={
-            "titulo": "Contrato",
-            "nivel_seguranca": "1",
-            "teams": f"[{seed['equipe_a'].team_id}, {equipe_c.team_id}]",
-        },
-    )
-
-    assert resp.status_code == 403, resp.text
-
-    hash_esperado = hashlib.sha256(PDF_VALIDO).hexdigest()
-    orfaos = list((tmp_path / "censurados").glob(f"{hash_esperado}*"))
-    assert not orfaos, f"arquivo orfao deixado no storage: {orfaos}"
-
-
 # --- Auditoria -----------------------------------------------------------
 
 

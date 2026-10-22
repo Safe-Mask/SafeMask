@@ -50,7 +50,18 @@ def _distribuir_cargo(db, seed, cargo):
 
 @pytest.fixture
 def doc_nivel_supervisor(client, seed, scanner_registrado):
-    """Documento na Equipe B (Ana e membro la) com um item que exige nivel 2."""
+    """Documento na Equipe B (Ana e membro la) com um item que exige nivel 2.
+
+    O nivel de um item e o que a politica da equipe dona decide (o scan
+    aplica `niveis.get(tipo)`): a fixture grava a politica da Equipe B em
+    CPF=2 antes do upload para o item realmente valer nivel 2.
+    """
+    from app.models.politica_nivel import PoliticaNivel
+
+    db = seed["db"]
+    db.add(PoliticaNivel(team_id=seed["equipe_b"].team_id, tipo_entidade="CPF", nivel_requerido=2))
+    db.commit()
+
     scanner = scanner_registrado([(2, 0)])
     upload = client.post(
         "/documentos/upload",

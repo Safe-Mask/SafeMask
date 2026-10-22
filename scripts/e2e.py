@@ -2,14 +2,10 @@
 
 Uso:
   python scripts/e2e.py --base-url http://localhost:8000
-  python scripts/e2e.py --base-url https://safemask-backend.onrender.com
 
 Coverde o fluxo do pitch: cadastro -> login -> me -> equipes -> upload de PDF
 com texto (regex) -> upload de PDF so-imagem (OCR) -> listar -> preview ->
-parcial -> upload compartilhado entre equipes.
-
-O teste de deploy exige a versao da nuvem (regex-only); a local adiciona a
-deteccao por rede neural implicitamente. Ambas devem passar neste script.
+parcial -> download por nivel de cargo.
 """
 
 import argparse
@@ -209,11 +205,11 @@ def main() -> int:
         team2_id = equipe_nova["equipe"]["team_id"]
         ok(f"POST /equipes (team_id={team2_id})")
 
-        doc_comp = _upload(
-            client, base, token, relatorio, "Relatorio Compartilhado",
-            f"[{team_id},{team2_id}]",
-        )
-        ok(f"upload compartilhado entre 2 equipes -> {doc_comp['total_sensiveis']} sensiveis")
+        # Um documento tem um dono unico: 2 uploads em equipes distintas
+        # confirmam que cada equipe recebe direito de dono sobre o PDF.
+        for idx, tid in enumerate((team_id, team2_id)):
+            _upload(client, base, token, relatorio, f"Dono Unico {idx}", f"[{tid}]")
+        ok("upload com dono unico em 2 equipes distintas")
 
     print()
     print(f"E2E OK em {base}: {passo} etapas passaram.")

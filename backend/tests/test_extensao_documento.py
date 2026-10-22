@@ -41,20 +41,20 @@ def _upload(client, seed):
         data={
             "titulo": "Contrato",
             "nivel_seguranca": "1",
-            "teams": f"[{seed['equipe_a'].team_id}, {seed['equipe_b'].team_id}]",
+            "teams": f"[{seed['equipe_a'].team_id}]",
         },
     )
     assert resp.status_code == 201, resp.text
     return resp.json()
 
 
-def test_principal_e_copias_gravam_a_extensao_do_arquivo(client, seed, scanner_registrado):
+def test_principal_grava_a_extensao_do_arquivo(client, seed, scanner_registrado):
     _scanner_como_o_real(scanner_registrado)
 
     resposta = _upload(client, seed)
 
     docs = seed["db"].query(Documento).filter_by(hash_documento=resposta["hash"]).all()
-    assert len(docs) == 2
+    assert len(docs) == 1
     assert {d.extensao for d in docs} == {"pdf"}
 
 

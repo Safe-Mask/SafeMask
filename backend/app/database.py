@@ -11,23 +11,32 @@ logger = logging.getLogger("safemask.slow_query")
 
 load_dotenv()
 
-# DATABASE_URL = (
-#    f"postgresql+psycopg2://"
-#    f"{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}"
-#    f"@{os.getenv('DB_HOST')}:{os.getenv('DB_PORT')}"
-#    f"/{os.getenv('DB_NAME')}"
-#)
-
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if not DATABASE_URL:
-    raise ValueError("DATABASE_URL nao configurada no arquivo .env")
+# SQLite e o padrao do servico on-premise: arquivo local, zero dependencia
+# para a TI da empresa (veja PLANO_DESKTOP.md). DATABASE_URL comecando em
+# postgres:// ainda e aceita para quem preferir PostgreSQL.
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./safemask.db")
 
 # Neon normalmente fornece postgresql://...; garantimos driver psycopg2 explicito.
 if DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+psycopg2://", 1)
 
-engine = create_engine(DATABASE_URL, pool_pre_ping=True, echo=False)
+_ENGINE_KWARGS: dict = {}
+if not DATABASE_URL.startswith("sqlite"):
+    _ENGINE_KWARGS["pool_pre_ping"] = True
+
+engine = create_engine(DATABASE_URL, echo=False, **_ENGINE_KWARGS)
+
+# `dado_sensivel.coordenadas` usa `postgresql.JSONB`. Com o SQLite default do
+# servico on-premise, registramos um compilador que emite `JSON` onde JSONB
+# nao existe (Postgres continua usando o JSONB nativo).
+from sqlalchemy.dialects.postgresql import JSONB  # noqa: E402
+from sqlalchemy.ext.compiler import compiles  # noqa: E402
+
+
+@compiles(JSONB, "sqlite")
+def _compile_jsonb_sqlite(type_, compiler, **kwargs):  # noqa: ANN001, ANN003, ANN202
+    return "JSON"
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 _SLOW_QUERY_MS = int(os.getenv("SLOW_QUERY_MS", "100"))
@@ -198,7 +207,7 @@ def corrigir_extensao_documentos(bind=None):
     """Grava a extensao sem ponto nos documentos antigos.
 
     O documento principal do upload ficava com a extensao vazia (o upload so
-    aceita PDF) e a rota salvar-censurado a gravava com ponto. Idempotente:
+    aceita PDF) e o download a montava sem ponto. Idempotente:
     sem registro afetado, nada muda. `bind` existe para o teste.
     """
     bind = bind if bind is not None else engine
@@ -212,15 +221,12 @@ def corrigir_extensao_documentos(bind=None):
 
 
 def garantir_schema_organizacoes():
-    """Cria as colunas de tenant e alinha os dados ja existentes.
+    """Garante a organizacao unica e alinha bancos ja existentes.
 
-    `criar_telas()` roda antes e cria a tabela `organizacao`. Aqui so
-    acrescentamos `organizacao_id` em `usuario` e `equipe`, que em bancos
-    existentes nao tem a coluna.
-
-    Os registros sem organizacao vao para uma unica organizacao legada. Criar
-    uma organizacao por equipe mudaria quem enxerga o que, e essa decisao e de
-    negocio; enquanto ela nao for tomada, o comportamento atual e preservado.
+    1 instalacao = 1 empresa (`PLANO_DESKTOP.md`): tudo vive em organizacao
+    unica. A tabela e as colunas `organizacao_id` ficam porque o schema ja as
+    tem e o filtro continua nas rotas (defesa em profundidade); aqui so
+    acrescentamos o que faltar e juntamos linhas orfas na unica organizacao.
     """
     inspector = inspect(engine)
     tabelas = set(inspector.get_table_names())
@@ -291,7 +297,7 @@ def _preencher_organizacoes_pendentes():
     """Backfill das linhas sem organizacao, uma vez, em qualquer boot."""
     # Import local: `app.core.tenancy` importa os models, que importam este
     # modulo. Dentro da funcao o `app.database` ja esta carregado.
-    from app.core.tenancy import ORGANIZACAO_LEGADA_NOME
+    from app.core.tenancy import ORGANIZACAO_UNICA_NOME
     from app.models.equipe import Equipe
     from app.models.organizacao import Organizacao
     from app.models.usuario import Usuario
@@ -306,22 +312,22 @@ def _preencher_organizacoes_pendentes():
         if pendentes == 0:
             return
 
-        legada = (
+        unica = (
             db.query(Organizacao)
-            .filter(Organizacao.nome == ORGANIZACAO_LEGADA_NOME)
+            .filter(Organizacao.nome == ORGANIZACAO_UNICA_NOME)
             .order_by(Organizacao.organizacao_id)
             .first()
         )
-        if not legada:
-            legada = Organizacao(nome=ORGANIZACAO_LEGADA_NOME)
-            db.add(legada)
+        if not unica:
+            unica = Organizacao(nome=ORGANIZACAO_UNICA_NOME)
+            db.add(unica)
             db.flush()
 
         atualizadas = (
             db.query(Usuario)
             .filter(Usuario.organizacao_id.is_(None))
             .update(
-                {Usuario.organizacao_id: legada.organizacao_id},
+                {Usuario.organizacao_id: unica.organizacao_id},
                 synchronize_session=False,
             )
         )
@@ -329,14 +335,14 @@ def _preencher_organizacoes_pendentes():
             db.query(Equipe)
             .filter(Equipe.organizacao_id.is_(None))
             .update(
-                {Equipe.organizacao_id: legada.organizacao_id},
+                {Equipe.organizacao_id: unica.organizacao_id},
                 synchronize_session=False,
             )
         )
         db.commit()
         logger.info(
-            "Organizacao legada '%s' criada; %s registros vinculados.",
-            ORGANIZACAO_LEGADA_NOME,
+            "Organizacao unica '%s' ativada; %s registros vinculados.",
+            ORGANIZACAO_UNICA_NOME,
             atualizadas,
         )
     except Exception:

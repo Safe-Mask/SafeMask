@@ -1,9 +1,10 @@
-"""Isolamento por organizacao (tenant).
+"""Organizacao unica: 1 instalacao do SafeMask = 1 empresa.
 
-A organizacao e o limite de dados: um usuario so enxerga equipes, membros e
-documentos da propria organizacao. Este modulo concentra a resolucao do tenant
-para que as rotas nao repitam a logica nem involem `usuario.organizacao_id`
-direto.
+Com a virada on-premise (veja `PLANO_DESKTOP.md`) nao existe mais SaaS
+multi-tenant: todo o banco pertence a uma organizacao so, criada no primeiro
+cadastro. O filtro por `organizacao_id` continua nas rotas (defesa em
+profundidade e congruencia com o schema existente), mas sempre aponta para a
+mesma organizacao.
 
 `Cargo` continua global de proposito: ele descreve papel (lider, supervisor,
 membro), nao dado de cliente, e e populado no boot.
@@ -15,48 +16,18 @@ from sqlalchemy.orm import Session
 from app.models.organizacao import Organizacao
 from app.models.usuario import Usuario
 
-# Destino dos dados que ja existiam antes da organizacao existir. Colocar tudo
-# numa unica organizacao preserva o comportamento atual: nenhuma equipe ja
-# existente passa a sumir do menu do seu usuario.
-ORGANIZACAO_LEGADA_NOME = "SafeMask (dados anteriores)"
+# Nome da organizacao unica. Criada no primeiro cadastro; quem cadastrar
+# depois tambem entra nela, pois a instalacao serve uma empresa so.
+ORGANIZACAO_UNICA_NOME = "SafeMask"
 
 
-def criar(db: Session, nome: str, *, commit: bool = False) -> Organizacao:
-    """Sempre uma organizacao nova, mesmo com nome repetido.
-
-    `buscar_ou_criar` no cadastro compartilhava tenant: duas pessoas chamadas
-    "Ana Silva" em empresas diferentes caiam na mesma organizacao e enxergavam
-    as equipes uma da outra. O nome e rotulo, nao chave.
-    """
-    organizacao = Organizacao(nome=nome)
-    db.add(organizacao)
-    if commit:
-        db.commit()
-    else:
-        db.flush()
-    return organizacao
-
-
-def buscar_ou_criar(db: Session, nome: str, *, commit: bool = False) -> Organizacao:
-    """Organizacao pelo nome, criando se ainda nao existir.
-
-    So para onde o tenant e legitimamente compartilhado: o backfill legado, em
-    que todos os dados anteriores vao para a mesma organizacao. **Nao usar no
-    cadastro**, para isso use `criar`.
-
-    O nome nao e unico no schema: duas empresas podem se chamar igual, entao
-    desambiguamos pelo menor id criado.
-    """
-    organizacao = (
-        db.query(Organizacao)
-        .filter(Organizacao.nome == nome)
-        .order_by(Organizacao.organizacao_id)
-        .first()
-    )
+def carregar_organizacao_unica(db: Session, *, commit: bool = False) -> Organizacao:
+    """A organizacao da instalacao, criando-a se ainda nao existir."""
+    organizacao = db.query(Organizacao).order_by(Organizacao.organizacao_id).first()
     if organizacao:
         return organizacao
 
-    organizacao = Organizacao(nome=nome)
+    organizacao = Organizacao(nome=ORGANIZACAO_UNICA_NOME)
     db.add(organizacao)
     if commit:
         db.commit()
@@ -68,9 +39,9 @@ def buscar_ou_criar(db: Session, nome: str, *, commit: bool = False) -> Organiza
 def exigir_organizacao(usuario: Usuario) -> int:
     """Organizacao do usuario, ou erro se ele nao estiver vinculado a nenhuma.
 
-    Depois da migracao todo usuario tem organizacao. Um usuario sem ela seria
-    um estado inconsistente, e devolver 403 e melhor do que responder vazio e
-    fazer o usuario acreditar que nao tem nada.
+    Um usuario sem organizacao seria um estado inconsistente, e devolver 403
+    e melhor do que responder vazio e fazer o usuario acreditar que nao tem
+    nada.
     """
     if usuario.organizacao_id is None:
         raise HTTPException(

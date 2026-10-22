@@ -10,7 +10,6 @@ from app.core import fila, politica_niveis, tenancy
 from app.core.audit import (
     ACAO_LISTAR_DOCUMENTOS,
     ACAO_UPLOAD,
-    ACAO_UPLOAD_CENSURADO,
     ACAO_VER_CENSURADO,
     ACAO_VER_ORIGINAL,
     ACAO_VER_PARCIAL,
@@ -69,6 +68,12 @@ async def upload_documento(
             detail="Nível de segurança inválido (1-4)."
         )
 
+    if len(team_ids) != 1:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Documento tem um dono unico: informe uma equipe so."
+        )
+
     usuario_equipes = (
         db.query(UsuarioEquipe)
         .filter(
@@ -80,7 +85,7 @@ async def upload_documento(
     if not usuario_equipes:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Voce nao faz parte de nenhuma das equipes selecionadas."
+            detail="Voce nao faz parte da equipe selecionada."
         )
 
     conteudo, caminho_nome = await ler_e_validar_upload(file, Path(file.filename or ""))
@@ -107,35 +112,8 @@ async def upload_documento(
             niveis=niveis_principal,
         )
 
-        # Compartilha o mesmo documento com as demais equipes selecionadas.
-        chave_cripto = gerar_chave_criptografica(hash_arquivo, usuario_atual.user_id)
-        docs_compartilhados = []
-        for usuario_equipe in usuario_equipes[1:]:
-            doc_compartilhado = Documento(
-                user_team_id=usuario_equipe.user_team_id,
-                nome_original=titulo,
-                extensao=extensao.lstrip(".").lower(),
-                tamanho_bytes=len(conteudo),
-                nivel_seguranca=nivel_seguranca,
-                chave_criptografica=chave_cripto,
-                hash_documento=hash_arquivo,
-                caminho_storage=str(CENSURADOS_DIR / f"{hash_arquivo}_tarjado.pdf"),
-                status_processamento="CONCLUIDO"
-            )
-            db.add(doc_compartilhado)
-            docs_compartilhados.append(doc_compartilhado)
-
-        # Sem o flush, as copias ainda nao tem doc_id para receber os itens.
+        # Confirmacoes do scan ficam visiveis roda queries seguintes.
         db.flush()
-
-        # Os itens sensiveis sao vinculados ao doc_id de quem fez o upload.
-        # Sem esta copia, /parcial de uma equipe secundaria nao acha nada a
-        # cobrir e devolve o PDF original sem censura.
-        duplicar_itens_sensiveis(db, resultado["doc_id"], docs_compartilhados)
-        # Cada copia segue a politica da propria equipe; tipo que a politica
-        # nao conhece (ex.: do NER) mantem o nivel detectado.
-        for doc_copia, vinculo in zip(docs_compartilhados, usuario_equipes[1:], strict=True):
-            aplicar_politica_da_equipe(db, doc_copia, vinculo.team_id, niveis_principal)
 
         # O scanner tira a extensao do `nome_original`, que aqui e o titulo
         # digitado e nao tem extensao: o principal ficava com ela vazia.
@@ -144,11 +122,7 @@ async def upload_documento(
         )
 
         db.commit()
-        # Um evento por documento criado: cada equipe de destino encontra o
-        # seu no proprio historico.
-        for doc_criado in [db.get(Documento, resultado["doc_id"]), *docs_compartilhados]:
-            if doc_criado is not None:
-                registrar(db, request, usuario_atual.user_id, ACAO_UPLOAD, documento=doc_criado)
+        registrar(db, request, usuario_atual.user_id, ACAO_UPLOAD, documento=db.get(Documento, resultado["doc_id"]))
 
         return {
             "mensagem": "Documento processado e censurado com sucesso.",
@@ -215,8 +189,7 @@ def normalizar_team_ids(teams: str) -> list[int]:
             ) from exc
 
     # `teams=[1, 1]` criava dois Documentos apontando para o mesmo
-    # user_team_id e o mesmo arquivo. O upload nao sofria disso porque sua query
-    # usa `.in_()`; `/salvar-censurado` itera a lista e sofria.
+    # user_team_id e o mesmo arquivo.
     return sorted(set(team_ids))
 
 def gerar_hash_arquivo(conteudo: bytes) -> str:
@@ -248,54 +221,6 @@ def caminho_armazenado(documento: Documento) -> Path:
             detail="Arquivo censurado nao encontrado no armazenamento.",
         )
     return candidatos[0]
-
-
-def duplicar_itens_sensiveis(db: Session, doc_id_origem: int, documentos_destino: list[Documento]) -> int:
-    """Replica os DadoSensivel de um documento para outros Documento copias.
-
-    Documento e uma linha por (arquivo, equipe). DadoSensivel aponta para
-    doc_id, entao cada copia precisa dos proprios itens para que a descensura
-    por cargo funcione igual em todas as equipes.
-    """
-    itens = db.query(DadoSensivel).filter(DadoSensivel.doc_id == doc_id_origem).all()
-    if not itens:
-        return 0
-
-    copiados = 0
-    for doc_destino in documentos_destino:
-        for item in itens:
-            db.add(
-                DadoSensivel(
-                    doc_id=doc_destino.doc_id,
-                    tipo_entidade=item.tipo_entidade,
-                    conteudo_hash=item.conteudo_hash,
-                    pagina=item.pagina,
-                    coordenadas=item.coordenadas,
-                    espaco_coordenadas=item.espaco_coordenadas,
-                    nivel_requerido=item.nivel_requerido,
-                )
-            )
-            copiados += 1
-    db.flush()
-    return copiados
-
-
-def aplicar_politica_da_equipe(
-    db: Session, documento: Documento, team_id: int, niveis_origem: dict[str, int]
-) -> None:
-    """Ajusta os itens de uma copia a politica da equipe dela.
-
-    So muda o tipo em que a politica desta equipe difere da equipe de origem
-    (a do scan); o resto fica como o scan gravou.
-    """
-    niveis = politica_niveis.niveis_da_equipe(db, team_id)
-    diferentes = {tipo: nivel for tipo, nivel in niveis.items() if niveis_origem.get(tipo) != nivel}
-    if not diferentes:
-        return
-    for item in db.query(DadoSensivel).filter(DadoSensivel.doc_id == documento.doc_id).all():
-        if item.tipo_entidade in diferentes:
-            item.nivel_requerido = diferentes[item.tipo_entidade]
-    db.flush()
 
 
 def equipe_do_documento(db: Session, documento: Documento) -> Equipe | None:
@@ -765,8 +690,8 @@ async def upload_documentos_lote(
     processamento: o status vira PROCESSANDO/CONCLUIDO pela fila, visivel nos
     metadados e listagens do documento.
 
-    Lote vai para uma equipe so: pertence a um dono unico (o compartilhamento
-    por multi-equipes do upload individual segue existindo la).
+    Lote vai para uma equipe so: cada documento tem um dono unico, igual ao
+    upload individual (que agora exige exatamente uma equipe).
     """
     if nivel_seguranca < 1 or nivel_seguranca > 4:
         raise HTTPException(
@@ -871,119 +796,6 @@ async def upload_documentos_lote(
         "itens": itens,
     }
 
-
-@router.post("/salvar-censurado", status_code=status.HTTP_201_CREATED)
-async def salvar_documento_censurado(
-    request: Request,
-    file: UploadFile = File(...),
-    titulo: str = Form(...),
-    nivel_seguranca: int = Form(...),
-    observacoes: str = Form(""),
-    teams: str = Form(...),  # JSON array de team_ids como string
-    db: Session = Depends(get_db),
-    usuario_atual: Usuario = Depends(get_current_user)
-):
-    """
-    Salva um documento censurado nas equipes selecionadas.
-
-    - file: arquivo do documento
-    - titulo: nome final do documento
-    - nivel_seguranca: nível de proteção (1-4)
-    - observacoes: notas internas
-    - teams: array JSON de team_ids (ex: "[1, 2, 3]")
-    """
-
-    try:
-        team_ids = normalizar_team_ids(teams)
-
-        # Validar nível de segurança
-        if nivel_seguranca < 1 or nivel_seguranca > 4:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Nível de segurança inválido (1-4)."
-            )
-
-        # Ler e validar arquivo
-        conteudo_arquivo, caminho_nome = await ler_e_validar_upload(
-            file, Path(file.filename or "")
-        )
-
-        extensao = caminho_nome.suffix or ".pdf"
-
-        # Gerar hash do arquivo
-        hash_arquivo = gerar_hash_arquivo(conteudo_arquivo)
-
-        # Gerar caminho de armazenamento
-        nome_arquivo = f"{hash_arquivo}{extensao}"
-        caminho_arquivo = CENSURADOS_DIR / nome_arquivo
-
-        # Validar TODAS as equipes antes de gravar qualquer coisa em disco:
-        # caso contrario um 403 no meio do loop deixa arquivo orfao no storage.
-        vinculos = []
-        for team_id in team_ids:
-            usuario_equipe = db.query(UsuarioEquipe).filter(
-                UsuarioEquipe.user_id == usuario_atual.user_id,
-                UsuarioEquipe.team_id == team_id
-            ).first()
-
-            if not usuario_equipe:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Você não faz parte da equipe {team_id}."
-                )
-            vinculos.append(usuario_equipe)
-
-        # Salvar arquivo
-        with open(caminho_arquivo, "wb") as f:
-            f.write(conteudo_arquivo)
-
-        # Salvar documento para cada equipe selecionada
-        documentos_criados = []
-        documentos_novos = []
-        chave_cripto = gerar_chave_criptografica(hash_arquivo, usuario_atual.user_id)
-
-        for team_id, usuario_equipe in zip(team_ids, vinculos, strict=True):
-            # Criar registro de Documento
-            novo_documento = Documento(
-                user_team_id=usuario_equipe.user_team_id,
-                nome_original=titulo,
-                extensao=extensao.lstrip(".").lower(),
-                tamanho_bytes=len(conteudo_arquivo),
-                nivel_seguranca=nivel_seguranca,
-                chave_criptografica=chave_cripto,
-                hash_documento=hash_arquivo,
-                caminho_storage=str(caminho_arquivo),
-                status_processamento="CONCLUIDO"
-            )
-
-            db.add(novo_documento)
-            documentos_novos.append(novo_documento)
-            documentos_criados.append({
-                "team_id": team_id,
-                "titulo": titulo,
-                "nivel_seguranca": nivel_seguranca
-            })
-
-        # Commit único para todas as mudanças
-        db.commit()
-        for novo_documento in documentos_novos:
-            registrar(db, request, usuario_atual.user_id, ACAO_UPLOAD_CENSURADO, documento=novo_documento)
-
-        return {
-            "mensagem": "Documento censurado salvo com sucesso.",
-            "arquivo_hash": hash_arquivo,
-            "documentos_criados": len(documentos_criados),
-            "detalhes": documentos_criados
-        }
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        db.rollback()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Erro ao salvar documento."
-        ) from e
 
 @router.get("/listar/{team_id}")
 async def listar_documentos_equipe(

@@ -42,14 +42,6 @@ def test_lider_adiciona_por_email_no_cargo_de_membro(client, seed):
     assert (evento.team_id, evento.alvo_user_id, evento.resultado) == (team, caio.user_id, "sucesso")
 
 
-def test_email_de_outra_organizacao_e_tratado_como_inexistente(client, seed):
-    resp = client.post(
-        f"/equipes/{seed['equipe_a'].team_id}/membros",
-        headers=_auth(seed["usuario"]), json={"email": seed["usuario_globex"].email},
-    )
-    assert resp.status_code == 404
-
-
 def test_quem_ja_e_membro_responde_409(client, seed):
     resp = client.post(
         f"/equipes/{seed['equipe_a'].team_id}/membros",
@@ -70,13 +62,13 @@ def test_membro_comum_nao_gerencia_e_a_recusa_entra_na_trilha(client, seed):
     assert negado.team_id == team
 
 
-def test_outra_organizacao_recebe_404(client, seed):
+def test_fora_da_equipe_recebe_404_e_monta_a_trilha(client, seed):
     resp = client.delete(
         f"/equipes/{seed['equipe_a'].team_id}/membros/{seed['usuario'].user_id}",
         headers=_auth(seed["usuario_globex"]),
     )
     assert resp.status_code == 404
-    assert seed["db"].query(LogAuditoria).count() == 0
+    assert seed["db"].query(LogAuditoria).filter_by(acao="remover_membro", resultado="negado").count() == 1
 
 
 def test_lider_remove_membro(client, seed):

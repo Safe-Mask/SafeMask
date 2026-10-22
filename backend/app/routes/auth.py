@@ -225,11 +225,10 @@ async def cadastrar(
             detail="Email já cadastrado.",
         )
 
-    # Cada cadastro publico abre uma organizacao propria. Sem isso o usuario
-    # novo cairia na organizacao legada e enxergaria dados de outros clientes.
-    # `criar`, e nao `buscar_ou_criar`: o nome e rotulo, e duas Ana Silva de
-    # empresas diferentes caem em tenants distintos.
-    organizacao = tenancy.criar(db, f"Organização de {usuario.nome.strip()}")
+    # Toda a instalacao pertence a uma organizacao so (1 instalacao = 1
+    # empresa; veja `app.core.tenancy` e `PLANO_DESKTOP.md`). O primeiro
+    # cadastro cria a organizacao; os seguintes entram nela.
+    organizacao = tenancy.carregar_organizacao_unica(db)
 
     db_usuario = Usuario (
         nome=usuario.nome,

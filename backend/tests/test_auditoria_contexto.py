@@ -37,23 +37,17 @@ def _eventos(db, **filtros):
     return db.query(LogAuditoria).filter_by(**filtros).order_by(LogAuditoria.log_id).all()
 
 
-def test_upload_gera_um_evento_por_equipe_com_documento_e_cargo(client, seed, scanner_registrado):
+def test_upload_gera_um_evento_unico_com_documento_e_cargo(client, seed, scanner_registrado):
     scanner_registrado([(3, 1)])
-    resposta = _upload(client, seed, f"[{seed['equipe_a'].team_id}, {seed['equipe_b'].team_id}]")
+    resposta = _upload(client, seed, f"[{seed['equipe_a'].team_id}]")
 
     eventos = _eventos(seed["db"], acao="upload_documento")
     docs = seed["db"].query(Documento).filter_by(hash_documento=resposta["hash"]).all()
 
-    assert {(e.doc_id, e.team_id) for e in eventos} == {
-        (d.doc_id, t) for d, t in zip(
-            sorted(docs, key=lambda d: d.doc_id),
-            [seed["equipe_a"].team_id, seed["equipe_b"].team_id],
-            strict=True,
-        )
-    }
-    cargos = {e.team_id: e.cargo_id for e in eventos}
-    assert cargos[seed["equipe_a"].team_id] == seed["cargo_lider"].cargo_id
-    assert cargos[seed["equipe_b"].team_id] == seed["cargo_membro"].cargo_id
+    assert [(e.doc_id, e.team_id) for e in eventos] == [
+        (docs[0].doc_id, seed["equipe_a"].team_id)
+    ]
+    assert eventos[0].cargo_id == seed["cargo_lider"].cargo_id
     assert all(e.resultado == "sucesso" for e in eventos)
 
 
@@ -91,16 +85,6 @@ def test_pessoa_da_organizacao_fora_da_equipe_gera_evento_negado(client, seed, s
     assert [(e.acao, e.doc_id, e.team_id, e.cargo_id) for e in negado] == [
         ("ver_censurado", resposta["doc_id"], seed["equipe_a"].team_id, None)
     ]
-
-
-def test_outra_organizacao_nao_deixa_rastro_no_historico_da_dona(client, seed, scanner_registrado):
-    scanner_registrado([(3, 1)])
-    resposta = _upload(client, seed, f"[{seed['equipe_a'].team_id}]")
-
-    resp = client.get(f"/documentos/{resposta['doc_id']}/parcial", headers=_auth(seed["usuario_globex"]))
-
-    assert resp.status_code == 404
-    assert _eventos(seed["db"], user_id=seed["usuario_globex"].user_id) == []
 
 
 def test_evento_nao_guarda_titulo_nem_dado_pessoal(client, seed, scanner_registrado):

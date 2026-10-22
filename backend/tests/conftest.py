@@ -33,6 +33,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from sqlalchemy import create_engine  # noqa: E402
 from sqlalchemy.orm import sessionmaker  # noqa: E402
 
+from app.core import tenancy  # noqa: E402
 from app.database import Base, get_db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.cargo import Cargo  # noqa: E402
@@ -134,11 +135,12 @@ _SENHA_HASH_CACHE = None
 
 @pytest.fixture
 def seed(db_session):
-    """Cargos, duas organizacoes, equipes e usuarios de cada uma.
+    """Cargos, organizacao unica, equipes e usuarios.
 
-    A segunda organizacao existe para que os testes de isolamento tenham o que
-    comparar: sem um segundo tenant, um filtro de organizacao ausente passaria
-    despercebido.
+    1 instalacao = 1 organizacao (veja `PLANO_DESKTOP.md`): armazenamento e
+    entidades vivem na mesma organizacao. "Bia" continua sendo a persona de
+    fora — agora pelo vinculo de equipe (fora da Equipe A e da B), nao pelo
+    tenant, que nao existe mais.
     """
 
     def _criar(nome: str, nivel: int) -> Cargo:
@@ -150,14 +152,13 @@ def seed(db_session):
     supervisor = _criar("supervisor", 2)
     membro = _criar("membro", 1)
 
-    org_acme = Organizacao(nome="Acme")
-    org_globex = Organizacao(nome="Globex")
-    db_session.add_all([org_acme, org_globex])
+    org_acme = Organizacao(nome=tenancy.ORGANIZACAO_UNICA_NOME)
+    db_session.add(org_acme)
     db_session.flush()
 
     equipe_a = Equipe(nome="Equipe A", descricao="A", organizacao_id=org_acme.organizacao_id)
     equipe_b = Equipe(nome="Equipe B", descricao="B", organizacao_id=org_acme.organizacao_id)
-    equipe_globex = Equipe(nome="Equipe Globex", descricao="G", organizacao_id=org_globex.organizacao_id)
+    equipe_globex = Equipe(nome="Equipe Globex", descricao="G", organizacao_id=org_acme.organizacao_id)
     db_session.add_all([equipe_a, equipe_b, equipe_globex])
 
     usuario = Usuario(
@@ -170,7 +171,7 @@ def seed(db_session):
         nome="Bia",
         email="bia@safemask.example.com",
         senha_hash=_senha_seed(),
-        organizacao_id=org_globex.organizacao_id,
+        organizacao_id=org_acme.organizacao_id,
     )
     db_session.add_all([usuario, usuario_globex])
     db_session.flush()
@@ -190,7 +191,6 @@ def seed(db_session):
         "usuario": usuario,
         "usuario_globex": usuario_globex,
         "organizacao": org_acme,
-        "organizacao_globex": org_globex,
         "equipe_a": equipe_a,
         "equipe_b": equipe_b,
         "equipe_globex": equipe_globex,
@@ -302,7 +302,9 @@ class ScannerFalso:
                     pagina=pagina,
                     coordenadas=[10, 10, 100, 20],
                     espaco_coordenadas="pdf",
-                    nivel_requerido=nivel_requerido,
+                    # Como o scanner real: a politica da equipe dona sobrepoe
+                    # o nivel detectado (ver scanner.py, `niveis.get(...)`).
+                    nivel_requerido=(niveis or {}).get("CPF", nivel_requerido),
                 )
             )
         db.flush()

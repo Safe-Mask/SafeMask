@@ -1,8 +1,7 @@
 """Politica de niveis por equipe.
 
-O lider define o nivel exigido de cada tipo de dado; o upload aplica a
-politica da equipe de destino, e cada copia de um envio para varias equipes
-segue a politica da propria equipe. Trazido do PI-III (CAMPUSCEUB/SafeMask#118).
+O lider define o nivel exigido de cada tipo de dado; o scan aplica a politica
+da equipe dona. Trazido do PI-III (CAMPUSCEUB/SafeMask#118).
 """
 
 from app.core.security import criar_token_jwt
@@ -25,17 +24,6 @@ def _politica(client, usuario, team_id):
 
 def _definir(client, usuario, team_id, niveis):
     return client.put(f"/equipes/{team_id}/politica-niveis", headers=_auth(usuario), json={"niveis": niveis})
-
-
-def _lider_da_b(seed):
-    db = seed["db"]
-    lia = Usuario(nome="Lia", email="lia@safemask.example.com", senha_hash="x",
-                  organizacao_id=seed["organizacao"].organizacao_id)
-    db.add(lia)
-    db.flush()
-    db.add(UsuarioEquipe(user_id=lia.user_id, team_id=seed["equipe_b"].team_id, cargo_id=seed["cargo_lider"].cargo_id))
-    db.commit()
-    return lia
 
 
 def test_membro_consulta_e_so_o_lider_pode_editar(client, seed):
@@ -80,31 +68,22 @@ def test_outra_organizacao_recebe_404(client, seed):
     assert _definir(client, seed["usuario_globex"], seed["equipe_a"].team_id, {"CPF": 1}).status_code == 404
 
 
-def test_upload_aplica_a_politica_da_equipe_e_cada_copia_a_sua(client, seed, scanner_registrado):
-    # A: padrao (CPF 3). B: CPF ajustado para 2 pela lider da B.
-    lia = _lider_da_b(seed)
-    _definir(client, lia, seed["equipe_b"].team_id, {"CPF": 2})
-    scanner = scanner_registrado([(3, 1)])
+def test_upload_aplica_a_politica_da_equipe_dona(client, seed, scanner_registrado):
+    _definir(client, seed["usuario"], seed["equipe_a"].team_id, {"CPF": 2})
+    scanner_registrado([(3, 1)])
 
     resp = client.post(
         "/documentos/upload", headers=_auth(seed["usuario"]),
         files={"file": ("contrato.pdf", CONTEUDO_PDF, "application/pdf")},
         data={"titulo": "Contrato", "nivel_seguranca": "1",
-              "teams": f"[{seed['equipe_a'].team_id}, {seed['equipe_b'].team_id}]"},
+              "teams": f"[{seed['equipe_a'].team_id}]"},
     )
 
     assert resp.status_code == 201, resp.text
-    assert scanner.niveis["CPF"] == 3
     db = seed["db"]
-    docs = {d.doc_id: d for d in db.query(Documento).filter_by(hash_documento=resp.json()["hash"])}
-    niveis = {
-        doc_id: [i.nivel_requerido for i in db.query(DadoSensivel).filter_by(doc_id=doc_id)]
-        for doc_id in docs
-    }
-    principal = resp.json()["doc_id"]
-    copia = next(d for d in docs if d != principal)
-    assert niveis[principal] == [3]
-    assert niveis[copia] == [2]
+    doc = db.query(Documento).filter_by(hash_documento=resp.json()["hash"]).one()
+    itens = db.query(DadoSensivel).filter_by(doc_id=doc.doc_id).all()
+    assert [i.nivel_requerido for i in itens] == [2]
 
 
 def test_scanner_grava_o_nivel_da_politica(tmp_path, db_session, monkeypatch):

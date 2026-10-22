@@ -1,10 +1,10 @@
 # Bibliotecas pesadas de IA (torch + transformers).
 #
 # Por que fora do requirements.txt principal:
-# - Render Free tem 1 GB de disco; torch padrão puxa wheels CUDA (~2.5 GB).
-# - O scanner já degrada para regex-only quando os pesos não existem
-#   (backend/scanner/scanner.py:165-187) e importa transformers só dentro
-#   de try/except (linha 175). Sem IA, o upload funciona com regex (CPF,
+# - Servico on-premise empacotado com PyInstaller: o fallback regex-only
+#   mantem o scanner vivo quando os pesos nao existem
+#   (backend/scanner/scanner.py) e transformers e importado so dentro
+#   de try/except. Sem IA, o upload funciona com regex (CPF,
 #   CNPJ, datas, etc.).
 #
 # Para usar a IA localmente:
