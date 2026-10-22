@@ -39,6 +39,54 @@ from scanner.validadores import VALIDADORES
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
+# OCR. Pagina sem texto extraivel (PDF escaneado) passa pelo Tesseract. No
+# Windows o instalador nao poe o executavel no PATH: o caminho vem de
+# TESSERACT_CMD ou da pasta padrao de instalacao.
+CAMINHOS_PADRAO_TESSERACT = [
+    r"C:\Program Files\Tesseract-OCR\tesseract.exe",
+    r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
+]
+
+
+def configurar_tesseract() -> None:
+    caminho = os.getenv("TESSERACT_CMD", "").strip()
+    if caminho:
+        pytesseract.pytesseract.tesseract_cmd = caminho
+        return
+    for padrao in CAMINHOS_PADRAO_TESSERACT:
+        if os.path.exists(padrao):
+            pytesseract.pytesseract.tesseract_cmd = padrao
+            return
+
+
+configurar_tesseract()
+
+
+class OcrIndisponivel(RuntimeError):
+    """O PDF precisa de OCR e o Tesseract (ou o idioma portugues) falta."""
+
+
+def _ocr(imagem):
+    """Texto e posicoes das palavras; erro de instalacao vira OcrIndisponivel."""
+    try:
+        texto = pytesseract.image_to_string(imagem, lang='por')
+        dados = pytesseract.image_to_data(imagem, lang='por', output_type=pytesseract.Output.DICT)
+    except pytesseract.TesseractNotFoundError as exc:
+        raise OcrIndisponivel(
+            "Este PDF parece ser um documento escaneado (imagem) e precisa de "
+            "reconhecimento de texto (OCR), mas o Tesseract não está instalado "
+            "no servidor."
+        ) from exc
+    except pytesseract.TesseractError as exc:
+        if "language" not in str(exc).lower():
+            raise
+        raise OcrIndisponivel(
+            "Este PDF parece ser um documento escaneado (imagem) e precisa de "
+            "reconhecimento de texto (OCR), mas o idioma português do Tesseract "
+            "não está instalado no servidor."
+        ) from exc
+    return texto, dados
+
 
 class NenhumaMascaraAplicavel(ValueError):
     """Havia o que cobrir, mas nenhuma caixa foi utilizavel.
@@ -416,10 +464,7 @@ class DocumentScanner:
                 if not texto or len(texto.strip()) < 20:
                     logger.info(f"Pagina {page_num} parece ser imagem. Ativando OCR...")
                     usando_ocr = True
-                    texto = pytesseract.image_to_string(img_pagina.original, lang='por')
-                    ocr_data = pytesseract.image_to_data(
-                        img_pagina.original, lang='por', output_type=pytesseract.Output.DICT
-                    )
+                    texto, ocr_data = _ocr(img_pagina.original)
 
                 if not texto:
                     paginas_para_pdf.append(img_pagina.original.convert("RGB"))
