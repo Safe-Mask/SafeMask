@@ -26,10 +26,12 @@ from scanner.patterns import (
     CPF_PATTERN,
     CRM_PATTERN,
     EMAIL_PATTERN,
-    PHONE_PATTERN,
+    PHONE_DETECTION_PATTERN,
+    RG_PATTERN,
     increment_cpf_count,
     mask_cpf,
     mask_phone,
+    valor_detectado,
 )
 from scanner.redaction import draw_structured_mask
 from scanner.validadores import VALIDADORES
@@ -144,11 +146,11 @@ def configuracoes_regex() -> dict:
         "CPF": {"pattern": CPF_PATTERN.pattern, "level": 3},
         "CNPJ": {"pattern": r'\b\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}\b', "level": 1},
         "EMAIL": {"pattern": EMAIL_PATTERN.pattern, "level": 2},
-        "TELEFONE": {"pattern": PHONE_PATTERN.pattern, "level": 2},
+        "TELEFONE": {"pattern": PHONE_DETECTION_PATTERN.pattern, "level": 2},
         "CNS": {"pattern": CNS_PATTERN.pattern, "level": 3},
         "CID10": {"pattern": CID10_PATTERN.pattern, "level": 3},
         "CRM": {"pattern": CRM_PATTERN.pattern, "level": 3},
-        "RG": {"pattern": r'\b\d{1,2}\.?\d{3}\.?\d{3}-?[A-Za-z0-9]{1,2}(?:/[A-Z]{2})?\b|\b\d{7,9}\b', "level": 3},
+        "RG": {"pattern": RG_PATTERN.pattern, "level": 3},
         "PROCESSO": {"pattern": r'\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b|\b\d{3}/\d\.\d{2}\.\d{7}-\d\b', "level": 1},
         "DATA_NASC": {"pattern": r'\b\d{2}/\d{2}/\d{4}\b', "level": 2},
         # CEP canonico 00000-000. O NER deveria achar, mas na pratica nao emite
@@ -414,7 +416,7 @@ class DocumentScanner:
 
                 for tipo, config in self.regex_config.items():
                     for match in re.finditer(config['pattern'], texto):
-                        segredo = match.group()
+                        segredo = valor_detectado(match)
                         # CPF e CNPJ: o formato bateu, mas so e dado pessoal se
                         # o digito verificador conferir (evita tarjar numeros
                         # de exemplo, sequencias repetidas e outros codigos).
