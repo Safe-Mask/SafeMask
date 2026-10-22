@@ -34,7 +34,8 @@
         { texto: 'Visao Geral', href: `${BASE_HTML}/dashboard.html`, cargo: 'membro' },
         { texto: 'Novo Upload', href: `${BASE_HTML}/documentos/censurar.html`, cargo: 'membro' },
         { texto: 'Documentos Censurados', href: `${BASE_HTML}/documentos/censurados.html`, cargo: 'membro' },
-        { texto: 'Historico', href: null, cargo: 'membro' },
+        // Trilha de auditoria: so lider e supervisor consultam (GET /auditoria).
+        { texto: 'Auditoria', href: `${BASE_HTML}/auditoria/historico.html`, cargo: 'supervisor' },
 
         { titulo: 'Equipes', grupo: true },
         { texto: 'Gerenciar Equipes', href: `${BASE_HTML}/equipes/equipes.html`, cargo: 'supervisor' },
