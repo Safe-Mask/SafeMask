@@ -135,6 +135,17 @@ def entidades_sem_mapa(model_folder: str = None) -> set:
             if e and e not in Known}
 
 
+def detectar_datas() -> bool:
+    """Datas por regex: desligadas, a menos que SAFEMASK_DETECTAR_DATAS=1.
+
+    O padrao de DATA_NASC casa qualquer data dd/mm/aaaa, e em documento
+    oficial a vigencia, a assinatura e a publicacao eram tarjadas como data
+    de nascimento. Fica desligado ate a deteccao pelo contexto ("nascido em",
+    "data de nascimento"). O nivel continua em `configuracoes_regex()`.
+    """
+    return os.getenv("SAFEMASK_DETECTAR_DATAS", "").strip().lower() in {"1", "true", "sim"}
+
+
 def configuracoes_regex() -> dict:
     """Padroes e nivel de cada entidade detectavel por regex.
 
@@ -202,6 +213,8 @@ class DocumentScanner:
             )
 
         self.regex_config = configuracoes_regex()
+        if not detectar_datas():
+            del self.regex_config["DATA_NASC"]
 
     def _salvar_dado(self, db, doc_id, page, page_num, texto_secreto, entity_type, level, usando_ocr=False, ocr_data=None):
         """Persiste um dado sensivel e devolve (salvos, coordenadas).
