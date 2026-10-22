@@ -176,8 +176,11 @@ def _load_team_detail(db: Session, current_user: Usuario, team_id: int):
                 "autor_nome": row.autor_nome,
                 "cargo_nome": row.cargo_nome,
                 "user_team_id": row.user_team_id,
-                "tem_acesso": row.user_team_id in user_team_ids,
-                "preview_url": f"/documentos/censurados/{row.doc_id}/arquivo" if row.user_team_id in user_team_ids else None,
+                # Todo membro da equipe acessa o documento; o cargo decide nas
+                # rotas de documento o que ele recebe. Antes so quem enviou o
+                # documento via o botao liberado.
+                "tem_acesso": bool(user_team_ids),
+                "preview_url": f"/documentos/censurados/{row.doc_id}/arquivo" if user_team_ids else None,
             }
             for row in documentos_rows
         ],
@@ -189,20 +192,21 @@ def get_equipes_overview(
         db: Session = Depends(get_db),
         current_user: Usuario = Depends(get_current_user)
     ):
+    # Esta consulta responde so "de quais equipes o usuario participa". Os
+    # totais nao podem sair daqui: o filtro por user_id deixa uma linha de
+    # usuario_equipe por equipe, e a contagem sobre essa juncao dava sempre 1
+    # membro e so os documentos do proprio usuario. Os totais sao contados
+    # por equipe, abaixo, com o mesmo criterio da pagina de detalhe.
     team_rows = (
         db.query(
             Equipe.team_id,
             Equipe.nome,
             Equipe.descricao,
             Equipe.criado_em,
-            func.count(func.distinct(UsuarioEquipe.user_team_id)).label("membros"),
-            func.count(func.distinct(Documento.doc_id)).label("documentos"),
         )
         .join(UsuarioEquipe, UsuarioEquipe.team_id == Equipe.team_id)
-        .outerjoin(Documento, Documento.user_team_id == UsuarioEquipe.user_team_id)
         .filter(UsuarioEquipe.user_id == current_user.user_id)
         .group_by(Equipe.team_id, Equipe.nome, Equipe.descricao, Equipe.criado_em)
-        .order_by(desc("membros"), Equipe.nome)
         .all()
     )
 
@@ -237,16 +241,27 @@ def get_equipes_overview(
             None,
         )
 
+        # Documentos de toda a equipe, nao apenas os enviados pelo usuario.
+        total_documentos = (
+            db.query(func.count(func.distinct(Documento.doc_id)))
+            .join(UsuarioEquipe, UsuarioEquipe.user_team_id == Documento.user_team_id)
+            .filter(UsuarioEquipe.team_id == row.team_id)
+            .scalar()
+        )
+
         equipes.append({
             "team_id": row.team_id,
             "nome": row.nome,
             "descricao": row.descricao,
             "criado_em": row.criado_em.isoformat() if row.criado_em else None,
-            "membros": int(row.membros or 0),
-            "documentos": int(row.documentos or 0),
+            "membros": len(membros),
+            "documentos": int(total_documentos or 0),
             "cargo_usuario": cargo_usuario,
             "membros_lista": membros,
         })
+
+    # Mesma ordem de antes: mais membros primeiro, depois pelo nome.
+    equipes.sort(key=lambda item: (-item["membros"], item["nome"]))
 
     equipe_mais_populosa = max(equipes, key=lambda item: item["membros"], default=None)
     media_membros = round(sum(item["membros"] for item in equipes) / len(equipes), 1) if equipes else 0
