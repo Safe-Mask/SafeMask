@@ -18,7 +18,7 @@ from app.database import (
     garantir_schema_organizacoes,
 )
 from app.models.cargo import Cargo
-from app.routes import auth, dashboard, documentos, equipes
+from app.routes import auditoria, auth, dashboard, documentos, equipes
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +35,9 @@ middleware = [
         allow_credentials=True,
         allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type"],
+        # Sem isso o navegador esconde o nome do arquivo nos downloads feitos
+        # por fetch (ex.: exportacao da auditoria em CSV).
+        expose_headers=["Content-Disposition"],
     )
 ]
 
@@ -79,6 +82,7 @@ app.include_router(auth.router)
 app.include_router(dashboard.router)
 app.include_router(equipes.router)
 app.include_router(documentos.router)
+app.include_router(auditoria.router)
 
 @app.get("/")
 def home():

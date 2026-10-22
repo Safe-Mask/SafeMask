@@ -36,6 +36,11 @@ ACAO_REMOVER_MEMBRO = "remover_membro"
 # Resultado: "negado" e a recusa por permissao (cargo insuficiente, ou pessoa
 # da mesma organizacao fora da equipe dona do documento). Uma trilha que so
 # registra sucesso nao serve para investigar incidente.
+# Acoes aceitas no filtro da consulta (GET /auditoria).
+ACOES = frozenset(
+    valor for nome, valor in list(globals().items()) if nome.startswith("ACAO_") and isinstance(valor, str)
+)
+
 RESULTADO_SUCESSO = "sucesso"
 RESULTADO_NEGADO = "negado"
 

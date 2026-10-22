@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SafeMask - Auditoria</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="../../css/dashboard.css">
+    <link rel="stylesheet" href="../../css/brand.css">
+    <link rel="stylesheet" href="../../css/auditoria/historico.css">
+</head>
+<body>
+    <div id="appShell"></div>
+    <main class="content brand-main audit-content" id="appContent">
+        <section class="panel panel-sig audit-hero reveal">
+            <div class="panel-header">
+                <div>
+                    <span class="panel-kicker">Trilha de auditoria</span>
+                    <h3>Histórico de acessos e alterações</h3>
+                    <p class="panel-subtitle">Quem fez o quê, em qual documento e com que resultado — inclusive as tentativas negadas. Disponível para líder e supervisor, somente das próprias equipes.</p>
+                </div>
+                <div class="flow-pills">
+                    <span class="pill ok" id="totalPill">0 eventos</span>
+                </div>
+            </div>
+        </section>
+
+        <section class="panel panel-sig reveal" id="filtersPanel">
+            <form class="audit-filters" id="filtersForm">
+                <label class="audit-field">
+                    <span>Equipe</span>
+                    <select id="filterTeam">
+                        <option value="">Todas as minhas equipes</option>
+                    </select>
+                </label>
+                <label class="audit-field">
+                    <span>Documento</span>
+                    <select id="filterDoc">
+                        <option value="">Todos os documentos</option>
+                    </select>
+                </label>
+                <label class="audit-field">
+                    <span>Ação</span>
+                    <select id="filterAction">
+                        <option value="">Todas as ações</option>
+                    </select>
+                </label>
+                <label class="audit-field">
+                    <span>De</span>
+                    <input type="date" id="filterFrom">
+                </label>
+                <label class="audit-field">
+                    <span>Até</span>
+                    <input type="date" id="filterTo">
+                </label>
+                <div class="audit-filter-actions" id="filterActions">
+                    <button type="submit" class="cta-censor">Filtrar</button>
+                    <button type="button" class="audit-ghost" id="clearFiltersBtn">Limpar</button>
+                    <!-- Baixa os eventos dos filtros aplicados, sem paginacao. -->
+                    <button type="button" class="audit-ghost" id="exportCsvBtn">Exportar CSV</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="panel panel-sig reveal">
+            <div class="panel-header">
+                <div>
+                    <span class="panel-kicker">Eventos</span>
+                    <h3>Do mais recente para o mais antigo</h3>
+                </div>
+                <span class="panel-action" id="pageLabel"></span>
+            </div>
+
+            <p class="audit-feedback" id="feedback" role="status" hidden></p>
+
+            <div class="audit-empty" id="emptyState">
+                <strong>Carregando histórico</strong>
+                <span>Aguarde enquanto buscamos os eventos das suas equipes.</span>
+            </div>
+
+            <div class="audit-table-wrap" id="tableWrap" hidden>
+                <table class="audit-table">
+                    <thead>
+                        <tr>
+                            <th scope="col">Data e hora</th>
+                            <th scope="col">Usuário</th>
+                            <th scope="col">Cargo</th>
+                            <th scope="col">Ação</th>
+                            <th scope="col">Resultado</th>
+                            <th scope="col">Documento ou membro</th>
+                            <th scope="col">Equipe</th>
+                        </tr>
+                    </thead>
+                    <tbody id="eventsBody"></tbody>
+                </table>
+            </div>
+
+            <div class="audit-pagination" id="pagination" hidden>
+                <button type="button" class="audit-ghost" id="prevPageBtn">Anterior</button>
+                <button type="button" class="audit-ghost" id="nextPageBtn">Próxima</button>
+            </div>
+        </section>
+    </main>
+
+    <script>window.APP_SHELL = { acoes: [] };</script>
+    <script src="../../js/session.js"></script>
+    <script src="../../js/app-shell.js"></script>
+    <script src="../../js/config.js?v=2"></script>
+    <script src="../../js/auditoria/historico.js"></script>
+    <script src="../../js/brand.js?v=2"></script>
+</body>
+</html>
