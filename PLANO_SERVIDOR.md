@@ -37,22 +37,22 @@ Agora: **SafeMask é o intermediário dos documentos da empresa**.
 
 > Objetivo: bulk upload + fila + download dinâmico como a entrega padrão.
 
-- [ ] **1.1 Bulk upload**
+- [x] **1.1 Bulk upload**
   - `POST /documentos/upload/lote` — multipart com vários PDFs numa requisição
   - Validação (magic bytes `%PDF-`, 20 MB) reaproveitada de `core/uploads.py`
   - Retorna `doc_id` + status inicial para cada arquivo
-- [ ] **1.2 Fila de processamento**
+- [x] **1.2 Fila de processamento**
   - ThreadPoolExecutor (1–2 workers — scan/OCR são pesados) em `core/fila.py` (novo)
   - `status_processamento`: `pendente → processando → pronto | erro`, progresso persistido por doc
   - Endpoint de status (`GET /documentos/{id}` já existe — só expor fila/retry nos metadados)
   - Falha isolada por arquivo: um PDF quebrado não trava o lote
-- [ ] **1.3 Download dinâmico como padrão**
+- [x] **1.3 Download dinâmico como padrão**
   - `GET /parcial` promove a entrega principal (original só nível ≥ 3, tarjado fixo como fallback defensivo)
   - **Cache real de versões** por `(doc_id, nivel)`: `gerar_pdf_parcial` reutiliza `_parcial_nivel{N}.pdf` existente em vez de regenerar; invalidação quando política/original muda
-- [ ] **1.4 Auditoria formalizada**
+- [x] **1.4 Auditoria formalizada**
   - Todo download registra: `doc_id, nivel_cargo_requisitante, versao_entregue (n/n), motivo`
   - Acesso negado também (já há `registrar_acesso_negado` — padronizar mensagens)
-- [ ] **1.5 Testes do fluxo**
+- [x] **1.5 Testes do fluxo**
   - `test_upload_lote.py`: lote com 3 PDFs (1 quebrado de propósito), fila processa, status correto
   - `test_entrega_niveis.py`: mesmo doc pedido por 3 cargos → 3 versões certas + cache reutilizável
   - e2e (`scripts/e2e.py`) atualizado com o fluxo lote→scan→pedidos por nível

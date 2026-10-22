@@ -13,10 +13,12 @@ class LogAuditoria(Base):
 
     As FKs de contexto (`doc_id`, `team_id`, `cargo_id`, `alvo_user_id`) usam
     ON DELETE SET NULL: apagar um documento ou uma equipe nao pode apagar o
-    rastro de quem os acessou. `cargo_id` e o cargo de quem agiu no momento da
+    rastro de quem os acessou.     `cargo_id` e o cargo de quem agiu no momento da
     acao; `alvo_user_id` so e preenchido quando a acao recai sobre outra pessoa
-    (adicionar, remover membro, alterar cargo). Bancos criados antes destas
-    colunas as recebem em `garantir_schema_auditoria()`.
+    (adicionar, remover membro, alterar cargo). `detalhe` guarda contexto curto
+    da entrega (ex.: `parcial_nivel2`), para o historico responder "que versao
+    do documento esta pessoa recebeu". Bancos criados antes destas colunas as
+    recebem em `garantir_schema_auditoria()`.
     """
 
     __tablename__ = "log_auditoria"
@@ -31,5 +33,6 @@ class LogAuditoria(Base):
     cargo_id = Column(Integer, ForeignKey("cargo.cargo_id", ondelete="SET NULL"), nullable=True)
     alvo_user_id = Column(Integer, ForeignKey("usuario.user_id", ondelete="SET NULL"), nullable=True)
     resultado = Column(String(20), nullable=False, default="sucesso", server_default="sucesso")
+    detalhe = Column(String(200), nullable=True)
 
     usuario = relationship("Usuario", back_populates="logs_auditoria", foreign_keys=[user_id])

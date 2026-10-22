@@ -23,6 +23,7 @@ ACAO_CADASTRO = "cadastro"
 ACAO_RESET_SENHA_SOLICITACAO = "reset_senha_solicitacao"
 ACAO_RESET_SENHA = "reset_senha"
 ACAO_UPLOAD = "upload_documento"
+ACAO_UPLOAD_LOTE = "upload_documento_lote"
 ACAO_UPLOAD_CENSURADO = "upload_documento_censurado"
 ACAO_LISTAR_DOCUMENTOS = "listar_documentos"
 ACAO_VER_ORIGINAL = "ver_original"
@@ -91,13 +92,16 @@ def registrar(
     cargo_id: int | None = None,
     alvo_user_id: int | None = None,
     resultado: str = RESULTADO_SUCESSO,
+    detalhe: str | None = None,
 ) -> LogAuditoria:
     """Grava uma linha de auditoria.
 
     O contexto (documento, equipe, cargo de quem agiu, alvo e resultado) e o
     que permite responder "quem acessou este documento, com que cargo, e quem
-    tentou sem permissao". Equipe e cargo sao deduzidos do documento quando
-    nao informados. Nunca grava conteudo, titulo ou dado pessoal.
+    tentou sem permissao". `detalhe` complementa a acao com a versao entregue
+    (ex.: `parcial_nivel2`), que e o coracao do modo intermediario. Equipe e
+    cargo sao deduzidos do documento quando nao informados. Nunca grava
+    conteudo, titulo ou dado pessoal.
 
     Nunca levanta excecao: perder um log nao pode derrubar a requisição que o
     originou. Falhas sao logadas para investigacao.
@@ -119,6 +123,7 @@ def registrar(
         cargo_id=cargo_id,
         alvo_user_id=alvo_user_id,
         resultado=resultado,
+        detalhe=detalhe[:200] if detalhe else None,
     )
     try:
         db.add(entrada)

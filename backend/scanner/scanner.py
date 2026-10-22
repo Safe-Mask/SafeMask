@@ -378,7 +378,7 @@ class DocumentScanner:
     def scan_and_save(self, file_path: str, db: Session, user_team_id: int,
                       nome_original: str = None, nivel_seguranca: int = 1,
                       dir_original: Path = None, dir_censurado: Path = None,
-                      niveis: dict | None = None) -> dict:
+                      niveis: dict | None = None, documento: "Documento" = None) -> dict:
         """Escaneia e persiste, garantindo que o Documento nao fique pendurado.
 
         Um PDF corrompido, um tesseract ausente ou um erro de OCR no meio do
@@ -388,12 +388,22 @@ class DocumentScanner:
         sem caminho — o pior estado possivel: visivel e inutilizavel.
 
         Aqui a excecao marca ERRO e segue; quem chama decide a resposta.
+
+        `documento` (opcional) reusa um Documento ja criado (pela fila do
+        upload em lote, que grava `AGUARDANDO` antes): o scan so o processa,
+        sem criar linha nova, e o erro marca exatamente o doc deste arquivo.
         """
         try:
             return self._scan(file_path, db, user_team_id, nome_original,
-                              nivel_seguranca, dir_original, dir_censurado, niveis)
+                              nivel_seguranca, dir_original, dir_censurado, niveis,
+                              documento=documento)
         except Exception:
-            self._marcar_erro(db, user_team_id, nome_original or file_path)
+            if documento is not None:
+                documento.status_processamento = "ERRO"
+                db.flush()
+                logger.error(f"Documento {documento.doc_id} marcado como ERRO.")
+            else:
+                self._marcar_erro(db, user_team_id, nome_original or file_path)
             raise
 
     def _marcar_erro(self, db: Session, user_team_id: int, doc_name: str):
@@ -420,7 +430,7 @@ class DocumentScanner:
     def _scan(self, file_path: str, db: Session, user_team_id: int,
               nome_original: str = None, nivel_seguranca: int = 1,
               dir_original: Path = None, dir_censurado: Path = None,
-              niveis: dict | None = None) -> dict:
+              niveis: dict | None = None, documento: "Documento" = None) -> dict:
         # Politica da equipe de destino (tipo -> nivel exigido); tipo ausente
         # fica com o nivel padrao de configuracoes_regex() ou do mapa do NER.
         niveis = niveis or {}
@@ -437,21 +447,26 @@ class DocumentScanner:
         chave_base = f"{file_hash}:{user_team_id}:{__import__('datetime').datetime.utcnow().isoformat()}"
         chave_cripto = hashlib.sha256(chave_base.encode()).hexdigest()
 
-        novo_doc = Documento(
-            user_team_id=user_team_id,
-            nome_original=doc_name,
-            extensao=extensao.replace('.', ''),
-            tamanho_bytes=tamanho,
-            nivel_seguranca=nivel_seguranca,
-            chave_criptografica=chave_cripto,
-            hash_documento=file_hash,
-            caminho_storage="",
-            status_processamento="PROCESSANDO",
-            cpf_censurados=0,
-        )
-
-        db.add(novo_doc)
-        db.flush()
+        # A fila do lote cria o Documento (AGUARDANDO) antes de dispensar a
+        # requisicao HTTP: o scan processa o registro existente em vez de
+        # criar outro, para o doc_id que a API devolveu nao mudar.
+        if documento is not None:
+            novo_doc = documento
+        else:
+            novo_doc = Documento(
+                user_team_id=user_team_id,
+                nome_original=doc_name,
+                extensao=extensao.replace('.', ''),
+                tamanho_bytes=tamanho,
+                nivel_seguranca=nivel_seguranca,
+                chave_criptografica=chave_cripto,
+                hash_documento=file_hash,
+                caminho_storage="",
+                status_processamento="PROCESSANDO",
+                cpf_censurados=0,
+            )
+            db.add(novo_doc)
+            db.flush()
 
         logger.info(f"Scan Iniciado: {doc_name} (ID: {novo_doc.doc_id})")
         sensitive_count = 0

@@ -93,6 +93,7 @@ def db_session(tmp_path):
 @pytest.fixture
 def client(db_session, monkeypatch, tmp_path):
     """TestClient com o banco de teste e diretorios de upload temporarios."""
+    from app.core import fila as fila_core
     from app.routes import documentos as documentos_routes
 
     # Isola os arquivos em disco: nada deve vazar para backend/uploads/.
@@ -100,6 +101,10 @@ def client(db_session, monkeypatch, tmp_path):
     monkeypatch.setattr(documentos_routes, "CENSURADOS_DIR", tmp_path / "censurados")
     (tmp_path / "originais").mkdir(parents=True, exist_ok=True)
     (tmp_path / "censurados").mkdir(parents=True, exist_ok=True)
+
+    # Fila sincrona nos testes: a task do lote roda antes da resposta, sem
+    # thread nenhuma.
+    fila_core.definir_agendador(lambda funcao, *args: funcao(*args))
 
     def override_get_db():
         try:
@@ -111,6 +116,7 @@ def client(db_session, monkeypatch, tmp_path):
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+    fila_core.definir_agendador(None)
 
 
 def _senha_seed() -> str:
@@ -246,10 +252,12 @@ class ScannerFalso:
         self.itens_sensiveis = itens_sensiveis
         self.doc_id_atribuido = doc_id_atribuido
         self.chamadas = 0
+        self.chamadas_parcial = 0
         self.itens_para_cobrir = None
 
     def scan_and_save(self, file_path, db, user_team_id, nome_original,
-                      nivel_seguranca, dir_original, dir_censurado, niveis=None):
+                      nivel_seguranca, dir_original, dir_censurado, niveis=None,
+                      documento=None):
         from pathlib import Path
 
         self.chamadas += 1
@@ -260,19 +268,29 @@ class ScannerFalso:
         conteudo = Path(file_path).read_bytes()
         hash_documento = hashlib.sha256(conteudo).hexdigest()
 
-        doc = Documento(
-            user_team_id=user_team_id,
-            nome_original=nome_original,
-            extensao="pdf",
-            tamanho_bytes=len(conteudo),
-            nivel_seguranca=nivel_seguranca,
-            chave_criptografica="chave",
-            hash_documento=hash_documento,
-            caminho_storage=str(Path(dir_censurado) / f"{hash_documento}_tarjado.pdf"),
-            status_processamento="CONCLUIDO",
-            cpf_censurados=len(self.itens_sensiveis),
-        )
-        db.add(doc)
+        if documento is not None:
+            doc = documento
+            doc.hash_documento = hash_documento
+            doc.tamanho_bytes = len(conteudo)
+        else:
+            doc = Documento(
+                user_team_id=user_team_id,
+                nome_original=nome_original,
+                extensao="pdf",
+                tamanho_bytes=len(conteudo),
+                nivel_seguranca=nivel_seguranca,
+                chave_criptografica="chave",
+                hash_documento=hash_documento,
+                caminho_storage=str(Path(dir_censurado) / f"{hash_documento}_tarjado.pdf"),
+                status_processamento="CONCLUIDO",
+                cpf_censurados=len(self.itens_sensiveis),
+            )
+            db.add(doc)
+            db.flush()
+
+        doc.caminho_storage = str(Path(dir_censurado) / f"{hash_documento}_tarjado.pdf")
+        doc.status_processamento = "CONCLUIDO"
+        doc.cpf_censurados = len(self.itens_sensiveis)
         db.flush()
 
         for nivel_requerido, pagina in self.itens_sensiveis:
@@ -305,6 +323,7 @@ class ScannerFalso:
 
         # Guarda o que a rota mandou, para o teste ver o espaco de cada caixa.
         self.itens_para_cobrir = itens_para_cobrir
+        self.chamadas_parcial += 1
 
         Path(dir_destino).mkdir(parents=True, exist_ok=True)
         destino = Path(dir_destino) / nome_saida

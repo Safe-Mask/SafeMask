@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.core import politica_niveis, tenancy
+from app.core import fila, politica_niveis, tenancy
 from app.core.audit import (
     ACAO_LISTAR_DOCUMENTOS,
     ACAO_UPLOAD,
@@ -236,7 +236,12 @@ def caminho_armazenado(documento: Documento) -> Path:
         if caminho.is_file():
             return caminho
 
-    candidatos = sorted(CENSURADOS_DIR.glob(f"{documento.hash_documento}*"))
+    candidatos = [
+        item for item in sorted(CENSURADOS_DIR.glob(f"{documento.hash_documento}*"))
+        # O glob por hash alcanca tambem versoes parciais em cache (que tem
+        # `_parcial_` no nome): elas nao sao a versao integralmente censurada.
+        if "_parcial_" not in item.name
+    ]
     if not candidatos:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -507,7 +512,10 @@ def obter_arquivo_documento_censurado(
             detail="Arquivo físico não encontrado.",
         )
 
-    registrar(db, request, usuario_atual.user_id, ACAO_VER_CENSURADO, documento=documento)
+    registrar(
+        db, request, usuario_atual.user_id, ACAO_VER_CENSURADO,
+        documento=documento, detalhe="censurado_tarjado",
+    )
     return responder_arquivo(
         caminho,
         nome_para_download(documento.nome_original, documento.extensao),
@@ -556,11 +564,34 @@ def obter_documento_original(
         )
 
     caminho = candidatos[0]
-    registrar(db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL, documento=documento)
+    registrar(
+        db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL,
+        documento=documento, detalhe="original_integral",
+    )
     return responder_arquivo(
         caminho,
         f"{documento.nome_original}_original.pdf",
     )
+
+
+def chave_dos_itens(itens_para_cobrir: dict) -> str:
+    """Assinatura do conjunto de caixas a cobrir.
+
+    O cache de versao tem que mudar quando o que se cobre muda (mesmo nivel
+    mesmo doc): se a politica ajusta itens, entregar o PDF antigo seria
+    servir cache desatualizado. A chave deriva do conteudo das caixas, e nao
+    do nivel sozinho.
+    """
+    import json
+
+    normalizado = sorted(
+        (pagina, espaco, list(coordenadas if coordenadas is not None else []))
+        for pagina, caixas in itens_para_cobrir.items()
+        for coordenadas, espaco in caixas
+    )
+    return hashlib.sha256(
+        json.dumps(normalizado, sort_keys=True).encode()
+    ).hexdigest()[:12]
 
 
 @router.get("/{doc_id}/parcial")
@@ -601,7 +632,10 @@ def obter_documento_parcial(
                 detail="Arquivo original nao encontrado no armazenamento.",
             )
         caminho = candidatos[0]
-        registrar(db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL, documento=documento)
+        registrar(
+            db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL,
+            documento=documento, detalhe="original_integral",
+        )
         return responder_arquivo(
             caminho,
             f"{documento.nome_original}_original.pdf",
@@ -640,14 +674,36 @@ def obter_documento_parcial(
     # sempre que o scan nao encontrou nada.
     if not itens_para_cobrir:
         caminho_censurado = caminho_armazenado(documento)
-        registrar(db, request, usuario_atual.user_id, ACAO_VER_PARCIAL, documento=documento)
+        registrar(
+            db, request, usuario_atual.user_id, ACAO_VER_PARCIAL,
+            documento=documento, detalhe=f"parcial_nivel{nivel}",
+        )
         return responder_arquivo(
             caminho_censurado,
             f"{documento.nome_original}_censurado.pdf",
         )
 
     try:
-        nome_saida = f"{documento.hash_documento}_parcial_nivel{nivel}.pdf"
+        nome_saida = (
+            f"{documento.hash_documento}_parcial_nivel{nivel}_"
+            f"{chave_dos_itens(itens_para_cobrir)}.pdf"
+        )
+        caminho_parcial = CENSURADOS_DIR / nome_saida
+
+        # Cache da versao (doc, nivel, caixas): regenerar um PDF rasterizado
+        # de 150 dpi por pedido custa caro em servidor de empresa. O nome ja
+        # carrega a assinatura das caixas, entao cache desatualizado nao
+        # acontece: itens diferentes caem em arquivo diferente.
+        if caminho_parcial.is_file():
+            registrar(
+                db, request, usuario_atual.user_id, ACAO_VER_PARCIAL,
+                documento=documento, detalhe=f"parcial_nivel{nivel}_cache",
+            )
+            return responder_arquivo(
+                caminho_parcial,
+                f"{documento.nome_original}_parcial_nivel{nivel}.pdf",
+            )
+
         caminho_parcial = get_scanner().gerar_pdf_parcial(
             file_path=str(caminhos_originais[0]),
             itens_para_cobrir=itens_para_cobrir,
@@ -674,11 +730,146 @@ def obter_documento_parcial(
             detail="Falha ao gerar a descensura parcial.",
         ) from e
 
-    registrar(db, request, usuario_atual.user_id, ACAO_VER_PARCIAL, documento=documento)
+    registrar(
+        db, request, usuario_atual.user_id, ACAO_VER_PARCIAL,
+        documento=documento, detalhe=f"parcial_nivel{nivel}",
+    )
     return responder_arquivo(
         caminho_parcial,
         f"{documento.nome_original}_parcial_nivel{nivel}.pdf",
     )
+
+
+# Upload em lote: cada arquivo fica como Documento AGUARDANDO; a fila
+# (core.fila) processa em background. Mais que isto por lotes satura a
+# resposta e o OCR de maquinas pequenas.
+MAX_ARQUIVOS_POR_LOTE = 50
+STATUS_AGUARDANDO = "AGUARDANDO"
+STATUS_RECUSADO = "RECUSADO"
+
+
+@router.post("/upload/lote", status_code=status.HTTP_202_ACCEPTED)
+async def upload_documentos_lote(
+    request: Request,
+    files: list[UploadFile] = File(...),
+    team_id: int = Form(...),
+    nivel_seguranca: int = Form(1),
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(get_current_user)
+):
+    """Ingestao em volume: varios PDFs numa so requisicao.
+
+    Valida cada arquivo cedo (formato/magic bytes); os validos ganham um
+    Documento AGUARDANDO e entram na fila de scan; os invalidos sao recusados
+    nominalmente, sem travar o lote inteiro. O corpo responde antes do
+    processamento: o status vira PROCESSANDO/CONCLUIDO pela fila, visivel nos
+    metadados e listagens do documento.
+
+    Lote vai para uma equipe so: pertence a um dono unico (o compartilhamento
+    por multi-equipes do upload individual segue existindo la).
+    """
+    if nivel_seguranca < 1 or nivel_seguranca > 4:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Nível de segurança inválido (1-4)."
+        )
+
+    if not files:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Envie ao menos um arquivo.",
+        )
+    if len(files) > MAX_ARQUIVOS_POR_LOTE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Limite de {MAX_ARQUIVOS_POR_LOTE} arquivos por lote.",
+        )
+
+    vinculo = (
+        db.query(UsuarioEquipe)
+        .filter(
+            UsuarioEquipe.user_id == usuario_atual.user_id,
+            UsuarioEquipe.team_id == team_id,
+        )
+        .first()
+    )
+    if not vinculo:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Voce nao faz parte dessa equipe.",
+        )
+
+    itens: list[dict] = []
+    criados: list[Documento] = []
+
+    for arquivo in files:
+        nome_seguro = Path(arquivo.filename or "").name
+        try:
+            conteudo, caminho_nome = await ler_e_validar_upload(arquivo, Path(nome_seguro))
+        except HTTPException as erro:
+            itens.append({
+                "nome": nome_seguro,
+                "doc_id": None,
+                "status": STATUS_RECUSADO,
+                "motivo": erro.detail,
+            })
+            continue
+
+        extensao = caminho_nome.suffix or ".pdf"
+        hash_arquivo = gerar_hash_arquivo(conteudo)
+        nome_arquivo = f"{hash_arquivo}{extensao}"
+        caminho_original = ORIGINAIS_DIR / nome_arquivo
+        caminho_original.write_bytes(conteudo)
+
+        titulo = caminho_nome.stem or nome_seguro
+        documento = Documento(
+            user_team_id=vinculo.user_team_id,
+            nome_original=titulo,
+            extensao=extensao.lstrip(".").lower(),
+            tamanho_bytes=len(conteudo),
+            nivel_seguranca=nivel_seguranca,
+            chave_criptografica=gerar_chave_criptografica(hash_arquivo, usuario_atual.user_id),
+            hash_documento=hash_arquivo,
+            caminho_storage="",
+            status_processamento=STATUS_AGUARDANDO,
+            cpf_censurados=0,
+        )
+        db.add(documento)
+        criados.append(documento)
+        itens.append({
+            "nome": nome_seguro,
+            "titulo": titulo,
+            "doc_id": None,  # preenchido apos o flush
+            "status": STATUS_AGUARDANDO,
+            "motivo": None,
+        })
+
+    if not criados:
+        return {
+            "mensagem": "Nenhum arquivo valido foi aceito.",
+            "total_recebido": len(files),
+            "total_aceito": 0,
+            "itens": itens,
+        }
+
+    db.commit()
+    itens_aceitos = [item for item in itens if item["status"] == STATUS_AGUARDANDO]
+    for documento, item in zip(criados, itens_aceitos, strict=True):
+        item["doc_id"] = documento.doc_id
+        registrar(
+            db, request, usuario_atual.user_id, ACAO_UPLOAD,
+            documento=documento, detalhe=f"lote_{STATUS_AGUARDANDO.lower()}",
+        )
+
+    for documento in criados:
+        fila.agendar(processar_upload_da_fila, documento.doc_id)
+
+    return {
+        "mensagem": "Lote recebido; processamento em fila.",
+        "total_recebido": len(files),
+        "total_aceito": len(criados),
+        "itens": itens,
+    }
 
 
 @router.post("/salvar-censurado", status_code=status.HTTP_201_CREATED)
@@ -840,3 +1031,82 @@ async def listar_documentos_equipe(
             for d in documentos
         ]
     }
+
+
+def fabrica_sessao_trabalho() -> Session:
+    """Sessao do worker da fila, isolada da requisicao que ja respondeu.
+
+    Monkeypatch pelos testes: a fila sincrona deles precisa de uma sessao
+    ligada ao banco de teste (e que sobreviva ate a proxima requisicao), e
+    nao a SessionLocal de producao, que aponta para outro banco.
+    """
+    from app.database import SessionLocal
+
+    return SessionLocal()
+
+
+def processar_upload_da_fila(doc_id: int) -> None:
+    """Processa um documento AGUARDANDO do lote (threads fora da requisicao).
+
+    Cada task usa sessao propria: a requisicao HTTP que aceitou o arquivo ja
+    encerrou. O status avanca AGUARDANDO -> PROCESSANDO -> CONCLUIDO | ERRO
+    sempre comprometido, para que o documento nunca fique preso no meio.
+    """
+    db = fabrica_sessao_trabalho()
+    try:
+        documento = db.get(Documento, doc_id)
+        if documento is None or documento.status_processamento != STATUS_AGUARDANDO:
+            return
+
+        equipe = equipe_do_documento(db, documento)
+        niveis = (
+            politica_niveis.niveis_da_equipe(db, equipe.team_id) if equipe else {}
+        )
+
+        documento.status_processamento = "PROCESSANDO"
+        db.commit()
+
+        candidatos = list(ORIGINAIS_DIR.glob(f"{documento.hash_documento}*"))
+        if not candidatos:
+            raise FileNotFoundError(
+                f"Original nao encontrado na fila: {documento.hash_documento}"
+            )
+
+        get_scanner().scan_and_save(
+            file_path=str(candidatos[0]),
+            db=db,
+            user_team_id=documento.user_team_id,
+            nome_original=documento.nome_original,
+            nivel_seguranca=documento.nivel_seguranca,
+            dir_original=ORIGINAIS_DIR,
+            dir_censurado=CENSURADOS_DIR,
+            niveis=niveis,
+            documento=documento,
+        )
+        db.commit()
+
+        if documento.status_processamento == "ERRO" or not documento.caminho_storage:
+            # Scan concluso com Falha (sem paginas, OCR vazio): o commit de cima
+            # persistiu ERRO; nada mais a fazer aqui.
+            logger.error(f"Lote: doc {doc_id} terminou como ERRO.")
+    except Exception:
+        logger.exception("Lote: falha ao processar doc %s.", doc_id)
+        db.rollback()
+        _marcar_erro_da_fila(db, doc_id)
+    finally:
+        db.close()
+
+
+def _marcar_erro_da_fila(db: Session, doc_id: int) -> None:
+    """Deixa o documento do lote explicitamente em ERRO, sempre.
+
+    A marca de ERRO dentro do scan roda antes do rollback do worker e seria
+    perdida; aqui o doc e reconsultado na sessao limpa e o status ganha
+    commit proprio. Se o doc ja virou ERRO, a operacao e idempotente.
+    """
+    documento = db.get(Documento, doc_id)
+    if documento is None or documento.status_processamento == "ERRO":
+        db.commit()
+        return
+    documento.status_processamento = "ERRO"
+    db.commit()

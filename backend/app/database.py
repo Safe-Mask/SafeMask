@@ -86,6 +86,7 @@ _COLUNAS_AUDITORIA = {
     "cargo_id": "INTEGER REFERENCES cargo(cargo_id) ON DELETE SET NULL",
     "alvo_user_id": "INTEGER REFERENCES usuario(user_id) ON DELETE SET NULL",
     "resultado": "VARCHAR(20) NOT NULL DEFAULT 'sucesso'",
+    "detalhe": "VARCHAR(200)",
 }
 
 

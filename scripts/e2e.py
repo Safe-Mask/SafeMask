@@ -52,7 +52,6 @@ def _equipe_do_usuario(client: httpx.Client, base: str, token: str) -> int:
 
 def _upload(client: httpx.Client, base: str, token: str,
             caminho: Path, titulo: str, equipes_texto: str) -> dict:
-    conteudo = caminho.read_bytes()
     with caminho.open("rb") as fh:
         resp = client.post(
             f"{base}/documentos/upload",
@@ -139,6 +138,38 @@ def main() -> int:
         ids = [d["doc_id"] for d in lista.get("documentos", [])]
         assert doc["doc_id"] in ids, f"doc recém-upload nao aparece na listagem: {lista}"
         ok("GET /documentos/censurados (lista)")
+
+        # Upload em lote: 2 PDFs numa requisicao; a fila processa em background
+        # e o e2e espera cada doc sair de AGUARDANDO/PROCESSANDO.
+        with relatorio.open("rb") as fh1, receita.open("rb") as fh2:
+            resp = client.post(
+                f"{base}/documentos/upload/lote",
+                headers=_auth(token),
+                files=[
+                    ("files", (relatorio.name, fh1, "application/pdf")),
+                    ("files", (receita.name, fh2, "application/pdf")),
+                ],
+                data={"team_id": str(team_id), "nivel_seguranca": "1"},
+                timeout=120,
+            )
+        assert resp.status_code == 202, resp.text
+        corpo_lote = resp.json()
+        ids_lote = [i["doc_id"] for i in corpo_lote.get("itens", []) if i.get("doc_id")]
+        assert len(ids_lote) == 2, f"lote nao aceitou os 2 PDFs: {corpo_lote}"
+        ok(f"POST /documentos/upload/lote (doc_ids={ids_lote})")
+
+        for id_lote in ids_lote:
+            for _ in range(60):
+                resp = client.get(
+                    f"{base}/documentos/censurados/{id_lote}", headers=_auth(token), timeout=30
+                )
+                resp.raise_for_status()
+                status_lote = resp.json().get("status_processamento")
+                if status_lote in ("CONCLUIDO", "ERRO"):
+                    break
+                time.sleep(2)
+            assert status_lote == "CONCLUIDO", f"lote doc {id_lote}: status {status_lote}"
+        ok("fila do lote: docs CONCLUIDO (scan em background)")
 
         r = client.get(
             f"{base}/documentos/censurados/{doc['doc_id']}/arquivo",
