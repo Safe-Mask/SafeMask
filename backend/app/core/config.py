@@ -17,10 +17,12 @@ logger = logging.getLogger(__name__)
 
 # Origens liberadas para CORS. `*` com allow_credentials e um erro: o
 # navegador ignora o header e o proprio FastAPI documenta como invalido.
+# As duas primeiras sao as origens do webview do client Tauri
+# (tauri://localhost no macOS/Linux, http://tauri.localhost no Windows).
 # Separe por virgula em FRONTEND_ORIGINS.
 _ORIGENS_PADRAO = (
-    "https://safe-mask.vercel.app,"
-    "https://safemask-frontend.vercel.app,"
+    "tauri://localhost,"
+    "http://tauri.localhost,"
     "http://localhost:5500,"
     "http://localhost:3000"
 )
@@ -107,11 +109,12 @@ def _cors_origin_regex() -> str | None:
 
 CORS_ORIGIN_REGEX: str | None = _cors_origin_regex()
 
-# URL publica do frontend, usada nos emails de recuperacao de senha.
-FRONTEND_URL: str = os.getenv("FRONTEND_URL", "https://safe-mask.vercel.app").rstrip("/")
+# URL apontada nos textos de recuperacao de senha. O produto e desktop
+# (client Tauri), que desde o 1o uso aponta para este mesmo servico; sem
+# frontend hospedado separado, o default e o proprio servico.
+FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:8000").rstrip("/")
 
-# Tamanho maximo de upload. 20 MB e o teto do Vercel; acima disso o upload
-# morre no proxy antes de chegar na aplicacao.
+# Tamanho maximo de upload; o mesmo limite vale para o watch da pasta base.
 MAX_UPLOAD_BYTES: int = _int_env("MAX_UPLOAD_BYTES", 20 * 1024 * 1024)
 
 # Assinatura de arquivo PDF (ISO 32000-1, Cabecalho 7.2).

@@ -256,6 +256,7 @@ def garantir_schema_organizacoes():
     # backfill quebra com "no such column".
     _garantir_espaco_coordenadas(inspector, tabelas)
     _garantir_token_version(inspector, tabelas)
+    garantir_coluna_usuario_precisa_trocar_senha(inspector, tabelas)
 
     _preencher_organizacoes_pendentes()
 
@@ -289,6 +290,29 @@ def _garantir_token_version(inspector, tabelas: set):
     )
     if engine.dialect.name == "sqlite":
         sql = sql.replace("IF NOT EXISTS ", "")
+    with engine.begin() as conn:
+        conn.execute(text(sql))
+
+
+def garantir_coluna_usuario_precisa_trocar_senha(inspector, tabelas: set):
+    """Acrescenta `usuario.precisa_trocar_senha` em bancos existentes.
+
+    O admin semeadado no 1o boot responde 403 fora de /auth enquanto nao
+    trocar a senha inicial. Usuarios ja existentes nascem com `false`, que e
+    exatamente o comportamento de antes da coluna existir.
+    """
+    if "usuario" not in tabelas:
+        return
+    colunas = {c["name"] for c in inspector.get_columns("usuario")}
+    if "precisa_trocar_senha" in colunas:
+        return
+    sql = (
+        "ALTER TABLE usuario ADD COLUMN IF NOT EXISTS "
+        "precisa_trocar_senha BOOLEAN NOT NULL DEFAULT FALSE"
+    )
+    if engine.dialect.name == "sqlite":
+        # SQLite nao aceita o default booleano do Postgres; 0/1 equivalente.
+        sql = "ALTER TABLE usuario ADD COLUMN precisa_trocar_senha INTEGER NOT NULL DEFAULT 0"
     with engine.begin() as conn:
         conn.execute(text(sql))
 

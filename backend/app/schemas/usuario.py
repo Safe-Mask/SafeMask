@@ -20,3 +20,10 @@ class UsuarioCreate(UsuarioBase):
     senha_hash: str = Field(min_length=SENHA_MIN, max_length=SENHA_MAX)
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TrocaSenhaRequest(BaseModel):
+    """Troca autenticada: exige a senha atual para nao vale por sequestro de token."""
+
+    senha_atual: str = Field(min_length=1, max_length=SENHA_MAX)
+    nova_senha: str = Field(min_length=SENHA_MIN, max_length=SENHA_MAX)

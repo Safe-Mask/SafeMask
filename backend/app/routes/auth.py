@@ -12,6 +12,8 @@ from app.core.audit import (
     ACAO_LOGIN_FALHO,
     ACAO_RESET_SENHA,
     ACAO_RESET_SENHA_SOLICITACAO,
+    ACAO_TROCA_SENHA,
+    RESULTADO_NEGADO,
     ip_do_cliente,
     registrar,
 )
@@ -32,7 +34,7 @@ from app.models.log_auditoria import LogAuditoria
 from app.models.usuario import Usuario
 from app.models.usuario_equipe import UsuarioEquipe
 from app.schemas.auth import RecuperarSenhaRequest, ResetSenhaRequest
-from app.schemas.usuario import UsuarioCreate, UsuarioLogin
+from app.schemas.usuario import TrocaSenhaRequest, UsuarioCreate, UsuarioLogin
 
 router = APIRouter(prefix="/auth", tags=["Autenticação"])
 
@@ -150,6 +152,9 @@ def identidade(db: Session, usuario: Usuario) -> dict:
         # Sem equipe o usuario ainda autenticou, mas nao ha papel para o menu.
         "cargo": cargo["nome"] if cargo else None,
         "nivel": cargo["nivel"] if cargo else 0,
+        # O client usa para obrigar a tela de troca de senha no primeiro
+        # acesso do admin semeadado (o middleware cobra do lado da API).
+        "precisa_trocar_senha": bool(usuario.precisa_trocar_senha),
     }
 
 
@@ -211,6 +216,45 @@ async def me(
     Permite reidratar a sessao (por exemplo apos um deploy) sem refazer login.
     """
     return identidade(db, usuario_atual)
+
+
+@router.post("/trocar-senha", response_model=dict)
+async def trocar_senha(
+    request: Request,
+    payload: TrocaSenhaRequest,
+    usuario_atual: Usuario = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Troca de senha autenticada (a tela obrigatoria do primeiro acesso).
+
+    Valida a senha atual, troca, desativa o flag de troca pendente e sobe
+    `token_version`: qualquer outro token vivo dessa conta morre na hora e
+    a resposta ja devolve um token novo.
+    """
+    if not verificar_senha(payload.senha_atual, usuario_atual.senha_hash):
+        registrar(db, request, usuario_atual.user_id, ACAO_TROCA_SENHA, resultado=RESULTADO_NEGADO)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Senha atual incorreta.",
+        )
+
+    usuario_atual.senha_hash = hash_senha(payload.nova_senha)
+    usuario_atual.precisa_trocar_senha = False
+    usuario_atual.token_version = (usuario_atual.token_version or 0) + 1
+    registrar(db, request, usuario_atual.user_id, ACAO_TROCA_SENHA)
+
+    token = criar_token_jwt(
+        {
+            "sub": usuario_atual.email,
+            "nome": usuario_atual.nome,
+            "tv": usuario_atual.token_version,
+        }
+    )
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user": identidade(db, usuario_atual),
+    }
 
 # Rota para cadastrar o usuário
 @router.post("/cadastro", status_code=status.HTTP_201_CREATED)

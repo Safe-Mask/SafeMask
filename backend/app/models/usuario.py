@@ -1,4 +1,4 @@
-from sqlalchemy import TIMESTAMP, Column, ForeignKey, Integer, String
+from sqlalchemy import TIMESTAMP, Boolean, Column, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -22,6 +22,11 @@ class Usuario(Base):
     # emitido; um token anterior deixa de servir quando a versao muda. E o que
     # corta o acesso de quem roubou a senha antiga.
     token_version = Column(Integer, nullable=False, default=0, server_default="0")
+    # Admin semeadado no 1o boot recebe senha temporaria: enquanto o flag
+    # estiver ativo, tudo fora de /auth responde 403 ate a troca happen.
+    precisa_trocar_senha = Column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     criado_em = Column(TIMESTAMP, server_default=func.now())
 
     organizacao = relationship("Organizacao", back_populates="usuarios")

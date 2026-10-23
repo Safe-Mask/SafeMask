@@ -10,6 +10,7 @@ python-jose==3.4.0
 python-multipart==0.0.27
 SQLAlchemy==2.0.40
 uvicorn==0.34.0
+pyyaml==6.0.2
 sib-api-v3-sdk
 pdfplumber>=0.11.0
 pytesseract>=0.3.10
