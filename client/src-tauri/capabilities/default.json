@@ -1,0 +1,7 @@
+{
+  "$schema": "gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Permissoes base do client SafeMask (webview padrao, sem plugin nativo).",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

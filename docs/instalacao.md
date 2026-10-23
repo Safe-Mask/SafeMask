@@ -74,7 +74,23 @@ a tela de troca de senha no primeiro uso. O aviso so aparece na instalacao nova 
 client, o `overview` da equipe mostra os arquivos ingeridos; o log do
 servico lista `Ingerido da pasta: <arquivo> -> doc_id=N` por documento.
 
-## 6. Base de dados
+## 6. Client Tauri (usuarios)
+
+Source em `client/` (Vite + TypeScript + Tauri 2). Para gerar o exe do
+client numa maquina com Rust + WebKitGTK (Linux) ou MSVC/WebView2 (Windows):
+
+```
+cd client
+npm install
+npm run tauri build     #saida: client/src-tauri/target/release/bundle/
+```
+
+No primeiro uso o client pede a URL do servico (ex. `http://srv-empresa:8000`),
+valida contra `/auth/me` e so entao pede login. O admin provisorio logo com
+`admin@safemask.example.com` + senha do log e e obrigado a trocar a senha no
+mesmo exe.
+
+## 7. Base de dados
 
 SQLite em `backend/safemask.db` (padrao do produto). Se a empresa quiser
 instituir Postgres mais tarde, o mesmo servico aceita a variavel

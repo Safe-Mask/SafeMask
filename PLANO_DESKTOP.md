@@ -80,25 +80,38 @@
 - [x] pytest + ruff verdes pos-cortes (299 passed)
 - [x] Commit da virada (branch `lucas` apenas)
 
-## FASE 1 — Servico empacotavel (o coracao)
+## FASE 1 — Servico empacotavel (o coracao) — CONCLUIDA (commit a80cc72)
 
-- [ ] **1.1 Watch de pasta**: `watchdog` monitorando pasta configuravel +
-      fallback de polling por hash; ingestao -> mesma fila/auditoria
-- [ ] **1.2 Seed de instalacao**: no 1o boot cria organization unica + usuario
-      admin com senha inicial forcada a trocar
-- [ ] **1.3 Config de instalacao**: `service.yaml` (pasta base, porta, equipe padrao)
-- [ ] **1.4 PyInstaller**: spec embutindo Tesseract (`tessdata por`) + scanner +
-      `safemask-ner` (sem checkpoints); servico Windows (NSSM ou pywin32)
+- [x] **1.1 Watch de pasta**: thread com ciclo de varredura por hash
+      (`app/core/ingestao_pasta.py`); polling e o mecanismo garantido (shares
+      de rede perdem eventos) — watchdog event-driven ficou para depois,
+      como acelerador opcional; ingestao -> mesma fila/auditoria
+- [x] **1.2 Seed de instalacao**: no 1o boot cria organizacao unica + admin
+      provisorio com senha aleatoria no log e troca forcada (middleware
+      403 fora de /auth ate `POST /auth/trocar-senha`)
+- [x] **1.3 Config de instalacao**: `service.yaml` via `service_config`
+      (pasta base, porta, equipe padrao, intervalo; yaml quebrado so avisa)
+- [x] **1.4 PyInstaller + servico Windows**: `safemask_service.spec`
+      embute scanner + `safemask-ner` (sem checkpoints; regex-first se o
+      modelo faltar); `docs/instalacao.md` cobre Tesseract (programa
+      separado, caminho padrao) e NSSM; testar build numa maquina Windows
 
-## FASE 2 — Client Tauri (UI do zero)
+## FASE 2 — Client Tauri (UI do zero) — scaffold pronto, build pendente
 
-- [ ] **2.1** Scaffold Tauri (Rust + webview, UI >= 10 MB)
-- [ ] **2.2** UI nova: sidebar, login, lista de docs, pedir versao por nivel,
-      download, status da fila
-- [ ] **2.3** 1o uso: tela de config apontando URL do servico (ex. `http://srv-empresa:8000`)
-- [ ] **2.4** Admin no mesmo exe: pasta base, equipes/niveis (`PoliticaNivel`),
-      consultar/exportar auditoria
-- [ ] **2.5** CORS do servico para origem `tauri://`
+- [x] **2.1** Scaffold Tauri 2: `client/` (Vite + TS puro, sem framework;
+      dist ~20 KB) + `client/src-tauri/` (conf v2, capabilities minimas,
+      icones gerados); build do exe exige Rust na maquina de release
+- [x] **2.2** UI nova: 1o uso, login, troca de senha obrigatoria, sidebar
+      (Documentos / Equipes / Auditoria), lista de docs, versao censurada
+      e parcial com download por bearer; status da fila ficou para a
+      proxima iteracao (upload do admin no mesmo exe tambem)
+- [x] **2.3** 1o uso: tela de config apontando URL do servico (testa
+      `/auth/me` antes de salvar a URL)
+- [x] **2.4** Admin no mesmo exe (falta: pasta base so via service.yaml):
+      criar equipe, membros, cargos, `PoliticaNivel` por tipo, consultar e
+      exportar auditoria em CSV
+- [x] **2.5** CORS do servico para origem `tauri://` (macOS/Linux e
+      Windows) + dev server do Vite
 
 ## FASE 3 — Fechamento de compliance
 

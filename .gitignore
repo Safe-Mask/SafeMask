@@ -87,3 +87,9 @@ backend/uploads/
 MVP*safemask.md
 safemask_deploy.md
 __preview.html
+
+# Client Tauri (Fase 2)
+client/node_modules/
+client/dist/
+client/src-tauri/target/
+client/src-tauri/gen/

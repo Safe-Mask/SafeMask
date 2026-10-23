@@ -18,11 +18,13 @@ logger = logging.getLogger(__name__)
 # Origens liberadas para CORS. `*` com allow_credentials e um erro: o
 # navegador ignora o header e o proprio FastAPI documenta como invalido.
 # As duas primeiras sao as origens do webview do client Tauri
-# (tauri://localhost no macOS/Linux, http://tauri.localhost no Windows).
+# (tauri://localhost no macOS/Linux, http://tauri.localhost no Windows);
+# a porta 5173 e o dev server do Vite, so para desenvolvimento.
 # Separe por virgula em FRONTEND_ORIGINS.
 _ORIGENS_PADRAO = (
     "tauri://localhost,"
     "http://tauri.localhost,"
+    "http://localhost:5173,"
     "http://localhost:5500,"
     "http://localhost:3000"
 )
