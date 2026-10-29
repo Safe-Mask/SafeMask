@@ -47,6 +47,9 @@ ACOES = frozenset(
 
 RESULTADO_SUCESSO = "sucesso"
 RESULTADO_NEGADO = "negado"
+# A operacao era permitida, mas o arquivo nao estava no storage: a trilha
+# precisa distinguir isso de uma negativa de permissao.
+RESULTADO_FALHA = "falha"
 
 
 def ip_do_cliente(request: Request | None) -> str:

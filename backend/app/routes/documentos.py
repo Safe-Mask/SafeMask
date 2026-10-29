@@ -11,9 +11,11 @@ from app.core import cifra, fila, politica_niveis, tenancy
 from app.core.audit import (
     ACAO_LISTAR_DOCUMENTOS,
     ACAO_UPLOAD,
+    ACAO_UPLOAD_LOTE,
     ACAO_VER_CENSURADO,
     ACAO_VER_ORIGINAL,
     ACAO_VER_PARCIAL,
+    RESULTADO_FALHA,
     RESULTADO_NEGADO,
     registrar,
 )
@@ -84,6 +86,10 @@ async def upload_documento(
         .all()
     )
     if not usuario_equipes:
+        registrar(
+            db, request, usuario_atual.user_id, ACAO_UPLOAD,
+            team_id=team_ids[0], resultado=RESULTADO_NEGADO,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Voce nao faz parte da equipe selecionada."
@@ -305,6 +311,11 @@ def listar_documentos_censurados(
         )
     ]
 
+    registrar(
+        db, request, usuario_atual.user_id, ACAO_LISTAR_DOCUMENTOS,
+        detalhe="censurados",
+    )
+
     if not team_ids:
         return {
             "usuario": {
@@ -438,6 +449,11 @@ def obter_arquivo_documento_censurado(
         caminho = Path.cwd() / caminho
 
     if not caminho.exists():
+        registrar(
+            db, request, usuario_atual.user_id, ACAO_VER_CENSURADO,
+            documento=documento, resultado=RESULTADO_FALHA,
+            detalhe="arquivo_ausente",
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Arquivo físico não encontrado.",
@@ -490,6 +506,11 @@ def obter_documento_original(
     # apaga quando a resposta termina (BackgroundTask do starlette).
     candidatos = list(ORIGINAIS_DIR.glob(f"{documento.hash_documento}*"))
     if not candidatos:
+        registrar(
+            db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL,
+            documento=documento, resultado=RESULTADO_FALHA,
+            detalhe="arquivo_ausente",
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Arquivo original nao encontrado no armazenamento.",
@@ -555,6 +576,10 @@ def obter_documento_parcial(
     equipe = equipe_do_documento(db, documento)
     cargo = cargo_na_equipe(db, usuario_atual, equipe.team_id) if equipe else None
     if not cargo:
+        registrar(
+            db, request, usuario_atual.user_id, ACAO_VER_PARCIAL,
+            documento=documento, resultado=RESULTADO_NEGADO,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Voce nao faz parte da equipe deste documento.",
@@ -564,6 +589,11 @@ def obter_documento_parcial(
     if cargo["nivel"] >= NIVEL_MIN_DESCENSURA:
         candidatos = list(ORIGINAIS_DIR.glob(f"{documento.hash_documento}*"))
         if not candidatos:
+            registrar(
+                db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL,
+                documento=documento, resultado=RESULTADO_FALHA,
+                detalhe="arquivo_ausente",
+            )
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Arquivo original nao encontrado no armazenamento.",
@@ -606,6 +636,11 @@ def obter_documento_parcial(
 
     caminhos_originais = list(ORIGINAIS_DIR.glob(f"{documento.hash_documento}*"))
     if not caminhos_originais:
+        registrar(
+            db, request, usuario_atual.user_id, ACAO_VER_PARCIAL,
+            documento=documento, resultado=RESULTADO_FALHA,
+            detalhe="arquivo_ausente",
+        )
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Arquivo original nao encontrado no armazenamento.",
@@ -742,6 +777,10 @@ async def upload_documentos_lote(
         .first()
     )
     if not vinculo:
+        registrar(
+            db, request, usuario_atual.user_id, ACAO_UPLOAD_LOTE,
+            team_id=team_id, resultado=RESULTADO_NEGADO,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Voce nao faz parte dessa equipe.",
@@ -838,6 +877,10 @@ async def listar_documentos_equipe(
     ).all()
 
     if not usuario_equipe_list:
+        registrar(
+            db, request, usuario_atual.user_id, ACAO_LISTAR_DOCUMENTOS,
+            team_id=team_id, resultado=RESULTADO_NEGADO,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Você não faz parte dessa equipe."
@@ -850,7 +893,7 @@ async def listar_documentos_equipe(
         Documento.ativo.is_(True),
     ).all()
 
-    registrar(db, request, usuario_atual.user_id, ACAO_LISTAR_DOCUMENTOS)
+    registrar(db, request, usuario_atual.user_id, ACAO_LISTAR_DOCUMENTOS, team_id=team_id)
 
     return {
         "total": len(documentos),
