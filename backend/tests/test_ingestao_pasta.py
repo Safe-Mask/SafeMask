@@ -88,7 +88,11 @@ def test_original_e_copiado_para_o_storage_do_servico(seed, tmp_path, monkeypatc
     assert documento.caminho_storage == ""
     copiado = originais / f"{documento.hash_documento}.pdf"
     assert copiado.is_file()
-    assert copiado.read_bytes() == CONTEUDO_PDF
+    from app.core import cifra
+
+    bruto = copiado.read_bytes()
+    assert cifra.e_cifrado(bruto)
+    assert cifra.decifrar_arquivo(copiado) == CONTEUDO_PDF
 
 
 def test_resolver_vinculo_prefere_a_equipe_padrao_e_sabe_fallback(seed):

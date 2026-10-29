@@ -145,10 +145,14 @@ class IngestorPasta:
         )
 
     def _gravar_original(self, hash_documento: str, extensao: str, conteudo: bytes) -> None:
+        from app.core import cifra
         from app.routes.documentos import ORIGINAIS_DIR
 
-        ORIGINAIS_DIR.mkdir(parents=True, exist_ok=True)
-        (ORIGINAIS_DIR / f"{hash_documento}{extensao}").write_bytes(conteudo)
+        # O original vai CRIPTOGRAFADO para o armazenamento (Fase 3.1): o
+        # scan na fila materializa a copia legivel e a descarta.
+        cifra.gravar_original_cifrado(
+            ORIGINAIS_DIR / f"{hash_documento}{extensao}", conteudo
+        )
 
     def _avisar_ignorado(self, caminho: Path, motivo: str) -> None:
         # Mesmo arquivo ignora uma vez so: um share com 200 .docx nao pode

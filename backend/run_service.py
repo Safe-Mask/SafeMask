@@ -9,11 +9,19 @@ Uso equivalente em dev:
 
 import uvicorn
 
+from app.core import cifra
 from app.core.service_config import carregar
 
 
 def principal() -> None:
     config = carregar()
+
+    # Fase 3.1: instalacoes antigas tinham o original legivel em disco. Antes
+    # de aceitar requisicao (e antes do watch), cifra o legado uma vez.
+    from app.routes.documentos import ORIGINAIS_DIR
+
+    cifra.migrar_originais_em_texto_puro(ORIGINAIS_DIR)
+
     uvicorn.run(
         "app.main:app",
         host="0.0.0.0",

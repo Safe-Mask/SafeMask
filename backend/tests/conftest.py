@@ -77,6 +77,22 @@ def sem_envio_de_email_real(monkeypatch):
     yield
 
 
+@pytest.fixture(autouse=True)
+def chave_de_cifra_isolada(tmp_path, monkeypatch):
+    """Cada teste usa a propria chave e nao deixa cache entre eles.
+
+    Sem isto, o primeiro upload da suite criaria `chave_original.key` no
+    diretorio do projeto (segredo de verdade) e os testes seguintes herdariam
+    a chave em cache.
+    """
+    from app.core import cifra
+
+    monkeypatch.setenv("SAFEMASK_CHAVE_ARQUIVO", str(tmp_path / "chave_original.key"))
+    monkeypatch.setattr(cifra, "_fernet_cache", None)
+    yield
+    monkeypatch.setattr(cifra, "_fernet_cache", None)
+
+
 @pytest.fixture
 def db_session(tmp_path):
     """Sessao limpa em SQLite, com todas as tabelas criadas."""

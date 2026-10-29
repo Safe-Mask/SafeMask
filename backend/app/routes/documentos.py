@@ -5,8 +5,9 @@ from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
+from starlette.background import BackgroundTask
 
-from app.core import fila, politica_niveis, tenancy
+from app.core import cifra, fila, politica_niveis, tenancy
 from app.core.audit import (
     ACAO_LISTAR_DOCUMENTOS,
     ACAO_UPLOAD,
@@ -94,23 +95,28 @@ async def upload_documento(
     nome_arquivo = f"{hash_arquivo}{extensao}"
     caminho_original = ORIGINAIS_DIR / nome_arquivo
 
-    with open(caminho_original, "wb") as f:
-        f.write(conteudo)
+    # O original em disco NASCE cifrado (Fase 3.1): o plaintext vive so no
+    # request (aqui) e na copia temporaria de scan, dentro do finally.
+    cifra.gravar_original_cifrado(caminho_original, conteudo)
 
     niveis_principal = politica_niveis.niveis_da_equipe(db, usuario_equipes[0].team_id)
     try:
-        # O scanner roda UMA vez e gera o PDF tarjado a partir do primeiro vínculo.
-        resultado = get_scanner().scan_and_save(
-            file_path=str(caminho_original),
-            db=db,
-            user_team_id=usuario_equipes[0].user_team_id,
-            nome_original=titulo,
-            nivel_seguranca=nivel_seguranca,
-            dir_original=ORIGINAIS_DIR,
-            dir_censurado=CENSURADOS_DIR,
-            # Nivel exigido de cada tipo de dado: politica da equipe de destino.
-            niveis=niveis_principal,
-        )
+        arquivo_scan = cifra.materializar_original_para_leitura(caminho_original)
+        try:
+            # O scanner roda UMA vez e gera o PDF tarjado a partir do primeiro vínculo.
+            resultado = get_scanner().scan_and_save(
+                file_path=str(arquivo_scan),
+                db=db,
+                user_team_id=usuario_equipes[0].user_team_id,
+                nome_original=titulo,
+                nivel_seguranca=nivel_seguranca,
+                dir_original=ORIGINAIS_DIR,
+                dir_censurado=CENSURADOS_DIR,
+                # Nivel exigido de cada tipo de dado: politica da equipe de destino.
+                niveis=niveis_principal,
+            )
+        finally:
+            cifra.descartar_material_temporario(arquivo_scan, caminho_original)
 
         # Confirmacoes do scan ficam visiveis roda queries seguintes.
         db.flush()
@@ -480,7 +486,8 @@ def obter_documento_original(
             detail="Seu cargo nao permite acessar a versao original do documento.",
         )
 
-    # O original foi salvo como {hash_arquivo}{extensao} em ORIGINAIS_DIR.
+    # O original dorme cifrado (Fase 3.1); response le a copia legivel e a
+    # apaga quando a resposta termina (BackgroundTask do starlette).
     candidatos = list(ORIGINAIS_DIR.glob(f"{documento.hash_documento}*"))
     if not candidatos:
         raise HTTPException(
@@ -488,15 +495,20 @@ def obter_documento_original(
             detail="Arquivo original nao encontrado no armazenamento.",
         )
 
-    caminho = candidatos[0]
+    caminho_cifrado = candidatos[0]
+    arquivo_legivel = cifra.materializar_original_para_leitura(caminho_cifrado)
     registrar(
         db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL,
         documento=documento, detalhe="original_integral",
     )
-    return responder_arquivo(
-        caminho,
+    resposta = responder_arquivo(
+        arquivo_legivel,
         f"{documento.nome_original}_original.pdf",
     )
+    resposta.background = BackgroundTask(
+        cifra.descartar_material_temporario, arquivo_legivel, caminho_cifrado
+    )
+    return resposta
 
 
 def chave_dos_itens(itens_para_cobrir: dict) -> str:
@@ -556,15 +568,20 @@ def obter_documento_parcial(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Arquivo original nao encontrado no armazenamento.",
             )
-        caminho = candidatos[0]
+        caminho_cifrado = candidatos[0]
+        arquivo_legivel = cifra.materializar_original_para_leitura(caminho_cifrado)
         registrar(
             db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL,
             documento=documento, detalhe="original_integral",
         )
-        return responder_arquivo(
-            caminho,
+        resposta = responder_arquivo(
+            arquivo_legivel,
             f"{documento.nome_original}_original.pdf",
         )
+        resposta.background = BackgroundTask(
+            cifra.descartar_material_temporario, arquivo_legivel, caminho_cifrado
+        )
+        return resposta
 
     nivel = cargo["nivel"]
 
@@ -629,12 +646,18 @@ def obter_documento_parcial(
                 f"{documento.nome_original}_parcial_nivel{nivel}.pdf",
             )
 
-        caminho_parcial = get_scanner().gerar_pdf_parcial(
-            file_path=str(caminhos_originais[0]),
-            itens_para_cobrir=itens_para_cobrir,
-            dir_destino=CENSURADOS_DIR,
-            nome_saida=nome_saida,
-        )
+        # Rasterizar o original: leitura temporaria legivel do cifrado em
+        # disco; com o PDF parcial feito, a copia some (finally).
+        original_legivel = cifra.materializar_original_para_leitura(caminhos_originais[0])
+        try:
+            caminho_parcial = get_scanner().gerar_pdf_parcial(
+                file_path=str(original_legivel),
+                itens_para_cobrir=itens_para_cobrir,
+                dir_destino=CENSURADOS_DIR,
+                nome_saida=nome_saida,
+            )
+        finally:
+            cifra.descartar_material_temporario(original_legivel, caminhos_originais[0])
     except NenhumaMascaraAplicavel:
         # Havia item a cobrir, mas nenhuma caixa era utilizavel. Servir o
         # parcial assim seria o original sem nenhuma tarja; a versao
@@ -744,7 +767,7 @@ async def upload_documentos_lote(
         hash_arquivo = gerar_hash_arquivo(conteudo)
         nome_arquivo = f"{hash_arquivo}{extensao}"
         caminho_original = ORIGINAIS_DIR / nome_arquivo
-        caminho_original.write_bytes(conteudo)
+        cifra.gravar_original_cifrado(caminho_original, conteudo)
 
         titulo = caminho_nome.stem or nome_seguro
         documento = Documento(
@@ -884,17 +907,23 @@ def processar_upload_da_fila(doc_id: int) -> None:
                 f"Original nao encontrado na fila: {documento.hash_documento}"
             )
 
-        get_scanner().scan_and_save(
-            file_path=str(candidatos[0]),
-            db=db,
-            user_team_id=documento.user_team_id,
-            nome_original=documento.nome_original,
-            nivel_seguranca=documento.nivel_seguranca,
-            dir_original=ORIGINAIS_DIR,
-            dir_censurado=CENSURADOS_DIR,
-            niveis=niveis,
-            documento=documento,
-        )
+        # O original dorme cifrado em disco (Fase 3.1); o scan le a copia
+        # temporal legivel, apagada no finally do try abaixo.
+        arquivo_scan = cifra.materializar_original_para_leitura(candidatos[0])
+        try:
+            get_scanner().scan_and_save(
+                file_path=str(arquivo_scan),
+                db=db,
+                user_team_id=documento.user_team_id,
+                nome_original=documento.nome_original,
+                nivel_seguranca=documento.nivel_seguranca,
+                dir_original=ORIGINAIS_DIR,
+                dir_censurado=CENSURADOS_DIR,
+                niveis=niveis,
+                documento=documento,
+            )
+        finally:
+            cifra.descartar_material_temporario(arquivo_scan, candidatos[0])
         db.commit()
 
         if documento.status_processamento == "ERRO" or not documento.caminho_storage:
