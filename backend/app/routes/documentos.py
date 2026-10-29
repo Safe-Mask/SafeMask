@@ -6,9 +6,8 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.core import armazenamento, fila, politica_niveis, tenancy
+from app.core import fila, politica_niveis, tenancy
 from app.core.audit import (
-    ACAO_EXCLUIR_DOCUMENTO,
     ACAO_LISTAR_DOCUMENTOS,
     ACAO_UPLOAD,
     ACAO_UPLOAD_CENSURADO,
@@ -18,7 +17,7 @@ from app.core.audit import (
     RESULTADO_NEGADO,
     registrar,
 )
-from app.core.autorizacao import cargo_na_equipe, nivel_min_descensura
+from app.core.autorizacao import NIVEL_MIN_DESCENSURA, cargo_na_equipe
 from app.core.current_user import get_current_user
 from app.core.datas import iso_utc
 from app.core.file_responses import responder_arquivo
@@ -27,7 +26,6 @@ from app.database import get_db
 from app.models.dado_sensivel import DadoSensivel
 from app.models.documentos import Documento
 from app.models.equipe import Equipe
-from app.models.log_auditoria import LogAuditoria
 from app.models.usuario import Usuario
 from app.models.usuario_equipe import UsuarioEquipe
 from scanner.coordenadas import ESPACO_PDF
@@ -36,16 +34,13 @@ from scanner.scanner import DocumentScanner, NenhumaMascaraAplicavel, OcrIndispo
 router = APIRouter(prefix="/documentos", tags=["Documentos"])
 logger = logging.getLogger(__name__)
 
-# Excluir documento e acao de lider (nivel 3): e definitiva e alcanca o
-# original. Supervisor e membro recebem 403.
-NIVEL_MIN_EXCLUSAO = 3
-# Documento na fila ainda vai ser gravado pelo processador do lote.
-STATUS_EM_PROCESSAMENTO = ("AGUARDANDO", "PROCESSANDO")
-
 # Criar diretórios de uploads se não existir
-# Pasta configuravel por SAFEMASK_PASTA_UPLOADS (app/core/armazenamento.py).
-UPLOAD_DIR = armazenamento.pasta_uploads()
-ORIGINAIS_DIR, CENSURADOS_DIR = armazenamento.preparar(UPLOAD_DIR)
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(exist_ok=True)
+ORIGINAIS_DIR = UPLOAD_DIR / "originais"
+CENSURADOS_DIR = UPLOAD_DIR / "censurados"
+ORIGINAIS_DIR.mkdir(parents=True, exist_ok=True)
+CENSURADOS_DIR.mkdir(parents=True, exist_ok=True)
 
 scanner_instance = None
 
@@ -235,17 +230,8 @@ def gerar_chave_criptografica(arquivo_hash: str, user_id: int) -> str:
 
 
 def caminho_armazenado(documento: Documento) -> Path:
-    """Caminho do PDF tarjado de um documento, com fallback por hash.
-
-    Procura primeiro pelo NOME do arquivo dentro da pasta configurada
-    (SAFEMASK_PASTA_UPLOADS): assim a pasta pode mudar de lugar sem mexer no
-    banco, e a API acha o arquivo iniciada de qualquer diretorio. O caminho
-    gravado no registro continua valendo para os registros antigos.
-    """
+    """Caminho do PDF tarjado de um documento, com fallback por hash."""
     if documento.caminho_storage:
-        pela_pasta = CENSURADOS_DIR / armazenamento.nome_do_arquivo(documento.caminho_storage)
-        if pela_pasta.is_file():
-            return pela_pasta
         caminho = Path(documento.caminho_storage)
         if caminho.is_file():
             return caminho
@@ -496,10 +482,8 @@ def obter_documento_censurado(
         # Mesmo campo da listagem: a tela preenche "Equipe" com ele (PI-III #187).
         "equipe_nome": equipe.nome if equipe else None,
         "cargo_usuario": cargo,
-        "pode_descensurar": bool(cargo and cargo["nivel"] >= nivel_min_descensura()),
+        "pode_descensurar": bool(cargo and cargo["nivel"] >= NIVEL_MIN_DESCENSURA),
         "pode_descensura_parcial": bool(cargo),
-        # Exclusao: so o lider da equipe dona; a tela mostra o botao por isto.
-        "pode_excluir": bool(cargo and cargo["nivel"] >= NIVEL_MIN_EXCLUSAO),
         "preview_url": f"/documentos/censurados/{documento.doc_id}/arquivo",
     }
 
@@ -520,15 +504,15 @@ def obter_arquivo_documento_censurado(
             detail="Arquivo não encontrado ou sem acesso.",
         )
 
-    # Antes o caminho relativo partia do diretorio atual (Path.cwd()): com a
-    # API iniciada fora de backend/, o arquivo "sumia".
-    try:
-        caminho = caminho_armazenado(documento)
-    except HTTPException:
+    caminho = Path(documento.caminho_storage)
+    if not caminho.is_absolute():
+        caminho = Path.cwd() / caminho
+
+    if not caminho.exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Arquivo físico não encontrado.",
-        ) from None
+        )
 
     registrar(
         db, request, usuario_atual.user_id, ACAO_VER_CENSURADO,
@@ -563,7 +547,7 @@ def obter_documento_original(
 
     equipe = equipe_do_documento(db, documento)
     cargo = cargo_na_equipe(db, usuario_atual, equipe.team_id) if equipe else None
-    if not cargo or cargo["nivel"] < nivel_min_descensura():
+    if not cargo or cargo["nivel"] < NIVEL_MIN_DESCENSURA:
         registrar(
             db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL,
             documento=documento, resultado=RESULTADO_NEGADO,
@@ -623,7 +607,7 @@ def obter_documento_parcial(
 
     Revela os dados sensiveis cujo nivel_requerido <= cargo.nivel do usuario;
     os itens de nivel acima continuam cobertos. O lider (nivel >=
-    nivel_min_descensura()) recebe o documento original integral.
+    NIVEL_MIN_DESCENSURA) recebe o documento original integral.
     """
     documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
     if not documento:
@@ -642,7 +626,7 @@ def obter_documento_parcial(
         )
 
     # Lider (ou cargo de nivel suficiente) recebe o original integral.
-    if cargo["nivel"] >= nivel_min_descensura():
+    if cargo["nivel"] >= NIVEL_MIN_DESCENSURA:
         candidatos = list(ORIGINAIS_DIR.glob(f"{documento.hash_documento}*"))
         if not candidatos:
             raise HTTPException(
@@ -890,99 +874,6 @@ async def upload_documentos_lote(
     }
 
 
-def _apagar_arquivos_do_conteudo(hash_documento: str) -> int:
-    """Apaga original, versao com tarja e parciais em cache de um conteudo.
-
-    Todos sao nomeados pelo hash (`originais/<hash>.pdf`,
-    `censurados/<hash>_tarjado.pdf`, `censurados/<hash>_parcial_nivel...`,
-    `censurados/<hash>.pdf` da rota salvar-censurado). O hash tem tamanho
-    fixo, entao o prefixo nao alcanca arquivo de outro conteudo. Falha ao
-    apagar vai para o log e nao desfaz a exclusao, ja confirmada no banco.
-    """
-    apagados = 0
-    for pasta in (ORIGINAIS_DIR, CENSURADOS_DIR):
-        for arquivo in pasta.glob(f"{hash_documento}*"):
-            try:
-                arquivo.unlink()
-                apagados += 1
-            except OSError:
-                logger.exception("Nao foi possivel apagar %s", arquivo.name)
-    return apagados
-
-
-@router.delete("/{doc_id}")
-def excluir_documento(
-    request: Request,
-    doc_id: int,
-    db: Session = Depends(get_db),
-    usuario_atual: Usuario = Depends(get_current_user),
-):
-    """Exclui o documento da equipe e seus derivados (art. 18, VI, da LGPD).
-
-    Exclusao fisica: saem o registro e os dados sensiveis dele. O original, a
-    versao com tarja e as parciais em cache sao compartilhados por hash com as
-    copias de outras equipes e com reenvios do mesmo arquivo; so saem do disco
-    quando nenhum outro documento usa aquele hash. A copia de outra equipe nao
-    e tocada. Os eventos anteriores da trilha ficam, sem o vinculo ao
-    documento apagado.
-    Correcao trazida do PI-III (CAMPUSCEUB/SafeMask#23).
-    """
-    documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
-    if not documento:
-        registrar_acesso_negado(db, request, usuario_atual, doc_id, ACAO_EXCLUIR_DOCUMENTO)
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Documento não encontrado ou sem acesso.",
-        )
-
-    equipe = equipe_do_documento(db, documento)
-    cargo = cargo_na_equipe(db, usuario_atual, equipe.team_id) if equipe else None
-    if not cargo or cargo["nivel"] < NIVEL_MIN_EXCLUSAO:
-        registrar(
-            db, request, usuario_atual.user_id, ACAO_EXCLUIR_DOCUMENTO,
-            documento=documento, resultado=RESULTADO_NEGADO,
-        )
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Somente o líder da equipe pode excluir documentos.",
-        )
-
-    if documento.status_processamento in STATUS_EM_PROCESSAMENTO:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="O documento ainda está sendo processado. Tente de novo em instantes.",
-        )
-
-    hash_documento = documento.hash_documento
-
-    # Os eventos anteriores continuam, sem o vinculo (ON DELETE SET NULL no
-    # PostgreSQL; explicito aqui para valer tambem no SQLite dos testes).
-    db.query(LogAuditoria).filter(LogAuditoria.doc_id == doc_id).update(
-        {LogAuditoria.doc_id: None}, synchronize_session=False
-    )
-    db.delete(documento)
-    db.flush()
-    em_uso = (
-        db.query(Documento.doc_id).filter(Documento.hash_documento == hash_documento).first()
-        is not None
-    )
-    db.commit()
-
-    # Arquivos so depois do commit: se o banco falhar, nada some do disco.
-    arquivos_apagados = 0 if em_uso else _apagar_arquivos_do_conteudo(hash_documento)
-
-    # Sem documento: o registro ja nao existe. A equipe identifica o evento.
-    registrar(
-        db, request, usuario_atual.user_id, ACAO_EXCLUIR_DOCUMENTO,
-        team_id=equipe.team_id, cargo_id=None,
-    )
-    return {
-        "mensagem": "Documento excluído.",
-        "doc_id": doc_id,
-        "arquivos_apagados": arquivos_apagados,
-    }
-
-
 @router.post("/salvar-censurado", status_code=status.HTTP_201_CREATED)
 async def salvar_documento_censurado(
     request: Request,
@@ -1103,25 +994,28 @@ async def listar_documentos_equipe(
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
 ):
-    """Lista todos os documentos de uma equipe para quem e membro dela.
-
-    Matriz de acesso (PI-III #87): todo membro ve os documentos da equipe,
-    nao so os que ele enviou; quem esta fora recebe 404, como nas demais
-    rotas de documento (403 confirmaria que a equipe existe).
     """
-    if not cargo_na_equipe(db, usuario_atual, team_id):
+    Lista documentos de uma equipe específica.
+    """
+
+    # Verificar se usuário faz parte da equipe
+    usuario_equipe_list = db.query(UsuarioEquipe).filter(
+        UsuarioEquipe.user_id == usuario_atual.user_id,
+        UsuarioEquipe.team_id == team_id
+    ).all()
+
+    if not usuario_equipe_list:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Equipe não encontrada ou sem acesso.",
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Você não faz parte dessa equipe."
         )
 
-    documentos = (
-        db.query(Documento)
-        .join(UsuarioEquipe, UsuarioEquipe.user_team_id == Documento.user_team_id)
-        .filter(UsuarioEquipe.team_id == team_id, Documento.ativo.is_(True))
-        .order_by(Documento.doc_id)
-        .all()
-    )
+    # Listar documentos
+    user_team_ids = [ue.user_team_id for ue in usuario_equipe_list]
+    documentos = db.query(Documento).filter(
+        Documento.user_team_id.in_(user_team_ids),
+        Documento.ativo.is_(True),
+    ).all()
 
     registrar(db, request, usuario_atual.user_id, ACAO_LISTAR_DOCUMENTOS)
 
@@ -1134,7 +1028,7 @@ async def listar_documentos_equipe(
                 "tamanho": d.tamanho_bytes,
                 "nivel_seguranca": d.nivel_seguranca,
                 "status": d.status_processamento,
-                "criado_em": iso_utc(d.criado_em),
+                "criado_em": d.criado_em
             }
             for d in documentos
         ]

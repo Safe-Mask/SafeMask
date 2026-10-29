@@ -417,34 +417,3 @@
         min-height: 280px;
     }
 }
-
-/* Exclusao de documento (PI-III #23). */
-.detail-actions .danger-button {
-    border-color: rgba(255, 82, 82, 0.6);
-    color: #ff8a80;
-}
-
-.detail-actions .danger-button:hover {
-    background: rgba(255, 82, 82, 0.12);
-    border-color: #ff5252;
-}
-
-.page-feedback {
-    margin: 0 0 1rem;
-    padding: 0.65rem 0.9rem;
-    border-radius: 12px;
-    border: 1px solid var(--primary);
-    background: rgba(0, 230, 118, 0.08);
-    font-weight: 600;
-}
-
-.page-feedback.erro {
-    border-color: #ff5252;
-    background: rgba(255, 82, 82, 0.1);
-}
-
-/* O display das classes acima venceria o atributo hidden. */
-.detail-actions .danger-button[hidden],
-.page-feedback[hidden] {
-    display: none;
-}

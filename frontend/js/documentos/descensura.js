@@ -21,7 +21,7 @@ const docId = Number(new URLSearchParams(window.location.search).get('doc_id'));
 const storedName = localStorage.getItem('userName') || 'Usuario';
 let previewObjectUrl = null;
 let podeDescensurar = false;
-let podeOriginal = false;
+let cargoNivelAtual = 0;
 
 function escapeHtml(value) {
     return String(value)
@@ -151,11 +151,10 @@ async function loadDocument() {
 
         podeDescensurar = Boolean(documento.pode_descensurar || documento.pode_descensura_parcial);
         startRedactionBtn.disabled = !podeDescensurar;
-        // A API decide pela matriz de acesso (nivel minimo configuravel).
-        podeOriginal = Boolean(documento.pode_descensurar);
+        cargoNivelAtual = Number(documento.cargo_usuario?.nivel || 0);
         if (podeDescensurar) {
             const cargo = documento.cargo_usuario?.nome || 'lider';
-            if (podeOriginal) {
+            if (cargoNivelAtual >= 3) {
                 startRedactionBtn.textContent = 'Baixar versão original';
             } else {
                 startRedactionBtn.textContent = 'Baixar descensura parcial';
@@ -270,7 +269,7 @@ startRedactionBtn.addEventListener('click', async () => {
     } finally {
         startRedactionBtn.disabled = !podeDescensurar;
         startRedactionBtn.textContent = !podeDescensurar ? 'Sem permissão para descensura'
-            : (podeOriginal ? 'Baixar versão original' : 'Baixar descensura parcial');
+            : (cargoNivelAtual >= 3 ? 'Baixar versão original' : 'Baixar descensura parcial');
     }
 });
 

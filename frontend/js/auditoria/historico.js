@@ -33,7 +33,6 @@ const ACOES = {
     ver_original: 'Abriu original',
     adicionar_membro: 'Adicionou membro',
     remover_membro: 'Removeu membro',
-    excluir_documento: 'Excluiu documento',
     alterar_cargo: 'Alterou cargo',
     alterar_politica_niveis: 'Alterou níveis da equipe',
 };

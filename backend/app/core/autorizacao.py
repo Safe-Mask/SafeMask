@@ -10,9 +10,6 @@ espalhada por `documentos.py` e `equipes.py` e ja tinha divergido:
 - `create_team` aceitava qualquer autenticado.
 """
 
-import logging
-import os
-
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -27,35 +24,8 @@ NIVEL_MEMBRO = 1
 NIVEL_SUPERVISOR = 2
 NIVEL_LIDER = 3
 
-# Nivel minimo para reverter a censura e ver o original: padrao lider (3),
-# ajustavel por SAFEMASK_NIVEL_MIN_DESCENSURA (PI-III #87). Use sempre
-# nivel_min_descensura(); a constante e so o padrao.
+# Nivel minimo para reverter a censura e ver o original.
 NIVEL_MIN_DESCENSURA = NIVEL_LIDER
-VARIAVEL_NIVEL_MIN_DESCENSURA = "SAFEMASK_NIVEL_MIN_DESCENSURA"
-
-logger = logging.getLogger(__name__)
-
-
-def nivel_min_descensura() -> int:
-    """Nivel minimo do cargo para o original, lido a cada requisicao.
-
-    Aceita 1 a 3, a mesma escala dos cargos; valor ausente ou invalido volta
-    ao padrao (lider) e o log avisa.
-    """
-    valor = os.getenv(VARIAVEL_NIVEL_MIN_DESCENSURA, "").strip()
-    if not valor:
-        return NIVEL_MIN_DESCENSURA
-    try:
-        nivel = int(valor)
-    except ValueError:
-        nivel = 0
-    if not NIVEL_MEMBRO <= nivel <= NIVEL_LIDER:
-        logger.warning(
-            "%s=%r invalido (aceito: %d a %d); usando %d.",
-            VARIAVEL_NIVEL_MIN_DESCENSURA, valor, NIVEL_MEMBRO, NIVEL_LIDER, NIVEL_MIN_DESCENSURA,
-        )
-        return NIVEL_MIN_DESCENSURA
-    return nivel
 
 
 def equipe_do_usuario(db: Session, usuario: Usuario, team_id: int):

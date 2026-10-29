@@ -14,8 +14,6 @@ const detailPreviewFrame = document.getElementById('detailPreviewFrame');
 const detailPreviewFallback = document.getElementById('detailPreviewFallback');
 const undoRedactionBtn = document.getElementById('undoRedactionBtn');
 const closeDetailsBtn = document.getElementById('closeDetailsBtn');
-const deleteDocBtn = document.getElementById('deleteDocBtn');
-const pageFeedback = document.getElementById('pageFeedback');
 const loadingStep = document.getElementById('loadingStep');
 const loadingStepLabel = document.getElementById('loadingStepLabel');
 const loadingFileName = document.getElementById('loadingFileName');
@@ -154,8 +152,6 @@ function renderDocumentDetails(documento) {
     // O campo chave_criptografica nao cifra nada (PI-III #146): a tela mostra
     // como o original esta guardado de fato.
     detailOriginal.textContent = 'Guardado no servidor, aberto só pelo cargo';
-    // Exclusao: so o lider da equipe dona; a API decide e devolve pode_excluir.
-    deleteDocBtn.hidden = !documento.pode_excluir;
 
     clearPreviewUrl();
     detailPreviewFallback.hidden = false;
@@ -326,61 +322,6 @@ closeDetailsBtn.addEventListener('click', () => {
     toggleDetailState(false);
     state.selectedDoc = null;
     renderDocumentsList();
-});
-
-function mostrarAviso(mensagem, erro = false) {
-    pageFeedback.textContent = mensagem;
-    pageFeedback.classList.toggle('erro', erro);
-    pageFeedback.hidden = false;
-    pageFeedback.scrollIntoView({ behavior: 'smooth', block: 'center' });
-}
-
-async function excluirDocumento(documento) {
-    // Confirmacao explicita: a exclusao e definitiva e alcanca o original.
-    const confirmado = window.confirm(
-        `Excluir "${documento.nome_original}" da equipe ${documento.equipe?.nome || ''}?\n\n`
-        + 'O documento, os dados sensíveis detectados e os arquivos (original e versão com tarja) '
-        + 'serão apagados de forma definitiva. Cópias enviadas a outras equipes continuam com elas. '
-        + 'A exclusão fica registrada na auditoria.\n\nEsta ação não pode ser desfeita.'
-    );
-    if (!confirmado) {
-        return;
-    }
-
-    const token = localStorage.getItem('token');
-    deleteDocBtn.disabled = true;
-    try {
-        const response = await fetch(`${API_ROOT}/documentos/${documento.doc_id}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        if (response.status === 401) {
-            localStorage.removeItem('token');
-            window.location.href = '../auth/login.html';
-            return;
-        }
-        const data = await response.json().catch(() => ({}));
-        if (!response.ok) {
-            throw new Error(data.detail || 'Não foi possível excluir o documento.');
-        }
-
-        clearPreviewUrl();
-        state.selectedDoc = null;
-        toggleDetailState(false);
-        await loadDocuments();
-        mostrarAviso(`Documento "${documento.nome_original}" excluído.`);
-    } catch (error) {
-        console.error(error);
-        mostrarAviso(error.message, true);
-    } finally {
-        deleteDocBtn.disabled = false;
-    }
-}
-
-deleteDocBtn.addEventListener('click', () => {
-    if (state.selectedDoc) {
-        excluirDocumento(state.selectedDoc);
-    }
 });
 
 window.addEventListener('beforeunload', clearPreviewUrl);
