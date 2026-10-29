@@ -227,8 +227,17 @@ def gerar_chave_criptografica(arquivo_hash: str, user_id: int) -> str:
 
 
 def caminho_armazenado(documento: Documento) -> Path:
-    """Caminho do PDF tarjado de um documento, com fallback por hash."""
+    """Caminho do PDF tarjado de um documento, com fallback por hash.
+
+    Procura primeiro pelo NOME do arquivo dentro da pasta configurada
+    (SAFEMASK_PASTA_UPLOADS): assim a pasta pode mudar de lugar sem mexer no
+    banco, e a API acha o arquivo iniciada de qualquer diretorio. O caminho
+    gravado no registro continua valendo para os registros antigos.
+    """
     if documento.caminho_storage:
+        pela_pasta = CENSURADOS_DIR / armazenamento.nome_do_arquivo(documento.caminho_storage)
+        if pela_pasta.is_file():
+            return pela_pasta
         caminho = Path(documento.caminho_storage)
         if caminho.is_file():
             return caminho
@@ -501,15 +510,15 @@ def obter_arquivo_documento_censurado(
             detail="Arquivo não encontrado ou sem acesso.",
         )
 
-    caminho = Path(documento.caminho_storage)
-    if not caminho.is_absolute():
-        caminho = Path.cwd() / caminho
-
-    if not caminho.exists():
+    # Antes o caminho relativo partia do diretorio atual (Path.cwd()): com a
+    # API iniciada fora de backend/, o arquivo "sumia".
+    try:
+        caminho = caminho_armazenado(documento)
+    except HTTPException:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Arquivo físico não encontrado.",
-        )
+        ) from None
 
     registrar(
         db, request, usuario_atual.user_id, ACAO_VER_CENSURADO,
