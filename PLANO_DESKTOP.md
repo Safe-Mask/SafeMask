@@ -102,9 +102,9 @@
       dist ~20 KB) + `client/src-tauri/` (conf v2, capabilities minimas,
       icones gerados); build do exe exige Rust na maquina de release
 - [x] **2.2** UI nova: 1o uso, login, troca de senha obrigatoria, sidebar
-      (Documentos / Equipes / Auditoria), lista de docs, versao censurada
-      e parcial com download por bearer; status da fila ficou para a
-      proxima iteracao (upload do admin no mesmo exe tambem)
+      (Documentos / Painel / Equipes / Auditoria), lista de docs, versao
+      censurada e parcial com download por bearer, upload em lote e status
+      da fila com refresh automatico
 - [x] **2.3** 1o uso: tela de config apontando URL do servico (testa
       `/auth/me` antes de salvar a URL)
 - [x] **2.4** Admin no mesmo exe (falta: pasta base so via service.yaml):
@@ -115,14 +115,14 @@
 
 ## FASE 3 — Fechamento de compliance
 
-- [ ] **3.1** Cifra do original em disco (chave gerida no boot)
-- [ ] **3.2** Metricas no painel admin (docs por nivel, acessos negados, top tipos)
-- [ ] **3.3** Auditoria em 100% dos fluxos (download, negado, ingestao via watch)
+- [x] **3.1** Cifra do original em disco (chave gerida no boot) — commit `30147b4`
+- [x] **3.2** Metricas no painel admin (docs por nivel, acessos negados, top tipos) — commit `b3a8fb9`
+- [x] **3.3** Auditoria em 100% dos fluxos (download, negado, ingestao via watch) — commit `52e4761`
 
 ## FASE 4 — Instalacao e demo
 
-- [ ] **4.1** `docs/instalacao.md`: requisitos, rodar exe, apontar pasta, 1o acesso
-- [ ] **4.2** Teste em VM Windows com pasta de rede real + 2 clients
+- [x] **4.1** `docs/instalacao.md`: requisitos, rodar exe, apontar pasta, 1o acesso
+- [ ] **4.2** Teste em VM Windows com pasta de rede real + 2 clients (checklist em `docs/instalacao.md` §8)
 - [ ] **4.3** Demo pro professor: servico rodando em servidor local + client instalado
 
 ## Pos-MVP (nao esquecer)

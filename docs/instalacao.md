@@ -68,11 +68,30 @@ a tela de troca de senha no primeiro uso. O aviso so aparece na instalacao nova 
 - A empresa mantem o controle da pasta: subir documento NAO toca o
   arquivo la — apagar/mover e decisao do admin.
 
+## 4.1 Chave de cifragem do original (backup obrigatorio)
+
+No primeiro boot o servico cria `chave_original.key` ao lado do exe (ou no
+caminho de `SAFEMASK_CHAVE_ARQUIVO`, se definido). Todo PDF em `originais/`
+e gravado cifrado (Fernet: AES128-CBC + HMAC-SHA256); o plaintext so existe
+temporariamente durante o scan/entrega.
+
+- **Faca backup da chave junto do banco.** Sem ela, os originais cifrados
+  sao ilegiveis e nao ha recuperacao possivel.
+- O boot migra automaticamente originais em texto puro de instalacoes
+  anteriores para o formato cifrado (idempotente; roda antes do servico).
+- O arquivo tem permissao `0600` onde o SO permite. No Windows, proteja a
+  pasta do servico com ACL e mantenha a chave fora do compartilhamento de
+  rede.
+- Se a chave for trocada/perdida, o log acusa `OrigemIlegivel` ao tentar
+  abrir o documento; restaure o backup em vez de gerar outra.
+
 ## 5. Verificando a instalacao
 
 `http://<ip-do-servidor>:8000/docs` deve abrir. Com o admin logado no
 client, o `overview` da equipe mostra os arquivos ingeridos; o log do
 servico lista `Ingerido da pasta: <arquivo> -> doc_id=N` por documento.
+O menu **Painel** mostra documentos por nivel/status, acessos negados e
+top tipos (somente para quem audita ao menos uma equipe).
 
 ## 6. Client Tauri (usuarios)
 
@@ -89,6 +108,27 @@ No primeiro uso o client pede a URL do servico (ex. `http://srv-empresa:8000`),
 valida contra `/auth/me` e so entao pede login. O admin provisorio logo com
 `admin@safemask.example.com` + senha do log e e obrigado a trocar a senha no
 mesmo exe.
+
+No client, alem dos downloads censurado/parcial:
+
+- **Documentos**: lider/supervisor enviam varios PDFs de uma vez para uma
+  equipe; a lista mostra o status da fila (`Na fila`, `Processando`,
+  `Concluido`, `Erro`) e se atualiza sozinha enquanto houver pendencia;
+- **Painel**: metricas das equipes auditaveis (documentos por nivel/status,
+  acessos negados por acao, top tipos de dado). Membro comum recebe 403.
+- **Equipes/Auditoria**: criam equipes/membros/cargos/politicas e exportam
+  a auditoria em CSV.
+
+## 8. Checklist manual de aceite (Fase 4)
+
+Estes passos exigem uma maquina Windows com Rust/WebView2 e nao rodam no CI:
+
+- [ ] Gerar `safemask_service.exe` (PyInstaller) e `SafeMask.exe` (Tauri);
+- [ ] Instalar em VM Windows, apontar `pasta_base` para um share de rede e
+      confirmar ingestao + cifra do original;
+- [ ] Abrir 2 clients (admin e membro de outra equipe), validar downloads,
+      status da fila, metricas e eventos de auditoria;
+- [ ] Fazer backup de `chave_original.key` e testar a recuperacao do servico.
 
 ## 7. Base de dados
 
