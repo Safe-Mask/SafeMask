@@ -479,6 +479,8 @@ def obter_documento_censurado(
             "team_id": equipe.team_id if equipe else None,
             "nome": equipe.nome if equipe else None,
         },
+        # Mesmo campo da listagem: a tela preenche "Equipe" com ele (PI-III #187).
+        "equipe_nome": equipe.nome if equipe else None,
         "cargo_usuario": cargo,
         "pode_descensurar": bool(cargo and cargo["nivel"] >= NIVEL_MIN_DESCENSURA),
         "pode_descensura_parcial": bool(cargo),
