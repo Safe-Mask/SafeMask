@@ -26,6 +26,7 @@ from app.database import get_db
 from app.models.dado_sensivel import DadoSensivel
 from app.models.documentos import Documento
 from app.models.equipe import Equipe
+from app.models.log_auditoria import LogAuditoria
 from app.models.usuario import Usuario
 from app.models.usuario_equipe import UsuarioEquipe
 from scanner.coordenadas import ESPACO_PDF
@@ -33,6 +34,12 @@ from scanner.scanner import DocumentScanner, NenhumaMascaraAplicavel, OcrIndispo
 
 router = APIRouter(prefix="/documentos", tags=["Documentos"])
 logger = logging.getLogger(__name__)
+
+# Excluir documento e acao de lider (nivel 3): e definitiva e alcanca o
+# original. Supervisor e membro recebem 403.
+NIVEL_MIN_EXCLUSAO = 3
+# Documento na fila ainda vai ser gravado pelo processador do lote.
+STATUS_EM_PROCESSAMENTO = ("AGUARDANDO", "PROCESSANDO")
 
 # Criar diretórios de uploads se não existir
 # Pasta configuravel por SAFEMASK_PASTA_UPLOADS (app/core/armazenamento.py).
@@ -490,6 +497,8 @@ def obter_documento_censurado(
         "cargo_usuario": cargo,
         "pode_descensurar": bool(cargo and cargo["nivel"] >= NIVEL_MIN_DESCENSURA),
         "pode_descensura_parcial": bool(cargo),
+        # Exclusao: so o lider da equipe dona; a tela mostra o botao por isto.
+        "pode_excluir": bool(cargo and cargo["nivel"] >= NIVEL_MIN_EXCLUSAO),
         "preview_url": f"/documentos/censurados/{documento.doc_id}/arquivo",
     }
 
@@ -877,6 +886,89 @@ async def upload_documentos_lote(
         "total_recebido": len(files),
         "total_aceito": len(criados),
         "itens": itens,
+    }
+
+
+def _apagar_arquivos_do_conteudo(hash_documento: str) -> int:
+    """Apaga original, versao com tarja e parciais em cache de um conteudo.
+
+    Todos sao nomeados pelo hash (`originais/<hash>.pdf`,
+    `censurados/<hash>_tarjado.pdf`, `censurados/<hash>_parcial_nivel...`,
+    `censurados/<hash>.pdf` da rota salvar-censurado). O hash tem tamanho
+    fixo, entao o prefixo nao alcanca arquivo de outro conteudo. Falha ao
+    apagar vai para o log e nao desfaz a exclusao, ja confirmada no banco.
+    """
+    apagados = 0
+    for pasta in (ORIGINAIS_DIR, CENSURADOS_DIR):
+        for arquivo in pasta.glob(f"{hash_documento}*"):
+            try:
+                arquivo.unlink()
+                apagados += 1
+            except OSError:
+                logger.exception("Nao foi possivel apagar %s", arquivo.name)
+    return apagados
+
+
+@router.delete("/{doc_id}")
+def excluir_documento(
+    request: Request,
+    doc_id: int,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(get_current_user),
+):
+    """Exclui o documento da equipe e seus derivados (art. 18, VI, da LGPD).
+
+    Exclusao fisica: saem o registro e os dados sensiveis dele. O original, a
+    versao com tarja e as parciais em cache sao compartilhados por hash com as
+    copias de outras equipes e com reenvios do mesmo arquivo; so saem do disco
+    quando nenhum outro documento usa aquele hash. A copia de outra equipe nao
+    e tocada. Os eventos anteriores da trilha ficam, sem o vinculo ao
+    documento apagado.
+    Correcao trazida do PI-III (CAMPUSCEUB/SafeMask#23).
+    """
+    documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
+    if not documento:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Documento não encontrado ou sem acesso.",
+        )
+
+    equipe = equipe_do_documento(db, documento)
+    cargo = cargo_na_equipe(db, usuario_atual, equipe.team_id) if equipe else None
+    if not cargo or cargo["nivel"] < NIVEL_MIN_EXCLUSAO:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Somente o líder da equipe pode excluir documentos.",
+        )
+
+    if documento.status_processamento in STATUS_EM_PROCESSAMENTO:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="O documento ainda está sendo processado. Tente de novo em instantes.",
+        )
+
+    hash_documento = documento.hash_documento
+
+    # Os eventos anteriores continuam, sem o vinculo (ON DELETE SET NULL no
+    # PostgreSQL; explicito aqui para valer tambem no SQLite dos testes).
+    db.query(LogAuditoria).filter(LogAuditoria.doc_id == doc_id).update(
+        {LogAuditoria.doc_id: None}, synchronize_session=False
+    )
+    db.delete(documento)
+    db.flush()
+    em_uso = (
+        db.query(Documento.doc_id).filter(Documento.hash_documento == hash_documento).first()
+        is not None
+    )
+    db.commit()
+
+    # Arquivos so depois do commit: se o banco falhar, nada some do disco.
+    arquivos_apagados = 0 if em_uso else _apagar_arquivos_do_conteudo(hash_documento)
+
+    return {
+        "mensagem": "Documento excluído.",
+        "doc_id": doc_id,
+        "arquivos_apagados": arquivos_apagados,
     }
 
 
