@@ -1,7 +1,10 @@
 """Validacao de arquivos enviados pelo usuario."""
 
+import io
+import logging
 from pathlib import Path
 
+import pdfplumber
 from fastapi import HTTPException, UploadFile, status
 
 from app.core.config import (
@@ -12,6 +15,8 @@ from app.core.config import (
 
 # Quantos bytes sao lidos para checar a assinatura do arquivo.
 AMOSTRA_ASSINATURA = 8
+
+logger = logging.getLogger(__name__)
 
 
 def validar_nome_arquivo(nome: str | None) -> Path:
@@ -55,6 +60,46 @@ def validar_conteudo_pdf(conteudo: bytes) -> None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="O conteudo enviado nao e um PDF valido.",
+        )
+
+    validar_estrutura_pdf(conteudo)
+
+
+def _protegido_por_senha(erro: Exception) -> bool:
+    from pdfminer.pdfdocument import PDFEncryptionError, PDFPasswordIncorrect
+
+    # O pdfplumber embrulha o erro do pdfminer em PdfminerException(erro).
+    candidatos = [erro, *getattr(erro, "args", ())]
+    return any(isinstance(c, PDFPasswordIncorrect | PDFEncryptionError) for c in candidatos)
+
+
+def validar_estrutura_pdf(conteudo: bytes) -> None:
+    """Abre o PDF em memoria e recusa o corrompido e o protegido por senha.
+
+    A assinatura `%PDF-` sozinha deixa passar um download interrompido ou um
+    PDF com senha, que so falhavam depois, no scanner, como erro 500 com a
+    mensagem tecnica da biblioteca. Correcao trazida do PI-III
+    (CAMPUSCEUB/SafeMask#18).
+    """
+    try:
+        with pdfplumber.open(io.BytesIO(conteudo)) as pdf:
+            paginas = len(pdf.pages)
+    except Exception as erro:
+        if _protegido_por_senha(erro):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="O PDF esta protegido por senha. Remova a senha e envie de novo.",
+            ) from erro
+        logger.info("PDF recusado como corrompido: %s", erro)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O PDF esta corrompido ou incompleto e nao pode ser aberto.",
+        ) from erro
+
+    if paginas == 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="O PDF esta corrompido: nao tem nenhuma pagina.",
         )
 
 
