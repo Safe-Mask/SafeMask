@@ -18,7 +18,7 @@ from app.core.audit import (
     RESULTADO_NEGADO,
     registrar,
 )
-from app.core.autorizacao import NIVEL_MIN_DESCENSURA, cargo_na_equipe
+from app.core.autorizacao import cargo_na_equipe, nivel_min_descensura
 from app.core.current_user import get_current_user
 from app.core.datas import iso_utc
 from app.core.file_responses import responder_arquivo
@@ -496,7 +496,7 @@ def obter_documento_censurado(
         # Mesmo campo da listagem: a tela preenche "Equipe" com ele (PI-III #187).
         "equipe_nome": equipe.nome if equipe else None,
         "cargo_usuario": cargo,
-        "pode_descensurar": bool(cargo and cargo["nivel"] >= NIVEL_MIN_DESCENSURA),
+        "pode_descensurar": bool(cargo and cargo["nivel"] >= nivel_min_descensura()),
         "pode_descensura_parcial": bool(cargo),
         # Exclusao: so o lider da equipe dona; a tela mostra o botao por isto.
         "pode_excluir": bool(cargo and cargo["nivel"] >= NIVEL_MIN_EXCLUSAO),
@@ -563,7 +563,7 @@ def obter_documento_original(
 
     equipe = equipe_do_documento(db, documento)
     cargo = cargo_na_equipe(db, usuario_atual, equipe.team_id) if equipe else None
-    if not cargo or cargo["nivel"] < NIVEL_MIN_DESCENSURA:
+    if not cargo or cargo["nivel"] < nivel_min_descensura():
         registrar(
             db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL,
             documento=documento, resultado=RESULTADO_NEGADO,
@@ -623,7 +623,7 @@ def obter_documento_parcial(
 
     Revela os dados sensiveis cujo nivel_requerido <= cargo.nivel do usuario;
     os itens de nivel acima continuam cobertos. O lider (nivel >=
-    NIVEL_MIN_DESCENSURA) recebe o documento original integral.
+    nivel_min_descensura()) recebe o documento original integral.
     """
     documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
     if not documento:
@@ -642,7 +642,7 @@ def obter_documento_parcial(
         )
 
     # Lider (ou cargo de nivel suficiente) recebe o original integral.
-    if cargo["nivel"] >= NIVEL_MIN_DESCENSURA:
+    if cargo["nivel"] >= nivel_min_descensura():
         candidatos = list(ORIGINAIS_DIR.glob(f"{documento.hash_documento}*"))
         if not candidatos:
             raise HTTPException(
@@ -1103,28 +1103,25 @@ async def listar_documentos_equipe(
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
 ):
-    """
-    Lista documentos de uma equipe específica.
-    """
+    """Lista todos os documentos de uma equipe para quem e membro dela.
 
-    # Verificar se usuário faz parte da equipe
-    usuario_equipe_list = db.query(UsuarioEquipe).filter(
-        UsuarioEquipe.user_id == usuario_atual.user_id,
-        UsuarioEquipe.team_id == team_id
-    ).all()
-
-    if not usuario_equipe_list:
+    Matriz de acesso (PI-III #87): todo membro ve os documentos da equipe,
+    nao so os que ele enviou; quem esta fora recebe 404, como nas demais
+    rotas de documento (403 confirmaria que a equipe existe).
+    """
+    if not cargo_na_equipe(db, usuario_atual, team_id):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Você não faz parte dessa equipe."
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Equipe não encontrada ou sem acesso.",
         )
 
-    # Listar documentos
-    user_team_ids = [ue.user_team_id for ue in usuario_equipe_list]
-    documentos = db.query(Documento).filter(
-        Documento.user_team_id.in_(user_team_ids),
-        Documento.ativo.is_(True),
-    ).all()
+    documentos = (
+        db.query(Documento)
+        .join(UsuarioEquipe, UsuarioEquipe.user_team_id == Documento.user_team_id)
+        .filter(UsuarioEquipe.team_id == team_id, Documento.ativo.is_(True))
+        .order_by(Documento.doc_id)
+        .all()
+    )
 
     registrar(db, request, usuario_atual.user_id, ACAO_LISTAR_DOCUMENTOS)
 
@@ -1137,7 +1134,7 @@ async def listar_documentos_equipe(
                 "tamanho": d.tamanho_bytes,
                 "nivel_seguranca": d.nivel_seguranca,
                 "status": d.status_processamento,
-                "criado_em": d.criado_em
+                "criado_em": iso_utc(d.criado_em),
             }
             for d in documentos
         ]
