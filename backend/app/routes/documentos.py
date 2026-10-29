@@ -469,9 +469,9 @@ def obter_documento_censurado(
         # `hash_documento` e `caminho_storage` ficam no servidor. O hash e a
         # chave de glob que localiza os arquivos (documentos.py:458 e ss.), e o
         # caminho entrega o layout do disco: quem tem documento teu nao tem por
-        # que saber onde ele mora. `chave_criptografica` segue exposta porque a
-        # tela a mostra, mas nenhum caminho do codigo criptografa com ela.
-        "chave_criptografica": documento.chave_criptografica,
+        # que saber onde ele mora. `chave_criptografica` tambem fica de fora:
+        # e um SHA-256 de metadados e nenhum caminho do codigo cifra com ela;
+        # a tela mostrava o valor como se fosse uma chave (PI-III #146).
         "criado_em": iso_utc(documento.criado_em),
         "status_processamento": documento.status_processamento,
         "autor_nome": autor.nome if autor else None,

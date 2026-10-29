@@ -49,12 +49,12 @@
                             <span class="panel-kicker">Preview</span>
                             <h3>Detalhes do documento</h3>
                         </div>
-                        <span class="panel-action">preview e chave</span>
+                        <span class="panel-action">preview e proteção</span>
                     </div>
 
                     <div class="detail-empty" id="detailEmptyState">
                         <strong>Selecione um documento</strong>
-                        <p>Escolha um item na lista para ver a preview do documento censurado e a chave criptografica correspondente.</p>
+                        <p>Escolha um item na lista para ver a preview do documento censurado e como o original está guardado.</p>
                     </div>
 
                     <div class="detail-shell" id="detailShell" hidden>
@@ -77,7 +77,7 @@
                             <iframe id="detailPreviewFrame" title="Preview do documento censurado"></iframe>
                             <div class="preview-fallback" id="detailPreviewFallback">
                                 <strong>Preview indisponível</strong>
-                                <p>Quando o arquivo puder ser renderizado, ele aparecerá aqui. Enquanto isso, você ainda pode conferir os metadados e a chave criptografica.</p>
+                                <p>Quando o arquivo puder ser renderizado, ele aparecerá aqui. Enquanto isso, você ainda pode conferir os metadados do documento.</p>
                             </div>
                         </div>
 
@@ -87,8 +87,8 @@
                                 <strong id="detailSecurity">-</strong>
                             </div>
                             <div class="detail-card">
-                                <span class="highlight-label">Chave criptografica</span>
-                                <code id="detailCryptoKey">-</code>
+                                <span class="highlight-label">Documento original</span>
+                                <strong id="detailOriginal">-</strong>
                             </div>
                         </div>
 

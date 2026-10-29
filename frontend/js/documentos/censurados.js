@@ -9,7 +9,7 @@ const detailTitle = document.getElementById('detailTitle');
 const detailTeam = document.getElementById('detailTeam');
 const detailDate = document.getElementById('detailDate');
 const detailSecurity = document.getElementById('detailSecurity');
-const detailCryptoKey = document.getElementById('detailCryptoKey');
+const detailOriginal = document.getElementById('detailOriginal');
 const detailPreviewFrame = document.getElementById('detailPreviewFrame');
 const detailPreviewFallback = document.getElementById('detailPreviewFallback');
 const undoRedactionBtn = document.getElementById('undoRedactionBtn');
@@ -138,7 +138,7 @@ function renderDocumentDetails(documento) {
         detailPreviewFallback.hidden = false;
         detailPreviewFallback.innerHTML = `
             <strong>Selecione um documento</strong>
-            <p>Escolha um item na lista para ver a preview do documento censurado e a chave criptografica correspondente.</p>
+            <p>Escolha um item na lista para ver a preview do documento censurado e como o original está guardado.</p>
         `;
         toggleDetailState(false);
         return;
@@ -149,7 +149,9 @@ function renderDocumentDetails(documento) {
     detailTeam.textContent = documento.equipe_nome || '-';
     detailDate.textContent = formatDate(documento.criado_em);
     detailSecurity.textContent = securityLabel(documento.nivel_seguranca);
-    detailCryptoKey.textContent = documento.chave_criptografica || '-';
+    // O campo chave_criptografica nao cifra nada (PI-III #146): a tela mostra
+    // como o original esta guardado de fato.
+    detailOriginal.textContent = 'Guardado no servidor, aberto só pelo cargo';
 
     clearPreviewUrl();
     detailPreviewFallback.hidden = false;
@@ -188,7 +190,7 @@ function renderDocumentDetails(documento) {
                     console.error(error);
                     detailPreviewFallback.innerHTML = `
                         <strong>Preview indisponível</strong>
-                        <p>O arquivo existe, mas não pôde ser renderizado no navegador. O documento continua acessível pelos metadados e pela chave criptografica.</p>
+                        <p>O arquivo existe, mas não pôde ser renderizado no navegador. Os metadados do documento continuam disponíveis ao lado.</p>
                     `;
                     detailPreviewFallback.hidden = false;
                 });
