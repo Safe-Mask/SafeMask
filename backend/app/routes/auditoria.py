@@ -15,9 +15,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy.orm import Session, aliased
 
-from app.core import tenancy
 from app.core.audit import ACOES
-from app.core.autorizacao import NIVEL_SUPERVISOR, cargo_na_equipe
+from app.core.autorizacao import NIVEL_SUPERVISOR, cargo_na_equipe, equipes_auditaveis
 from app.core.current_user import get_current_user
 from app.core.datas import iso_utc
 from app.database import get_db
@@ -26,7 +25,6 @@ from app.models.documentos import Documento
 from app.models.equipe import Equipe
 from app.models.log_auditoria import LogAuditoria
 from app.models.usuario import Usuario
-from app.models.usuario_equipe import UsuarioEquipe
 from app.routes.documentos import buscar_documento_autorizado, equipe_do_documento
 
 router = APIRouter(prefix="/auditoria", tags=["Auditoria"])
@@ -34,26 +32,6 @@ router = APIRouter(prefix="/auditoria", tags=["Auditoria"])
 NIVEL_MIN_AUDITORIA = NIVEL_SUPERVISOR
 
 SEM_PERMISSAO = "Voce nao tem permissao para consultar este historico de auditoria."
-
-
-def equipes_auditaveis(db: Session, usuario: Usuario) -> list[int]:
-    """Equipes da organizacao do usuario em que ele supervisa ou lidera."""
-    organizacao_id = tenancy.exigir_organizacao(usuario)
-    return [
-        row.team_id
-        for row in (
-            db.query(UsuarioEquipe.team_id)
-            .join(Cargo, Cargo.cargo_id == UsuarioEquipe.cargo_id)
-            .join(Equipe, Equipe.team_id == UsuarioEquipe.team_id)
-            .filter(
-                UsuarioEquipe.user_id == usuario.user_id,
-                Equipe.organizacao_id == organizacao_id,
-                Cargo.nivel >= NIVEL_MIN_AUDITORIA,
-            )
-            .distinct()
-            .all()
-        )
-    ]
 
 
 def _em_utc(valor: datetime | None) -> datetime | None:

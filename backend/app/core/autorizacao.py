@@ -84,6 +84,26 @@ def tem_gestao(db: Session, usuario: Usuario) -> bool:
     return cargo is not None and cargo["nivel"] >= NIVEL_SUPERVISOR
 
 
+def equipes_auditaveis(db: Session, usuario: Usuario) -> list[int]:
+    """Equipes da organizacao em que o usuario supervisa ou lidera."""
+    organizacao_id = tenancy.exigir_organizacao(usuario)
+    return [
+        row.team_id
+        for row in (
+            db.query(UsuarioEquipe.team_id)
+            .join(Cargo, Cargo.cargo_id == UsuarioEquipe.cargo_id)
+            .join(Equipe, Equipe.team_id == UsuarioEquipe.team_id)
+            .filter(
+                UsuarioEquipe.user_id == usuario.user_id,
+                Equipe.organizacao_id == organizacao_id,
+                Cargo.nivel >= NIVEL_SUPERVISOR,
+            )
+            .distinct()
+            .all()
+        )
+    ]
+
+
 def exigir_gestao(db: Session, usuario: Usuario):
     """Exige supervisao/lideranca em alguma equipe; 403 caso contrario.
 
