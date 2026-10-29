@@ -78,7 +78,7 @@ def test_detalhe_ainda_traz_o_que_a_tela_usa(client, documento):
     ).json()
 
     for campo in ("doc_id", "nome_original", "status_processamento",
-                  "criado_em", "chave_criptografica", "preview_url", "equipe"):
+                  "criado_em", "preview_url", "equipe"):
         assert campo in corpo, campo
 
 
