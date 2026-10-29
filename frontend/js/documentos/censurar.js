@@ -23,6 +23,7 @@ const loadingStepLabel = document.getElementById('loadingStepLabel');
 const loadingFileName = document.getElementById('loadingFileName');
 const loadingBadgeRedaction = document.getElementById('loadingBadgeRedaction');
 const loadingBadgeTeams = document.getElementById('loadingBadgeTeams');
+const reviewFeedback = document.getElementById('reviewFeedback');
 const API_UPLOAD = `${API_ROOT}/documentos/upload`;
 const API_DASHBOARD_OVERVIEW = `${API_ROOT}/dashboard/overview`;
 
@@ -272,11 +273,33 @@ function openFilePicker() {
     documentInput.click();
 }
 
+function showReviewFeedback(message) {
+    reviewFeedback.textContent = message;
+    reviewFeedback.hidden = false;
+}
+
+function hideReviewFeedback() {
+    reviewFeedback.hidden = true;
+    reviewFeedback.textContent = '';
+}
+
+function mensagemPorStatus(status) {
+    if (status === 413) return 'Arquivo muito grande para o limite do servidor.';
+    if (status === 503) return 'Serviço indisponível no servidor. Tente mais tarde.';
+    return 'Erro ao processar documento.';
+}
+
 function handleFileChange(fileList) {
     const file = fileList && fileList[0];
 
-    if (file && !file.name.toLowerCase().endsWith('.pdf')) {
-        alert('Apenas arquivos PDF sao aceitos.');
+    // Conferencia rapida no navegador; a API valida de novo o conteudo,
+    // a integridade e o tamanho e explica a recusa (PI-III #18).
+    const recusa = !file ? null
+        : !file.name.toLowerCase().endsWith('.pdf') ? 'Formato não suportado: envie um arquivo PDF (.pdf).'
+        : file.size === 0 ? 'O arquivo está vazio.'
+        : null;
+    if (recusa) {
+        alert(recusa);
         if (documentInput) {
             documentInput.value = '';
         }
@@ -310,6 +333,7 @@ async function startUpload() {
     }
 
     clearTimeout(state.loadingTimeoutId);
+    hideReviewFeedback();
     loadingFileName.textContent = state.currentFile.name;
     setStep('loading');
 
@@ -340,7 +364,9 @@ async function startUpload() {
         const data = await response.json();
 
         if (!response.ok) {
-            throw new Error(data.detail || 'Erro ao processar documento.');
+            const erro = new Error(data.detail || mensagemPorStatus(response.status));
+            erro.recusado = response.status < 500;
+            throw erro;
         }
 
         loadingBadgeTeams.classList.add('active');
@@ -351,8 +377,13 @@ async function startUpload() {
         }, 800);
     } catch (error) {
         console.error('Erro ao processar documento:', error);
-        alert(`Erro ao processar documento: ${error.message || 'Verifique o console.'}`);
-        setStep('upload');
+        // Volta para a revisao, e nao para o inicio: o arquivo e as escolhas
+        // continuam ali para uma nova tentativa.
+        setStep('review');
+        // Recusa do arquivo (4xx) e diferente de falha do servidor: o
+        // usuario precisa saber o que corrigir antes de tentar de novo.
+        const prefixo = error.recusado ? 'Envio recusado' : 'Erro ao processar documento';
+        showReviewFeedback(`${prefixo}: ${error.message || 'verifique o console.'}`);
     }
 }
 

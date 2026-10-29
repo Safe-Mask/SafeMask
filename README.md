@@ -338,6 +338,19 @@ Frontend em: `http://localhost:8080` — e o login em
 > produção. Em desenvolvimento o backend aceita qualquer porta de
 > localhost/127.0.0.1 via CORS.
 
+### Regras do upload
+
+O arquivo é conferido pelo conteúdo antes de qualquer gravação (`backend/app/core/uploads.py`). A tela de envio mostra o motivo da recusa ("Envio recusado: ...").
+
+| Situação | Resposta |
+| --- | --- |
+| Extensão que não é `.pdf` | 400 |
+| Arquivo vazio | 400 |
+| Conteúdo que não começa com `%PDF-` | 400 |
+| PDF corrompido ou incompleto | 400 |
+| PDF protegido por senha | 400 |
+| Acima de `MAX_UPLOAD_BYTES` (padrão 20 MB) | 413 |
+
 ---
 
 ## 💻 Desenvolvimento

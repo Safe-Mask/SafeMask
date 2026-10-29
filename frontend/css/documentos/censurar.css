@@ -496,6 +496,17 @@
 }
 
 .preview-footer p,
+.review-feedback {
+    border-left: 4px solid var(--err);
+    color: var(--text);
+    font-size: 0.92rem;
+}
+
+/* `display` da classe acima venceria o atributo hidden. */
+.review-feedback[hidden] {
+    display: none;
+}
+
 .selection-summary p,
 .security-note p {
     color: var(--text-muted);
