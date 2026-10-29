@@ -8,6 +8,7 @@ Este arquivo precisa definir DATABASE_URL antes de qualquer import de
 `app.*`, porque `app.database` le a variavel no momento do import.
 """
 
+import io
 import os
 import tempfile
 from pathlib import Path
@@ -43,7 +44,39 @@ from app.models.organizacao import Organizacao  # noqa: E402
 from app.models.usuario import Usuario  # noqa: E402
 from app.models.usuario_equipe import UsuarioEquipe  # noqa: E402
 
-CONTEUDO_PDF = b"%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n"
+
+def gerar_pdf_texto(linhas: list[str]) -> bytes:
+    """Gera um PDF de uma pagina com texto em Helvetica, sem dependencias.
+
+    O upload abre o PDF para recusar o corrompido e o protegido por senha
+    (PI-III #18), entao os testes precisam de um PDF que abra de verdade.
+    """
+    conteudo = "BT /F1 12 Tf 72 720 Td 16 TL " + " ".join(f"({linha}) Tj T*" for linha in linhas) + " ET"
+    objetos = [
+        "<< /Type /Catalog /Pages 2 0 R >>",
+        "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
+        "/Resources << /Font << /F1 5 0 R >> >> >>",
+        f"<< /Length {len(conteudo)} >>\nstream\n{conteudo}\nendstream",
+        "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    saida = io.BytesIO()
+    saida.write(b"%PDF-1.4\n")
+    deslocamentos = []
+    for numero, objeto in enumerate(objetos, start=1):
+        deslocamentos.append(saida.tell())
+        saida.write(f"{numero} 0 obj\n{objeto}\nendobj\n".encode("latin-1"))
+    inicio_xref = saida.tell()
+    saida.write(f"xref\n0 {len(objetos) + 1}\n0000000000 65535 f \n".encode())
+    for deslocamento in deslocamentos:
+        saida.write(f"{deslocamento:010d} 00000 n \n".encode())
+    saida.write(
+        f"trailer\n<< /Size {len(objetos) + 1} /Root 1 0 R >>\nstartxref\n{inicio_xref}\n%%EOF\n".encode()
+    )
+    return saida.getvalue()
+
+
+CONTEUDO_PDF = gerar_pdf_texto(["Contrato de teste"])
 
 # Senha dos usuarios semeados. Antes era um hash bcrypt literal cujo texto
 # original ninguem conhecia: o usuario existia mas nao dava para logar, e

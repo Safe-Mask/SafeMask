@@ -6,11 +6,12 @@ import app.core.email as email_mod
 from app.core.config import MAX_UPLOAD_BYTES
 from app.core.security import criar_token_jwt
 from app.models.log_auditoria import LogAuditoria
+from tests.conftest import CONTEUDO_PDF
 
 TOKEN = criar_token_jwt({"sub": "ana@safemask.example.com", "nome": "Ana"})
 AUTH = {"Authorization": f"Bearer {TOKEN}"}
 
-PDF_VALIDO = b"%PDF-1.4\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n"
+PDF_VALIDO = CONTEUDO_PDF
 
 # O fixture autouse `sem_envio_de_email_real` troca a funcao por um fake durante
 # cada teste; guardamos a ORIGINAL na coleta para poder testa-la em isolamento.

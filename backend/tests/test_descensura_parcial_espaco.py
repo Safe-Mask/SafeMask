@@ -11,6 +11,7 @@ from sqlalchemy import text
 
 from app.core.security import criar_token_jwt
 from scanner.coordenadas import ESPACO_PDF, ESPACO_PIXEL
+from tests.conftest import CONTEUDO_PDF
 
 
 def _auth(usuario):
@@ -26,7 +27,7 @@ def documento_com_espaco(client, seed, scanner_registrado, dados_sensiveis):
         "/documentos/upload",
         data={"titulo": "ata", "nivel_seguranca": "3",
               "teams": f'[{seed["equipe_a"].team_id}]'},
-        files={"file": ("ata.pdf", b"%PDF-1.4\nconteudo\n%%EOF\n", "application/pdf")},
+        files={"file": ("ata.pdf", CONTEUDO_PDF, "application/pdf")},
         headers=_auth(seed["usuario"]),
     )
     assert resp.status_code in (200, 201), resp.text
@@ -50,7 +51,7 @@ def test_item_persiste_o_espaco_de_origem(client, seed, scanner_registrado):
         "/documentos/upload",
         data={"titulo": "ata", "nivel_seguranca": "3",
               "teams": f'[{seed["equipe_a"].team_id}]'},
-        files={"file": ("ata.pdf", b"%PDF-1.4\nconteudo\n%%EOF\n", "application/pdf")},
+        files={"file": ("ata.pdf", CONTEUDO_PDF, "application/pdf")},
         headers=_auth(seed["usuario"]),
     )
 
@@ -146,7 +147,7 @@ def test_membro_recebe_a_parcial_com_tarja(client, seed, scanner_registrado, dad
         "/documentos/upload",
         data={"titulo": "ata", "nivel_seguranca": "3",
               "teams": f"[{equipe.team_id}]"},
-        files={"file": ("ata.pdf", b"%PDF-1.4\nconteudo\n%%EOF\n", "application/pdf")},
+        files={"file": ("ata.pdf", CONTEUDO_PDF, "application/pdf")},
         headers=_auth(cid),
     )
     assert upload.status_code in (200, 201), upload.text

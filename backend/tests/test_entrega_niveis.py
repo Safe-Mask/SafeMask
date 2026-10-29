@@ -10,9 +10,9 @@ import pytest
 
 from app.core.security import criar_token_jwt
 from app.models.log_auditoria import LogAuditoria
-from tests.conftest import CONTEUDO_CENSURADO
+from tests.conftest import CONTEUDO_CENSURADO, gerar_pdf_texto
 
-PDF_PADRAO = b"%PDF-1.4\nconteudo\n%%EOF\n"
+PDF_PADRAO = gerar_pdf_texto(["conteudo"])
 
 
 def _auth(usuario):
