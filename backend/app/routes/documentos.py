@@ -6,7 +6,7 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.core import fila, politica_niveis, tenancy
+from app.core import armazenamento, fila, politica_niveis, tenancy
 from app.core.audit import (
     ACAO_LISTAR_DOCUMENTOS,
     ACAO_UPLOAD,
@@ -35,12 +35,9 @@ router = APIRouter(prefix="/documentos", tags=["Documentos"])
 logger = logging.getLogger(__name__)
 
 # Criar diretórios de uploads se não existir
-UPLOAD_DIR = Path("uploads")
-UPLOAD_DIR.mkdir(exist_ok=True)
-ORIGINAIS_DIR = UPLOAD_DIR / "originais"
-CENSURADOS_DIR = UPLOAD_DIR / "censurados"
-ORIGINAIS_DIR.mkdir(parents=True, exist_ok=True)
-CENSURADOS_DIR.mkdir(parents=True, exist_ok=True)
+# Pasta configuravel por SAFEMASK_PASTA_UPLOADS (app/core/armazenamento.py).
+UPLOAD_DIR = armazenamento.pasta_uploads()
+ORIGINAIS_DIR, CENSURADOS_DIR = armazenamento.preparar(UPLOAD_DIR)
 
 scanner_instance = None
 
