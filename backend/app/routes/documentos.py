@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core import armazenamento, fila, politica_niveis, tenancy
 from app.core.audit import (
+    ACAO_EXCLUIR_DOCUMENTO,
     ACAO_LISTAR_DOCUMENTOS,
     ACAO_UPLOAD,
     ACAO_UPLOAD_CENSURADO,
@@ -928,6 +929,7 @@ def excluir_documento(
     """
     documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
     if not documento:
+        registrar_acesso_negado(db, request, usuario_atual, doc_id, ACAO_EXCLUIR_DOCUMENTO)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Documento não encontrado ou sem acesso.",
@@ -936,6 +938,10 @@ def excluir_documento(
     equipe = equipe_do_documento(db, documento)
     cargo = cargo_na_equipe(db, usuario_atual, equipe.team_id) if equipe else None
     if not cargo or cargo["nivel"] < NIVEL_MIN_EXCLUSAO:
+        registrar(
+            db, request, usuario_atual.user_id, ACAO_EXCLUIR_DOCUMENTO,
+            documento=documento, resultado=RESULTADO_NEGADO,
+        )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Somente o líder da equipe pode excluir documentos.",
@@ -965,6 +971,11 @@ def excluir_documento(
     # Arquivos so depois do commit: se o banco falhar, nada some do disco.
     arquivos_apagados = 0 if em_uso else _apagar_arquivos_do_conteudo(hash_documento)
 
+    # Sem documento: o registro ja nao existe. A equipe identifica o evento.
+    registrar(
+        db, request, usuario_atual.user_id, ACAO_EXCLUIR_DOCUMENTO,
+        team_id=equipe.team_id, cargo_id=None,
+    )
     return {
         "mensagem": "Documento excluído.",
         "doc_id": doc_id,
