@@ -170,9 +170,6 @@ document.getElementById('registerForm').addEventListener('submit', async (event)
         return;
     }
 
-    console.log('Dados enviados: ', { nome, email, senha });
-    console.log('JSON enviado: ', JSON.stringify({ nome, email, senha }));
-
     // Iniciar animação de loading (puzzle)
     loadingManager.show('Montando sua conta segura...');
 
