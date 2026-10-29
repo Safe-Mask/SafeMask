@@ -11,7 +11,7 @@ const metaDate = document.getElementById('metaDate');
 const metaSize = document.getElementById('metaSize');
 const metaLevel = document.getElementById('metaLevel');
 const metaStatus = document.getElementById('metaStatus');
-const metaKey = document.getElementById('metaKey');
+const metaOriginal = document.getElementById('metaOriginal');
 const openCensoredBtn = document.getElementById('openCensoredBtn');
 const startRedactionBtn = document.getElementById('startRedactionBtn');
 
@@ -91,7 +91,7 @@ function resetPage(message = 'Selecione um documento permitido para iniciar a de
     metaSize.textContent = '-';
     metaLevel.textContent = '-';
     metaStatus.textContent = '-';
-    metaKey.textContent = '-';
+    metaOriginal.textContent = '-';
     clearPreviewUrl();
     docPreviewFrame.src = 'about:blank';
     docPreviewFallback.hidden = false;
@@ -147,7 +147,7 @@ async function loadDocument() {
         metaSize.textContent = formatBytes(documento.tamanho_bytes);
         metaLevel.textContent = securityLabel(documento.nivel_seguranca);
         metaStatus.textContent = documento.status_processamento || '-';
-        metaKey.textContent = documento.chave_criptografica || '-';
+        metaOriginal.textContent = 'Guardado no servidor, aberto só pelo cargo';
 
         podeDescensurar = Boolean(documento.pode_descensurar || documento.pode_descensura_parcial);
         startRedactionBtn.disabled = !podeDescensurar;
