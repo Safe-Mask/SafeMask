@@ -36,6 +36,10 @@ def test_overview_conta_todos_os_membros_e_documentos_da_equipe(client, seed, do
 
     assert equipe_a["membros"] == 2
     assert equipe_a["documentos"] == 2
+    assert equipe_a["cargo_nivel_usuario"] == 3
+
+    equipe_b = next(e for e in resp.json()["equipes"] if e["team_id"] == seed["equipe_b"].team_id)
+    assert equipe_b["cargo_nivel_usuario"] == 1
 
 
 def test_overview_bate_com_a_pagina_de_detalhe(client, seed, documento):

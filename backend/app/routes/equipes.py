@@ -265,6 +265,10 @@ def get_equipes_overview(
             (membro["cargo_nome"] for membro in membros if membro["user_id"] == current_user.user_id),
             None,
         )
+        cargo_nivel_usuario = next(
+            (int(membro["cargo_nivel"]) for membro in membros if membro["user_id"] == current_user.user_id),
+            None,
+        )
 
         # Documentos de toda a equipe, nao apenas os enviados pelo usuario.
         total_documentos = (
@@ -282,6 +286,7 @@ def get_equipes_overview(
             "membros": len(membros),
             "documentos": int(total_documentos or 0),
             "cargo_usuario": cargo_usuario,
+            "cargo_nivel_usuario": cargo_nivel_usuario,
             "membros_lista": membros,
         })
 

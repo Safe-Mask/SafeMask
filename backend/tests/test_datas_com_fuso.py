@@ -44,4 +44,5 @@ def test_rotas_devolvem_datas_com_fuso(client, seed, documento):
     assert detalhe["documentos_lista"][0]["criado_em"] == "2026-10-20T18:21:28+00:00"
     assert all(m["criado_em"] is None or m["criado_em"].endswith("+00:00") for m in detalhe["membros_lista"])
     assert censurados["documentos"][0]["criado_em"] == "2026-10-20T18:21:28+00:00"
+    assert censurados["documentos"][0]["status_processamento"] == "CONCLUIDO"
     assert item["criado_em"] == "2026-10-20T18:21:28+00:00"

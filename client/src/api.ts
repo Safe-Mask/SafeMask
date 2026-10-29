@@ -112,9 +112,70 @@ export interface Documento {
   extensao: string;
   nivel_seguranca: number;
   tamanho_bytes: number;
+  status_processamento: string;
   criado_em: string;
   team_id: number;
   equipe_nome: string;
+}
+
+export interface ItemLote {
+  nome: string;
+  doc_id: number | null;
+  status: string;
+  motivo: string | null;
+}
+
+export interface RespostaLote {
+  mensagem: string;
+  total_recebido: number;
+  total_aceito: number;
+  itens: ItemLote[];
+}
+
+export interface MetricasAdmin {
+  escopo: {
+    equipes: { team_id: number; nome: string }[];
+  };
+  documentos: {
+    total: number;
+    por_nivel: Record<string, number>;
+    por_status: Record<string, number>;
+  };
+  acessos_negados: {
+    total: number;
+    por_acao: Record<string, number>;
+  };
+  top_tipos: { tipo: string; quantidade: number }[];
+}
+
+export async function enviarLote(
+  teamId: number,
+  nivelSeguranca: number,
+  arquivos: File[],
+): Promise<RespostaLote> {
+  const base = urlServico() ?? semServico();
+  const formulario = new FormData();
+  formulario.append("team_id", String(teamId));
+  formulario.append("nivel_seguranca", String(nivelSeguranca));
+  for (const arquivo of arquivos) formulario.append("files", arquivo);
+
+  const cabecalhos: Record<string, string> = { Accept: "application/json" };
+  const t = token();
+  if (t) cabecalhos.Authorization = `Bearer ${t}`;
+
+  let resp: Response;
+  try {
+    // Sem Content-Type manual: o navegador/webview define o boundary.
+    resp = await fetch(`${base}/documentos/upload/lote`, {
+      method: "POST",
+      headers: cabecalhos,
+      body: formulario,
+    });
+  } catch {
+    throw new ErroApi(0, "Serviço indisponível (rede/offline?).");
+  }
+  if (!resp.ok) throw new ErroApi(resp.status, await corpo_do_erro(resp));
+  return (await resp.json()) as RespostaLote;
 }
 
 export async function login(email: string, senha: string): Promise<RespostaLogin> {

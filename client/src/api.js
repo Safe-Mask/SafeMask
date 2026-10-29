@@ -78,6 +78,33 @@ export async function pedirArquivo(path) {
         throw new ErroApi(resp.status, await corpo_do_erro(resp));
     return await resp.blob();
 }
+export async function enviarLote(teamId, nivelSeguranca, arquivos) {
+    const base = urlServico() ?? semServico();
+    const formulario = new FormData();
+    formulario.append("team_id", String(teamId));
+    formulario.append("nivel_seguranca", String(nivelSeguranca));
+    for (const arquivo of arquivos)
+        formulario.append("files", arquivo);
+    const cabecalhos = { Accept: "application/json" };
+    const t = token();
+    if (t)
+        cabecalhos.Authorization = `Bearer ${t}`;
+    let resp;
+    try {
+        // Sem Content-Type manual: o navegador/webview define o boundary.
+        resp = await fetch(`${base}/documentos/upload/lote`, {
+            method: "POST",
+            headers: cabecalhos,
+            body: formulario,
+        });
+    }
+    catch {
+        throw new ErroApi(0, "Serviço indisponível (rede/offline?).");
+    }
+    if (!resp.ok)
+        throw new ErroApi(resp.status, await corpo_do_erro(resp));
+    return (await resp.json());
+}
 export async function login(email, senha) {
     const resp = await pedir("/auth/login", { corpo: { email, senha_hash: senha } });
     if (!resp.ok)

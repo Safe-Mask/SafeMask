@@ -3,7 +3,9 @@ import {
   ErroApi,
   EventoAuditoria,
   Identidade,
+  MetricasAdmin,
   PaginaAuditoria,
+  enviarLote,
   pedir,
   pedirArquivo,
   pedirJson,
@@ -33,6 +35,7 @@ interface Equipe {
   membros: number;
   documentos: number;
   cargo_usuario: string | null;
+  cargo_nivel_usuario: number | null;
   membros_lista: Membro[];
 }
 
@@ -71,6 +74,20 @@ function nivelNome(nivel: number): string {
   return ["Publico", "Interno", "Sensivel", "Restrito"][Math.min(3, Math.max(1, nivel))];
 }
 
+function statusClasse(status: string): string {
+  return `status status-${status.toLowerCase()}`;
+}
+
+function statusNome(status: string): string {
+  const rotulos: Record<string, string> = {
+    AGUARDANDO: "Na fila",
+    PROCESSANDO: "Processando",
+    CONCLUIDO: "Concluído",
+    ERRO: "Erro",
+  };
+  return rotulos[status] ?? status;
+}
+
 function tamanho(bytes: number): string {
   if (bytes >= 1_048_576) return `${(bytes / 1_048_576).toFixed(1)} MB`;
   if (bytes >= 1024) return `${Math.round(bytes / 1024)} KB`;
@@ -100,6 +117,7 @@ async function baixarProtegido(path: string, nome: string): Promise<void> {
 
 let raiz: HTMLElement;
 let usuario: Identidade | null = null;
+let geracaoDocumentos = 0;
 
 export async function bootstrap(): Promise<void> {
   raiz = document.getElementById("app")!;
@@ -270,12 +288,13 @@ function telaTrocarSenha(possivelUsuario: Identidade): void {
 
 // ----------------------------------------------------------------- shell ---
 
-type VisaoAtual = "documentos" | "equipes" | "auditoria";
+type VisaoAtual = "documentos" | "painel" | "equipes" | "auditoria";
 
 function telaShell(): void {
   const buscaUsuario = usuario ?? ({ nome: "", email: "" } as unknown as Identidade);
   const visoes: [VisaoAtual, string][] = [
     ["documentos", "Documentos"],
+    ["painel", "Painel"],
     ["equipes", "Equipes"],
     ["auditoria", "Auditoria"],
   ];
@@ -316,6 +335,7 @@ async function carregarVisao(visao: VisaoAtual, conteudo: HTMLElement): Promise<
   conteudo.replaceChildren(h("p", { class: "mudo" }, ["Carregando..."]));
   try {
     if (visao === "documentos") await telaDocumentos(conteudo);
+    else if (visao === "painel") await telaPainel(conteudo);
     else if (visao === "equipes") await telaEquipes(conteudo);
     else await telaAuditoria(conteudo);
   } catch (exc) {
@@ -336,23 +356,41 @@ async function carregarVisao(visao: VisaoAtual, conteudo: HTMLElement): Promise<
 // ------------------------------------------------------------ documentos ---
 
 async function telaDocumentos(conteudo: HTMLElement): Promise<void> {
-  const lista = await pedirJson<ListaDocumentos>("/documentos/censurados");
+  const geracao = ++geracaoDocumentos;
+  const [lista, visao] = await Promise.all([
+    pedirJson<ListaDocumentos>("/documentos/censurados"),
+    pedirJson<VisaoEquipes>("/equipes/overview"),
+  ]);
+
+  const equipesGestao = visao.equipes.filter(
+    (equipe) => (equipe.cargo_nivel_usuario ?? 0) >= 2,
+  );
+  const pendentes = lista.documentos.some(
+    (doc) => doc.status_processamento === "AGUARDANDO" || doc.status_processamento === "PROCESSANDO",
+  );
 
   const linhas = lista.documentos.map((doc: Documento) =>
     h("tr", {}, [
       h("td", {}, [doc.nome_original]),
       h("td", {}, [doc.equipe_nome]),
       h("td", {}, [`N${doc.nivel_seguranca} · ${nivelNome(doc.nivel_seguranca)}`]),
+      h("td", {}, [
+        h("span", { class: statusClasse(doc.status_processamento) }, [
+          statusNome(doc.status_processamento),
+        ]),
+      ]),
       h("td", {}, [tamanho(doc.tamanho_bytes)]),
       h("td", {}, [dataCurta(doc.criado_em)]),
       h("td", { class: "acoes" }, [
         h("button", {
+          disabled: doc.status_processamento === "CONCLUIDO" ? undefined : "",
           onclick: async () => await baixarProtegido(
             `/documentos/censurados/${doc.doc_id}/arquivo`,
             `${doc.nome_original}.${doc.extensao || "pdf"}`,
           ),
         }, ["Baixar versão censurada"]),
         h("button", {
+          disabled: doc.status_processamento === "CONCLUIDO" ? undefined : "",
           onclick: async (ev: Event) => {
             const botao = ev.target as HTMLButtonElement;
             botao.disabled = true;
@@ -372,18 +410,175 @@ async function telaDocumentos(conteudo: HTMLElement): Promise<void> {
     ]),
   );
 
+  const envio = equipesGestao.length
+    ? h("details", { class: "bloco" }, [
+        h("summary", {}, ["Enviar documentos (admin)"]),
+        h("p", { class: "mudo pequeno" }, [
+          "Os PDFs entram na fila do serviço e aparecem aqui com o status do processamento.",
+        ]),
+        h("form", {
+          onsubmit: async (ev: Event) => {
+            ev.preventDefault();
+            const botao = (ev.target as HTMLFormElement).querySelector("button[type='submit']") as HTMLButtonElement;
+            const equipe = Number((document.getElementById("upload-equipe") as HTMLSelectElement).value);
+            const nivel = Number((document.getElementById("upload-nivel") as HTMLSelectElement).value);
+            const entrada = document.getElementById("upload-arquivos") as HTMLInputElement;
+            const arquivos = Array.from(entrada.files ?? []);
+            if (!arquivos.length) {
+              alert("Selecione ao menos um PDF.");
+              return;
+            }
+            botao.disabled = true;
+            botao.textContent = "Enviando...";
+            try {
+              const resposta = await enviarLote(equipe, nivel, arquivos);
+              alert(`${resposta.mensagem} Aceitos: ${resposta.total_aceito}/${resposta.total_recebido}.`);
+              entrada.value = "";
+              await telaDocumentos(conteudo);
+            } catch (exc) {
+              alert((exc as Error).message);
+              botao.disabled = false;
+              botao.textContent = "Enviar para a fila";
+            }
+          },
+        }, [
+          h("div", { class: "linha-form" }, [
+            h("select", { id: "upload-equipe", style: "flex:1" },
+              equipesGestao.map((equipe) =>
+                h("option", { value: String(equipe.team_id) }, [equipe.nome]),
+              ),
+            ),
+            h("select", { id: "upload-nivel" },
+              [1, 2, 3, 4].map((nivel) =>
+                h("option", { value: String(nivel) }, [`N${nivel}`]),
+              ),
+            ),
+          ]),
+          h("div", { class: "linha-form" }, [
+            h("input", {
+              id: "upload-arquivos",
+              type: "file",
+              accept: "application/pdf",
+              multiple: "",
+              style: "flex:1",
+            }),
+            h("button", { class: "primario", type: "submit" }, ["Enviar para a fila"]),
+          ]),
+        ]),
+      ])
+    : null;
+
   conteudo.replaceChildren(
     h("h2", {}, ["Documentos"]),
     h("p", { class: "mudo" }, [
       `Você recebe versões no limite do seu cargo (${lista.total} documento(s) nas suas equipes). `,
       "O original nunca sai do servidor.",
     ]),
+    ...(envio ? [envio] : []),
     linhas.length
       ? h("table", { class: "tabela" }, [
-          h("thead", {}, [h("tr", {}, ["Documento", "Equipe", "Nível", "Tamanho", "Data (UTC)", "Ações"].map((t) => h("th", {}, [t])))]),
+          h("thead", {}, [h("tr", {}, ["Documento", "Equipe", "Nível", "Status", "Tamanho", "Data (UTC)", "Ações"].map((t) => h("th", {}, [t])))]),
           h("tbody", {}, linhas),
         ])
       : h("p", { class: "mudo" }, ["Nenhum documento ainda. Documentos surgem aqui com upload no admin ou ingestão da pasta base."]),
+    ...(pendentes
+      ? [h("p", { class: "mudo pequeno" }, ["Atualizando automaticamente enquanto houver documento na fila..."])]
+      : []),
+  );
+
+  if (pendentes) {
+    window.setTimeout(() => {
+      const botaoDocumentos = document.querySelector<HTMLButtonElement>("[data-visao='documentos']");
+      if (geracao === geracaoDocumentos && botaoDocumentos?.classList.contains("ativo")) {
+        void telaDocumentos(conteudo);
+      }
+    }, 5000);
+  }
+}
+
+// --------------------------------------------------------------- painel ---
+
+function cartaoMetrica(rotulo: string, valor: number | string): HTMLElement {
+  return h("div", { class: "cartao metrica" }, [
+    h("span", { class: "metrica-rotulo" }, [rotulo]),
+    h("strong", { class: "metrica-valor" }, [String(valor)]),
+  ]);
+}
+
+async function telaPainel(conteudo: HTMLElement): Promise<void> {
+  const dados = await pedirJson<MetricasAdmin>("/dashboard/metricas");
+  const equipes = dados.escopo.equipes.map((equipe) => equipe.nome).join(", ");
+  const niveis = [1, 2, 3, 4].map((nivel) =>
+    h("tr", {}, [
+      h("td", {}, [`N${nivel} · ${nivelNome(nivel)}`]),
+      h("td", {}, [String(dados.documentos.por_nivel[String(nivel)] ?? 0)]),
+    ]),
+  );
+  const status = Object.entries(dados.documentos.por_status).map(([situacao, quantidade]) =>
+    h("tr", {}, [
+      h("td", {}, [statusNome(situacao)]),
+      h("td", {}, [String(quantidade)]),
+    ]),
+  );
+  const negados = Object.entries(dados.acessos_negados.por_acao).map(([acao, quantidade]) =>
+    h("tr", {}, [
+      h("td", {}, [acao]),
+      h("td", {}, [String(quantidade)]),
+    ]),
+  );
+  const tipos = dados.top_tipos.map((item) =>
+    h("tr", {}, [
+      h("td", {}, [item.tipo]),
+      h("td", {}, [String(item.quantidade)]),
+    ]),
+  );
+
+  conteudo.replaceChildren(
+    h("h2", {}, ["Painel"]),
+    h("p", { class: "mudo" }, [
+      `Métricas das equipes que você audita${equipes ? `: ${equipes}` : ""}.`,
+    ]),
+    h("div", { class: "metricas-grid" }, [
+      cartaoMetrica("Documentos ativos", dados.documentos.total),
+      cartaoMetrica("Acessos negados", dados.acessos_negados.total),
+      cartaoMetrica("Equipes auditáveis", dados.escopo.equipes.length),
+    ]),
+    h("div", { class: "duas-colunas" }, [
+      h("div", {}, [
+        h("h3", {}, ["Documentos por nível"]),
+        h("table", { class: "tabela" }, [
+          h("thead", {}, [h("tr", {}, ["Nível", "Documentos"].map((t) => h("th", {}, [t])))]),
+          h("tbody", {}, niveis),
+        ]),
+      ]),
+      h("div", {}, [
+        h("h3", {}, ["Documentos por status"]),
+        h("table", { class: "tabela" }, [
+          h("thead", {}, [h("tr", {}, ["Status", "Documentos"].map((t) => h("th", {}, [t])))]),
+          h("tbody", {}, status),
+        ]),
+      ]),
+    ]),
+    h("div", { class: "duas-colunas" }, [
+      h("div", {}, [
+        h("h3", {}, ["Acessos negados por ação"]),
+        negados.length
+          ? h("table", { class: "tabela" }, [
+              h("thead", {}, [h("tr", {}, ["Ação", "Eventos"].map((t) => h("th", {}, [t])))]),
+              h("tbody", {}, negados),
+            ])
+          : h("p", { class: "mudo" }, ["Nenhum acesso negado nas suas equipes."]),
+      ]),
+      h("div", {}, [
+        h("h3", {}, ["Top tipos de dado"]),
+        tipos.length
+          ? h("table", { class: "tabela" }, [
+              h("thead", {}, [h("tr", {}, ["Tipo", "Ocorrências"].map((t) => h("th", {}, [t])))]),
+              h("tbody", {}, tipos),
+            ])
+          : h("p", { class: "mudo" }, ["Nenhum dado sensível fichado ainda."]),
+      ]),
+    ]),
   );
 }
 
