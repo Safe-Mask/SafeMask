@@ -294,6 +294,14 @@ SECRET_KEY=gere-uma-chave-aleatoria-forte-aqui
 python -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
+**Opcional — pasta dos arquivos:** por padrão, os PDFs (originais e tarjados) ficam em `backend/uploads`, resolvido a partir do código, e não da pasta de onde a API é iniciada. No servidor, aponte para o disco de dados, fora da pasta do código, para que uma nova versão não apague os arquivos:
+
+```env
+SAFEMASK_PASTA_UPLOADS=/srv/safemask/uploads
+```
+
+Caminho relativo parte de `backend/`. Os arquivos são localizados pelo nome dentro dessa pasta, então mover a pasta inteira não exige alterar o banco. Detalhes em `documentation/decisoes/armazenamento-dos-arquivos.md`.
+
 **Exemplo com Neon:**
 
 ```env
