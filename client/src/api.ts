@@ -2,6 +2,8 @@
 // localStorage do webview: 1 client = 1 usuario da mesma empresa e a URL
 // nunca muda entre acessos.
 
+import { demoEnviarLote, demoFetch, emModoDemo } from "./demo";
+
 export interface Identidade {
   user_id: number;
   nome: string;
@@ -19,6 +21,7 @@ const CHAVE_URL = "servico_url";
 const CHAVE_TOKEN = "servico_token";
 
 export function urlServico(): string | null {
+  if (emModoDemo()) return "demo://safemask";
   const valor = localStorage.getItem(CHAVE_URL);
   return valor ? valor.replace(/\/+$/, "") : null;
 }
@@ -57,8 +60,10 @@ interface Opcoes {
 }
 
 export async function pedir(path: string, opcoes: Opcoes = {}): Promise<Response> {
-  const base = urlServico() ?? semServico();
   const metodo = opcoes.metodo ?? (opcoes.corpo !== undefined ? "POST" : "GET");
+  if (emModoDemo()) return demoFetch(path, metodo, opcoes.corpo);
+
+  const base = urlServico() ?? semServico();
   const cabecalhos: Record<string, string> = { Accept: "application/json" };
   const t = token();
   if (t) cabecalhos.Authorization = `Bearer ${t}`;
@@ -95,6 +100,12 @@ export async function pedirJson<T>(path: string, opcoes: Opcoes = {}): Promise<T
 }
 
 export async function pedirArquivo(path: string): Promise<Blob> {
+  if (emModoDemo()) {
+    const resposta = demoFetch(path, "GET");
+    if (!resposta.ok) throw new ErroApi(resposta.status, await corpo_do_erro(resposta));
+    return await resposta.blob();
+  }
+
   const base = urlServico() ?? semServico();
   const cabecalhos: Record<string, string> = {};
   const t = token();
@@ -153,6 +164,8 @@ export async function enviarLote(
   nivelSeguranca: number,
   arquivos: File[],
 ): Promise<RespostaLote> {
+  if (emModoDemo()) return demoEnviarLote(teamId, nivelSeguranca, arquivos);
+
   const base = urlServico() ?? semServico();
   const formulario = new FormData();
   formulario.append("team_id", String(teamId));
@@ -193,6 +206,7 @@ export async function trocarSenha(senhaAtual: string, novaSenha: string): Promis
 }
 
 export async function considerarServico(): Promise<boolean> {
+  if (emModoDemo()) return true;
   const base = urlServico() ?? semServico();
   try {
     const resp = await fetch(`${base}/auth/me`);

@@ -1,9 +1,12 @@
 // API do servico central. A URL do servico e o token de sessao moram no
 // localStorage do webview: 1 client = 1 usuario da mesma empresa e a URL
 // nunca muda entre acessos.
+import { demoEnviarLote, demoFetch, emModoDemo } from "./demo";
 const CHAVE_URL = "servico_url";
 const CHAVE_TOKEN = "servico_token";
 export function urlServico() {
+    if (emModoDemo())
+        return "demo://safemask";
     const valor = localStorage.getItem(CHAVE_URL);
     return valor ? valor.replace(/\/+$/, "") : null;
 }
@@ -29,8 +32,10 @@ function semServico() {
     throw new ErroApi(0, "Sem URL do serviço. Configure o endereço do servidor.");
 }
 export async function pedir(path, opcoes = {}) {
-    const base = urlServico() ?? semServico();
     const metodo = opcoes.metodo ?? (opcoes.corpo !== undefined ? "POST" : "GET");
+    if (emModoDemo())
+        return demoFetch(path, metodo, opcoes.corpo);
+    const base = urlServico() ?? semServico();
     const cabecalhos = { Accept: "application/json" };
     const t = token();
     if (t)
@@ -68,6 +73,12 @@ export async function pedirJson(path, opcoes = {}) {
     return (await resp.json());
 }
 export async function pedirArquivo(path) {
+    if (emModoDemo()) {
+        const resposta = demoFetch(path, "GET");
+        if (!resposta.ok)
+            throw new ErroApi(resposta.status, await corpo_do_erro(resposta));
+        return await resposta.blob();
+    }
     const base = urlServico() ?? semServico();
     const cabecalhos = {};
     const t = token();
@@ -79,6 +90,8 @@ export async function pedirArquivo(path) {
     return await resp.blob();
 }
 export async function enviarLote(teamId, nivelSeguranca, arquivos) {
+    if (emModoDemo())
+        return demoEnviarLote(teamId, nivelSeguranca, arquivos);
     const base = urlServico() ?? semServico();
     const formulario = new FormData();
     formulario.append("team_id", String(teamId));
@@ -120,6 +133,8 @@ export async function trocarSenha(senhaAtual, novaSenha) {
     return (await resp.json());
 }
 export async function considerarServico() {
+    if (emModoDemo())
+        return true;
     const base = urlServico() ?? semServico();
     try {
         const resp = await fetch(`${base}/auth/me`);

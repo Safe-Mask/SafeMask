@@ -1,4 +1,5 @@
 import { enviarLote, pedir, pedirArquivo, pedirJson, salvarToken, salvarUrlServico, sair, considerarServico, token, trocarSenha, urlServico, login, } from "./api";
+import { USUARIO_DEMO, emModoDemo, visaoInicialDemo } from "./demo";
 function h(tag, props = {}, filhos = []) {
     const el = document.createElement(tag);
     for (const [k, v] of Object.entries(props)) {
@@ -63,6 +64,16 @@ let usuario = null;
 let geracaoDocumentos = 0;
 export async function bootstrap() {
     raiz = document.getElementById("app");
+    if (emModoDemo()) {
+        const tela = visaoInicialDemo();
+        if (tela === "login") {
+            telaLogin();
+            return;
+        }
+        usuario = USUARIO_DEMO;
+        telaShell(tela);
+        return;
+    }
     if (!urlServico()) {
         telaPrimeiroUso();
         return;
@@ -139,10 +150,20 @@ function telaPrimeiroUso(mensagemErro = "") {
 // ---------------------------------------------------------------- login ---
 function telaLogin() {
     document.getElementById("shell")?.remove();
+    const demoAtivo = emModoDemo();
     raiz.replaceChildren(h("div", { class: "tela-centro" }, [
         h("div", { class: "cartao login" }, [
-            h("h1", {}, ["SafeMask"]),
-            h("p", { class: "mudo" }, [urlServico() ?? ""]),
+            h("div", { class: "login-cabecalho" }, [
+                h("h1", {}, ["SafeMask"]),
+                demoAtivo
+                    ? h("span", { class: "etiqueta-demo" }, ["Modo Demonstração"])
+                    : null,
+            ]),
+            h("p", { class: "mudo" }, [
+                demoAtivo
+                    ? "Ambiente de demonstração local — dados fictícios"
+                    : (urlServico() ?? ""),
+            ]),
             h("form", {
                 onsubmit: async (ev) => {
                     ev.preventDefault();
@@ -164,13 +185,29 @@ function telaLogin() {
                     }
                 },
             }, [
-                h("input", { id: "login-email", type: "email", placeholder: "E-mail", required: "", style: "width:100%" }),
-                h("input", { id: "login-senha", type: "password", placeholder: "Senha", required: "", style: "width:100%" }),
+                h("input", {
+                    id: "login-email",
+                    type: "email",
+                    placeholder: "E-mail",
+                    required: "",
+                    style: "width:100%",
+                    value: demoAtivo ? "admin@safemask.demo" : "",
+                }),
+                h("input", {
+                    id: "login-senha",
+                    type: "password",
+                    placeholder: "Senha",
+                    required: "",
+                    style: "width:100%",
+                    value: demoAtivo ? "demo1234" : "",
+                }),
                 h("button", { class: "primario", type: "submit", style: "width:100%" }, ["Entrar"]),
             ]),
             h("div", { id: "login-erro", class: "erro" }),
             h("p", { class: "mudo pequeno" }, [
-                "Esqueceu a senha? Peça a recuperação ao admin (rota /auth/recuperar-senha do serviço).",
+                demoAtivo
+                    ? "Dica: clique em Entrar com qualquer e-mail/senha no modo demo."
+                    : "Esqueceu a senha? Peça a recuperação ao admin (rota /auth/recuperar-senha do serviço).",
             ]),
         ]),
     ]));
@@ -220,25 +257,61 @@ function telaTrocarSenha(possivelUsuario) {
         ]),
     ]));
 }
-function telaShell() {
-    const buscaUsuario = usuario ?? { nome: "", email: "" };
+const METADADOS_VISAO = {
+    documentos: {
+        titulo: "Documentos",
+        subtitulo: "Biblioteca de PDFs censurados conforme seu cargo e equipe.",
+    },
+    painel: {
+        titulo: "Painel de Métricas",
+        subtitulo: "Indicadores de compliance e acessos negados nas suas equipes.",
+    },
+    equipes: {
+        titulo: "Gestão de Equipes",
+        subtitulo: "Membros, cargos e políticas de segurança da organização.",
+    },
+    auditoria: {
+        titulo: "Trilha de Auditoria",
+        subtitulo: "Histórico completo e imutável de requisições e downloads.",
+    },
+};
+function telaShell(visaoInicial = "documentos") {
+    const buscaUsuario = usuario ?? { nome: "Usuário", email: "" };
+    const demoAtivo = emModoDemo();
     const visoes = [
         ["documentos", "Documentos"],
         ["painel", "Painel"],
         ["equipes", "Equipes"],
         ["auditoria", "Auditoria"],
     ];
+    const elementoTitulo = h("h1", { class: "topo-titulo" }, [METADADOS_VISAO[visaoInicial].titulo]);
+    const elementoSubtitulo = h("p", { class: "topo-subtitulo" }, [METADADOS_VISAO[visaoInicial].subtitulo]);
     const conteudo = h("div", { id: "conteudo" });
+    const topo = h("header", { class: "topo-shell" }, [
+        h("div", { class: "topo-info" }, [elementoTitulo, elementoSubtitulo]),
+        h("div", { class: "topo-acoes" }, [
+            demoAtivo ? h("span", { class: "etiqueta-demo" }, ["Modo Demonstração"]) : null,
+            h("div", { class: "chip-usuario" }, [
+                h("div", { class: "avatar" }, [buscaUsuario.nome ? buscaUsuario.nome[0].toUpperCase() : "U"]),
+                h("span", {}, [buscaUsuario.nome || buscaUsuario.email]),
+            ]),
+        ]),
+    ]);
     const nav = h("nav", { class: "lateral" }, [
-        h("div", { class: "marca" }, ["SafeMask"]),
+        h("div", { class: "marca" }, [
+            h("span", { class: "marca-icone" }, ["SM"]),
+            "SafeMask",
+        ]),
         h("ul", {}, visoes.map(([nome, rotulo]) => h("li", {}, [
             h("button", {
                 "data-visao": nome,
-                class: nome === "documentos" ? "ativo" : "",
+                class: nome === visaoInicial ? "ativo" : "",
                 onclick: (ev) => {
                     const alvo = ev.target.dataset.visao;
                     document.querySelectorAll(".lateral button").forEach((b) => b.classList.remove("ativo"));
                     ev.target.classList.add("ativo");
+                    elementoTitulo.textContent = METADADOS_VISAO[alvo].titulo;
+                    elementoSubtitulo.textContent = METADADOS_VISAO[alvo].subtitulo;
                     void carregarVisao(alvo, conteudo);
                 },
             }, [rotulo]),
@@ -253,8 +326,9 @@ function telaShell() {
             }, ["Sair"]),
         ]),
     ]);
-    raiz.replaceChildren(h("div", { class: "shell", id: "shell" }, [nav, conteudo]));
-    void carregarVisao("documentos", conteudo);
+    const principal = h("div", { class: "area-principal" }, [topo, conteudo]);
+    raiz.replaceChildren(h("div", { class: "shell", id: "shell" }, [nav, principal]));
+    void carregarVisao(visaoInicial, conteudo);
 }
 async function carregarVisao(visao, conteudo) {
     conteudo.replaceChildren(h("p", { class: "mudo" }, ["Carregando..."]));
