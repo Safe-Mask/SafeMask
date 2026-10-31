@@ -1,4 +1,4 @@
-"""Cifra do original em disco (Fase 3.1 do PLANO_DESKTOP)."""
+"""Cifra do original em disco (Fase 3.1 de `estrutura_logica.md`)."""
 
 import pytest
 from cryptography.fernet import Fernet

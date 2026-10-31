@@ -1,5 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
-# Spec do PyInstaller para o servico central (Fase 1 de `PLANO_DESKTOP.md`).
+# Spec do PyInstaller para o servico central (Fase 1 de `estrutura_logica.md`).
 #
 # Build (no servidor ou maquina de liberacao, com o venv do backend ativo):
 #   cd backend && .venv/bin/pyinstaller safemask_service.spec

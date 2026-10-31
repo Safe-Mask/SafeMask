@@ -270,7 +270,7 @@ async def cadastrar(
         )
 
     # Toda a instalacao pertence a uma organizacao so (1 instalacao = 1
-    # empresa; veja `app.core.tenancy` e `PLANO_DESKTOP.md`). O primeiro
+    # empresa; veja `app.core.tenancy` e `estrutura_logica.md`). O primeiro
     # cadastro cria a organizacao; os seguintes entram nela.
     organizacao = tenancy.carregar_organizacao_unica(db)
 

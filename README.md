@@ -51,10 +51,11 @@ backend/            Serviço (FastAPI) — objeto da fase atual
 └── tests/          331 testes pytest
 scripts/            e2e, gerador de PDF de exemplo
 documentation/      Relatórios e checklist de sprints
-client/             Client desktop (Tauri) — Fase 2 deste plano
+client/             Client desktop (Tauri) — Fase 2 do planejamento
 ```
 
-Detalhamento das fases: [`PLANO_DESKTOP.md`](PLANO_DESKTOP.md)
+Arquitetura, estrutura, regras de acesso e fases:
+[`estrutura_logica.md`](estrutura_logica.md)
 
 ## Desenvolvimento
 

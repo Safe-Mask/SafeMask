@@ -1,4 +1,4 @@
-"""Cifra do original em disco (Fase 3.1 de `PLANO_DESKTOP.md`).
+"""Cifra do original em disco (Fase 3.1 de `estrutura_logica.md`).
 
 Premissa de compliance: o original NUNCA sai do servidor e, em disco, nao
 fica legivel — cada arquivo em `originais/` nasce cifrado (Fernet, key =

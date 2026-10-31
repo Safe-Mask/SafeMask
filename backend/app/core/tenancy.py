@@ -1,6 +1,6 @@
 """Organizacao unica: 1 instalacao do SafeMask = 1 empresa.
 
-Com a virada on-premise (veja `PLANO_DESKTOP.md`) nao existe mais SaaS
+Com a virada on-premise (veja `estrutura_logica.md`) nao existe mais SaaS
 multi-tenant: todo o banco pertence a uma organizacao so, criada no primeiro
 cadastro. O filtro por `organizacao_id` continua nas rotas (defesa em
 profundidade e congruencia com o schema existente), mas sempre aponta para a

@@ -153,7 +153,7 @@ _SENHA_HASH_CACHE = None
 def seed(db_session):
     """Cargos, organizacao unica, equipes e usuarios.
 
-    1 instalacao = 1 organizacao (veja `PLANO_DESKTOP.md`): armazenamento e
+    1 instalacao = 1 organizacao (veja `estrutura_logica.md`): armazenamento e
     entidades vivem na mesma organizacao. "Bia" continua sendo a persona de
     fora — agora pelo vinculo de equipe (fora da Equipe A e da B), nao pelo
     tenant, que nao existe mais.

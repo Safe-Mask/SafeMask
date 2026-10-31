@@ -12,7 +12,7 @@ logger = logging.getLogger("safemask.slow_query")
 load_dotenv()
 
 # SQLite e o padrao do servico on-premise: arquivo local, zero dependencia
-# para a TI da empresa (veja PLANO_DESKTOP.md). DATABASE_URL comecando em
+# para a TI da empresa (veja estrutura_logica.md). DATABASE_URL comecando em
 # postgres:// ainda e aceita para quem preferir PostgreSQL.
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./safemask.db")
 
@@ -223,7 +223,7 @@ def corrigir_extensao_documentos(bind=None):
 def garantir_schema_organizacoes():
     """Garante a organizacao unica e alinha bancos ja existentes.
 
-    1 instalacao = 1 empresa (`PLANO_DESKTOP.md`): tudo vive em organizacao
+    1 instalacao = 1 empresa (`estrutura_logica.md`): tudo vive em organizacao
     unica. A tabela e as colunas `organizacao_id` ficam porque o schema ja as
     tem e o filtro continua nas rotas (defesa em profundidade); aqui so
     acrescentamos o que faltar e juntamos linhas orfas na unica organizacao.

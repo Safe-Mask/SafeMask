@@ -1,4 +1,4 @@
-"""Metricas do painel admin (Fase 3.2 do PLANO_DESKTOP)."""
+"""Metricas do painel admin (Fase 3.2 de `estrutura_logica.md`)."""
 
 from app.core.security import criar_token_jwt
 from app.models.dado_sensivel import DadoSensivel

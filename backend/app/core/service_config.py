@@ -1,6 +1,6 @@
 """Configuracao do servico instalado na empresa (service.yaml).
 
-1 instalacao = 1 empresa (veja `PLANO_DESKTOP.md`): quem instala aponta a
+1 instalacao = 1 empresa (veja `estrutura_logica.md`): quem instala aponta a
 pasta base da rede (onde caem os documentos da empresa), a porta da API e o
 nome da equipe padrao que recebe a ingestao automatica.
 
