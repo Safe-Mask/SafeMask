@@ -18,7 +18,7 @@ import {
   urlServico,
   login,
 } from "./api";
-import { USUARIO_DEMO, emModoDemo, visaoInicialDemo } from "./demo";
+import { USUARIO_DEMO, ativarDemo, desativarDemo, emModoDemo, visaoInicialDemo } from "./demo";
 
 // Visualizacao das respostas consumidas pelo client.
 interface Membro {
@@ -205,6 +205,18 @@ function telaPrimeiroUso(mensagemErro = ""): void {
           }, ["Conectar e continuar"]),
         ]),
         h("div", { id: "config-erro", class: "erro" }),
+        h("button", {
+          type: "button",
+          class: "botao-demo",
+          style: "width:100%",
+          onclick: () => {
+            ativarDemo();
+            void bootstrap();
+          },
+        }, ["Entrar em modo demonstração"]),
+        h("p", { class: "mudo pequeno", style: "text-align:center;margin:0" }, [
+          "Conheça as telas com dados fictícios, sem instalar o serviço.",
+        ]),
       ]),
     ]),
   );
@@ -266,6 +278,17 @@ function telaLogin(): void {
           h("button", { class: "primario", type: "submit", style: "width:100%" }, ["Entrar"]),
         ]),
         h("div", { id: "login-erro", class: "erro" }),
+        demoAtivo
+          ? h("button", {
+            type: "button",
+            class: "link-suave",
+            onclick: () => {
+              desativarDemo();
+              sair();
+              void bootstrap();
+            },
+          }, ["Sair do modo demonstração"])
+          : null,
         h("p", { class: "mudo pequeno" }, [
           demoAtivo
             ? "Dica: clique em Entrar com qualquer e-mail/senha no modo demo."
@@ -401,6 +424,16 @@ function telaShell(visaoInicial: VisaoAtual = "documentos"): void {
           telaLogin();
         },
       }, ["Sair"]),
+      demoAtivo
+        ? h("button", {
+          class: "botao-demo",
+          onclick: () => {
+            desativarDemo();
+            sair();
+            void bootstrap();
+          },
+        }, ["Encerrar demonstração"])
+        : null,
     ]),
   ]);
 

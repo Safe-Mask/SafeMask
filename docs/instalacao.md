@@ -109,6 +109,10 @@ valida contra `/auth/me` e so entao pede login. O admin provisorio logo com
 `admin@safemask.example.com` + senha do log e e obrigado a trocar a senha no
 mesmo exe.
 
+Para conhecer o produto sem servidor, use **Entrar em modo demonstracao** na
+tela de primeiro uso (ou abra o Vite com `?demo=1`). O modo demo roda dentro do
+proprio app, com dados ficticios, sem backend e sem frontend web separado.
+
 No client, alem dos downloads censurado/parcial:
 
 - **Documentos**: lider/supervisor enviam varios PDFs de uma vez para uma
@@ -118,6 +122,14 @@ No client, alem dos downloads censurado/parcial:
   acessos negados por acao, top tipos de dado). Membro comum recebe 403.
 - **Equipes/Auditoria**: criam equipes/membros/cargos/politicas e exportam
   a auditoria em CSV.
+
+## 7. Base de dados
+
+SQLite em `backend/safemask.db` (padrao do produto), sempre na maquina da
+empresa. Nao existe banco hospedado nem envio de documentos para nuvem; a base
+de documentos de origem e a `pasta_base` configurada pela propria empresa no
+`service.yaml`. Se ela quiser instituir Postgres mais tarde, o mesmo servico
+aceita a variavel `DATABASE_URL` (Postgres) sem mudanca de codigo.
 
 ## 8. Checklist manual de aceite (Fase 4)
 
@@ -129,9 +141,3 @@ Estes passos exigem uma maquina Windows com Rust/WebView2 e nao rodam no CI:
 - [ ] Abrir 2 clients (admin e membro de outra equipe), validar downloads,
       status da fila, metricas e eventos de auditoria;
 - [ ] Fazer backup de `chave_original.key` e testar a recuperacao do servico.
-
-## 7. Base de dados
-
-SQLite em `backend/safemask.db` (padrao do produto). Se a empresa quiser
-instituir Postgres mais tarde, o mesmo servico aceita a variavel
-`DATABASE_URL` (Postgres) sem mudanca de codigo.

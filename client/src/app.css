@@ -232,3 +232,36 @@ details.bloco {
 
 details.bloco summary { cursor: pointer; font-weight: 600; font-size: 14px; }
 details.bloco .linha-form input { flex: 0 1 auto; }
+
+/* --- modo demonstracao --------------------------------------------------- */
+
+.etiqueta-demo {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: #e6f2e8;
+  color: #2c6337;
+  border: 1px solid #b9dcc0;
+}
+
+button.botao-demo {
+  background: transparent;
+  border-style: dashed;
+  border-color: var(--primario);
+  color: var(--primario);
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+button.botao-demo:hover:not(:disabled) { background: #eef2fa; }
+
+button.link-suave {
+  background: transparent;
+  border: 0;
+  color: var(--mudo);
+  text-decoration: underline;
+  padding: 4px;
+  font-size: 13px;
+}

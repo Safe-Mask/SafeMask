@@ -1,5 +1,6 @@
 // Modo demonstracao do client: mesmas telas do Tauri, sem backend e sem
-// Windows. Ativado por `?demo=1` no Vite; o modo real continua intacto.
+// Windows. Ativado pelo botao do 1o uso, por `?demo=1` no Vite ou pelo
+// localStorage; o modo real continua intacto.
 //
 // A camada `demoFetch` responde aos mesmos endpoints consumidos pelo app.
 // O estado vive so em memoria e zera ao recarregar a pagina.
@@ -8,8 +9,21 @@ export const USUARIO_DEMO = {
     nome: "Marina Alves",
     email: "admin@safemask.demo",
 };
+const CHAVE_DEMO = "safemask_demo";
 export function emModoDemo() {
-    return new URLSearchParams(window.location.search).get("demo") === "1";
+    if (new URLSearchParams(window.location.search).get("demo") === "1")
+        return true;
+    return localStorage.getItem(CHAVE_DEMO) === "1";
+}
+export function ativarDemo() {
+    localStorage.setItem(CHAVE_DEMO, "1");
+}
+export function desativarDemo() {
+    localStorage.removeItem(CHAVE_DEMO);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("demo");
+    url.searchParams.delete("tela");
+    window.history.replaceState({}, "", url.toString());
 }
 export function visaoInicialDemo() {
     const tela = new URLSearchParams(window.location.search).get("tela");

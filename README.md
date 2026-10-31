@@ -48,7 +48,7 @@ Original cifrado, nunca exposto              admin: config + auditoria
 backend/            Serviço (FastAPI) — objeto da fase atual
 ├── app/            core (fila, autorizacao, config), models, routes, schemas
 ├── scanner/        Detector local: regex + validadores + NER (safemask-ner)
-└── tests/          337 testes pytest
+└── tests/          331 testes pytest
 scripts/            e2e, gerador de PDF de exemplo
 documentation/      Relatórios e checklist de sprints
 client/             Client desktop (Tauri) — Fase 2 deste plano
