@@ -230,6 +230,40 @@ function metricas() {
         top_tipos: TOP_TIPOS,
     };
 }
+function visaoGeral() {
+    const total = documentos.length;
+    const censurados = documentos.filter((doc) => doc.status_processamento === "CONCLUIDO").length;
+    const media = total
+        ? Math.round((documentos.reduce((soma, doc) => soma + doc.nivel_seguranca, 0) / total) * 100) / 100
+        : 0;
+    return {
+        usuario: USUARIO_DEMO,
+        metrics: {
+            total_equipes: equipes.length,
+            total_documentos: total,
+            documentos_censurados: censurados,
+            taxa_censura: total ? Math.round((censurados / total) * 1000) / 10 : 0,
+            media_nivel_seguranca: media,
+            documentos_nivel_alto: documentos.filter((doc) => doc.nivel_seguranca >= 4).length,
+        },
+        equipes: equipes.map((equipe) => ({
+            team_id: equipe.team_id,
+            nome: equipe.nome,
+            documentos: documentos.filter((doc) => doc.team_id === equipe.team_id).length,
+        })),
+        documentos_recentes: [...documentos]
+            .sort((a, b) => new Date(b.criado_em).getTime() - new Date(a.criado_em).getTime())
+            .slice(0, 8)
+            .map((doc) => ({
+            doc_id: doc.doc_id,
+            nome_original: doc.nome_original,
+            extensao: doc.extensao,
+            nivel_seguranca: doc.nivel_seguranca,
+            equipe_nome: doc.equipe_nome,
+            criado_em: doc.criado_em,
+        })),
+    };
+}
 function arquivoDemo(nome) {
     const conteudo = [
         "%PDF-1.4",
@@ -341,6 +375,35 @@ export function demoFetch(path, metodo = "GET", corpo) {
             documentos: documentos.map((doc) => ({ ...doc })),
         });
     }
+    const detalhe = rota.match(/^\/documentos\/censurados\/(\d+)$/);
+    if (detalhe) {
+        const doc = documentos.find((item) => item.doc_id === Number(detalhe[1]));
+        if (!doc)
+            return erro(404, "Documento nao encontrado ou sem acesso.");
+        const equipe = equipes.find((item) => item.team_id === doc.team_id);
+        const membro = equipe?.membros_lista.find((item) => item.user_id === USUARIO_DEMO.user_id);
+        const autor = equipe?.membros_lista[0];
+        const nivelCargo = membro?.cargo_nivel ?? 0;
+        return json({
+            doc_id: doc.doc_id,
+            nome_original: doc.nome_original,
+            extensao: doc.extensao,
+            tamanho_bytes: doc.tamanho_bytes,
+            nivel_seguranca: doc.nivel_seguranca,
+            chave_criptografica: `smk_${doc.doc_id}_${(doc.nome_original.length * 7919).toString(16)}`,
+            criado_em: doc.criado_em,
+            status_processamento: doc.status_processamento,
+            autor_nome: autor?.nome ?? null,
+            equipe: {
+                team_id: equipe?.team_id ?? null,
+                nome: equipe?.nome ?? null,
+            },
+            cargo_usuario: membro ? { nome: membro.cargo_nome, nivel: membro.cargo_nivel } : null,
+            pode_descensurar: nivelCargo >= 3,
+            pode_descensura_parcial: nivelCargo >= 1,
+            preview_url: `/documentos/censurados/${doc.doc_id}/arquivo`,
+        });
+    }
     const censurado = rota.match(/^\/documentos\/censurados\/(\d+)\/arquivo$/);
     if (censurado) {
         const doc = documentos.find((item) => item.doc_id === Number(censurado[1]));
@@ -353,6 +416,8 @@ export function demoFetch(path, metodo = "GET", corpo) {
     }
     if (rota === "/equipes/overview")
         return json(visaoEquipes());
+    if (rota === "/dashboard/overview")
+        return json(visaoGeral());
     if (rota === "/dashboard/metricas")
         return json(metricas());
     if (rota === "/auditoria") {
