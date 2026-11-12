@@ -5,6 +5,14 @@
    Carregar SEMPRE depois do dashboard.css.
    ============================================================ */
 
+/* O atributo `hidden` sempre esconde (#193). Sem o !important, uma classe
+   com `display: grid` ou `flex` vence o display:none do navegador e o
+   elemento continua na tela mesmo com hidden. */
+[hidden] {
+    display: none !important;
+}
+
+
 :root {
     /* cores de acento da marca */
     --neon: #00e676;

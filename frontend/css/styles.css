@@ -1,3 +1,10 @@
+/* O atributo `hidden` sempre esconde (#193). Sem o !important, uma classe
+   com `display: grid` ou `flex` vence o display:none do navegador e o
+   elemento continua na tela mesmo com hidden. */
+[hidden] {
+    display: none !important;
+}
+
 * {
     margin: 0;
     padding: 0;
