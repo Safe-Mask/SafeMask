@@ -16,6 +16,7 @@ const selectedTeamsCount = document.getElementById('selectedTeamsCount');
 const selectedTeamsNames = document.getElementById('selectedTeamsNames');
 const docTitleInput = document.getElementById('docTitleInput');
 const securityLevelInput = document.getElementById('securityLevelInput');
+const securityLevelHint = document.getElementById('securityLevelHint');
 const uploadStep = document.getElementById('uploadStep');
 const loadingStep = document.getElementById('loadingStep');
 const reviewStep = document.getElementById('reviewStep');
@@ -628,3 +629,22 @@ extraSnippetList.addEventListener('click', (event) => {
         renderTrechos();
     }
 });
+
+// Efeito de cada nivel de seguranca no acesso. A regra e da API
+// (app/core/autorizacao.py, documentation/decisoes/matriz-de-acesso.md);
+// aqui so o texto. "Original" considera o padrao do servidor (lider).
+const EFEITO_DO_NIVEL = {
+    1: 'Básico: membros, supervisores e líderes podem pedir a descensura parcial (cada um vê os dados do seu nível). O original fica com o líder.',
+    2: 'Proteção média: só supervisor e líder podem pedir a descensura parcial. Membros veem apenas a versão com tarja. O original fica com o líder.',
+    3: 'Proteção alta: só supervisor e líder podem pedir a descensura parcial. O original é sempre só do líder, mesmo que o servidor libere o supervisor.',
+    4: 'Proteção máxima: só o líder remove a tarja. Membros e supervisores veem apenas a versão com tarja.',
+};
+
+function atualizarEfeitoDoNivel() {
+    if (securityLevelHint) {
+        securityLevelHint.textContent = EFEITO_DO_NIVEL[securityLevelInput.value] || '';
+    }
+}
+
+securityLevelInput.addEventListener('change', atualizarEfeitoDoNivel);
+atualizarEfeitoDoNivel();

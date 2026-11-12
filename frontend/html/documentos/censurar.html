@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../css/dashboard.css">
     <link rel="stylesheet" href="../../css/brand.css">
-    <link rel="stylesheet" href="../../css/documentos/censurar.css?v=2">
+    <link rel="stylesheet" href="../../css/documentos/censurar.css?v=3">
     <link rel="stylesheet" href="../../css/avisos.css">
 </head>
 <body>
@@ -202,19 +202,20 @@
 
                                 <label class="field field-full">
                                     <span>Nivel de seguranca</span>
-                                    <select id="securityLevelInput">
-                                        <option value="1">Basico</option>
-                                        <option value="2">Protecao media</option>
-                                        <option value="3" selected>Protecao alta</option>
-                                        <option value="4">Protecao maxima</option>
+                                    <select id="securityLevelInput" aria-describedby="securityLevelHint">
+                                        <option value="1">Básico</option>
+                                        <option value="2">Proteção média</option>
+                                        <option value="3" selected>Proteção alta</option>
+                                        <option value="4">Proteção máxima</option>
                                     </select>
                                 </label>
+                                <p class="field-full security-level-hint" id="securityLevelHint" aria-live="polite"></p>
 
                             </div>
 
                             <div class="security-note">
                                 <strong>Quem vê o quê</strong>
-                                <p>Os membros das equipes escolhidas veem a versão com tarja. Remover a tarja depende do cargo de cada um na equipe.</p>
+                                <p>Os membros das equipes escolhidas veem a versão com tarja. Remover a tarja depende do cargo de cada um na equipe e do nível de segurança escolhido acima.</p>
                                 <p>O original fica guardado no servidor e só é entregue a quem tem cargo para isso.</p>
                             </div>
 
@@ -235,7 +236,7 @@
     <script src="../../js/app-shell.js"></script>
     <script src="../../js/config.js"></script>
     <script src="../../js/avisos.js"></script>
-    <script src="../../js/documentos/censurar.js?v=3"></script>
+    <script src="../../js/documentos/censurar.js?v=4"></script>
     <script src="../../js/brand.js"></script>
 </body>
 </html>

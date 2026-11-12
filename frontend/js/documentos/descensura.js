@@ -226,7 +226,7 @@ startRedactionBtn.addEventListener('click', async () => {
     }
 
     if (!podeDescensurar) {
-        avisar('Seu cargo não permite acessar a versão original do documento.');
+        avisar('Seu cargo e o nível de segurança deste documento não permitem remover a tarja.');
         return;
     }
 
@@ -241,7 +241,9 @@ startRedactionBtn.addEventListener('click', async () => {
         });
 
         if (response.status === 403) {
-            avisar('Seu cargo não permite acessar a versão original do documento.');
+            // O motivo vem da API: cargo ou nivel de seguranca do documento.
+            const corpo = await response.json().catch(() => ({}));
+            avisar(corpo.detail || 'Seu cargo não permite remover a tarja deste documento.');
             return;
         }
 

@@ -859,3 +859,11 @@
     font: inherit;
     padding: 0.7rem 0.85rem;
 }
+
+/* Efeito do nivel de seguranca escolhido. */
+.security-level-hint {
+    margin: -0.35rem 0 0;
+    color: var(--text-muted);
+    font-size: 0.84rem;
+    line-height: 1.45;
+}
