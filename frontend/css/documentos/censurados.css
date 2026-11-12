@@ -133,10 +133,13 @@
 
 .docs-list {
     display: grid;
+    /* Coluna que encolhe: sem isso, o nome longo alarga o cartao alem do painel (#194). */
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;
 }
 
 .doc-card {
+    min-width: 0;
     border: 1px solid var(--line);
     border-radius: 16px;
     background: linear-gradient(160deg, var(--surface), var(--surface-2));
@@ -156,13 +159,22 @@
 
 .doc-card-top {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     gap: 0.8rem;
     align-items: flex-start;
 }
 
+/* Nome sem espaco (ex.: 2020_09_23_..._censurado) quebra em qualquer
+   ponto em vez de empurrar o cartao (#194). */
+.doc-card-top > div {
+    min-width: 0;
+    flex: 1 1 12rem;
+}
+
 .doc-card strong {
     display: block;
+    overflow-wrap: anywhere;
     font-size: 1rem;
     color: var(--white);
 }
@@ -190,6 +202,7 @@
 
 .doc-actions {
     display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     gap: 0.6rem;
 }
@@ -237,6 +250,14 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 0.75rem;
+}
+
+.detail-meta > div {
+    min-width: 0;
+}
+
+.detail-meta strong {
+    overflow-wrap: anywhere;
 }
 
 .highlight-label {
