@@ -1,0 +1,18 @@
+# Telas do SafeMask no container `web` (PI-III #232). O nginx troca
+# ${SAFEMASK_API_URL} pelo valor do ambiente ao iniciar; o config.js do
+# repositorio nao e alterado.
+server {
+    listen 80;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    location = /frontend/js/config.js {
+        default_type application/javascript;
+        add_header Cache-Control "no-store";
+        return 200 "const API_ROOT = '${SAFEMASK_API_URL}';\n";
+    }
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+}

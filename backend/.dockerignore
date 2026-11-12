@@ -1,0 +1,11 @@
+# Nada local entra na imagem: nem segredos, nem banco, nem documentos.
+.env
+*.db
+*.db-journal
+uploads/
+__pycache__/
+**/__pycache__/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/

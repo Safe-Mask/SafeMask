@@ -1,0 +1,65 @@
+# SafeMask com um comando (PI-III #232): docker compose up -d --build --wait
+# Telas em http://localhost:8080 e API em http://localhost:8000.
+# Portas ocupadas? SAFEMASK_PORTA_WEB e SAFEMASK_PORTA_API mudam as duas.
+# Roteiro completo: documentation/como-testar.md.
+name: safemask
+
+services:
+  db:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: safemask
+      POSTGRES_PASSWORD: safemask-local
+      POSTGRES_DB: safemask
+    volumes:
+      - banco:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U safemask"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://safemask:safemask-local@db:5432/safemask
+      SAFEMASK_PASTA_UPLOADS: /dados/uploads
+      # Desenvolvimento local: o CORS aceita as telas em localhost.
+      ENVIRONMENT: development
+      # Vazia = gerada na primeira vez e guardada no volume `segredos`.
+      SECRET_KEY: ${SECRET_KEY:-}
+    volumes:
+      - dados:/dados          # arquivos dos documentos: sobrevivem a reinicios
+      - segredos:/segredos    # SECRET_KEY, fora da pasta dos arquivos
+    ports:
+      - "${SAFEMASK_PORTA_API:-8000}:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/')"]
+      interval: 5s
+      timeout: 3s
+      retries: 24
+    restart: unless-stopped
+
+  web:
+    image: nginx:1.27-alpine
+    environment:
+      SAFEMASK_API_URL: http://localhost:${SAFEMASK_PORTA_API:-8000}
+    volumes:
+      - ./index.html:/usr/share/nginx/html/index.html:ro
+      - ./frontend:/usr/share/nginx/html/frontend:ro
+      - ./docker/nginx.conf.template:/etc/nginx/templates/default.conf.template:ro
+    ports:
+      - "${SAFEMASK_PORTA_WEB:-8080}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  banco:
+  dados:
+  segredos:

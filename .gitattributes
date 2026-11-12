@@ -1,0 +1,2 @@
+# Scripts de shell sempre com fim de linha LF (o container e Linux).
+*.sh text eol=lf
