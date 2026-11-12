@@ -27,6 +27,11 @@ ROTULOS = {
     "CNPJ": "CNPJ",
     "PROCESSO": "Número de processo",
     "ENDERECO": "CEP",
+    "CNH": "CNH",
+    "CARTAO": "Cartão de pagamento",
+    # Trecho acrescentado a mao na revisao das tarjas. Fica fora de
+    # NIVEIS_PADRAO: nao e detectado, entao nao entra na politica da equipe.
+    "MANUAL": "Trecho marcado na revisão",
 }
 
 NIVEL_MINIMO = 1

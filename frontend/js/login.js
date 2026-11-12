@@ -78,12 +78,12 @@ document.getElementById('loginForm').addEventListener('submit', async (event) =>
         } else {
             await loadingManager.failPuzzle();
             loadingManager.hide();
-            alert(data.detail || 'Erro ao fazer login.');
+            avisar(data.detail || 'Não foi possível entrar.');
         }
     } catch (error) {
         await loadingManager.failPuzzle();
         loadingManager.hide();
-        alert('Erro ao se comunicar com o servidor.');
+        avisar('Não foi possível falar com o servidor. Tente de novo em instantes.');
         console.error(error);
     }
 })

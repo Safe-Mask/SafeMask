@@ -307,14 +307,14 @@ docsList.addEventListener('click', (event) => {
             .then(renderDocumentDetails)
             .catch((error) => {
                 console.error(error);
-                alert('Nao foi possivel carregar os detalhes do documento.');
+                avisar('Não foi possível carregar os detalhes do documento.');
             });
     }
 });
 
 undoRedactionBtn.addEventListener('click', () => {
     if (!state.selectedDoc) {
-        alert('Selecione um documento para descensurar.');
+        avisar('Selecione um documento para descensurar.', 'info');
         return;
     }
     window.location.href = `descensura.html?doc_id=${state.selectedDoc.doc_id}`;
@@ -337,12 +337,15 @@ function mostrarAviso(mensagem, erro = false) {
 
 async function excluirDocumento(documento) {
     // Confirmacao explicita: a exclusao e definitiva e alcanca o original.
-    const confirmado = window.confirm(
-        `Excluir "${documento.nome_original}" da equipe ${documento.equipe?.nome || ''}?\n\n`
-        + 'O documento, os dados sensíveis detectados e os arquivos (original e versão com tarja) '
-        + 'serão apagados de forma definitiva. Cópias enviadas a outras equipes continuam com elas. '
-        + 'A exclusão fica registrada na auditoria.\n\nEsta ação não pode ser desfeita.'
-    );
+    const confirmado = await confirmar({
+        titulo: `Excluir "${documento.nome_original}"?`,
+        mensagem: `Da equipe ${documento.equipe?.nome || ''}: o documento, os dados sensíveis detectados e os arquivos `
+            + '(original e versão com tarja) serão apagados de forma definitiva. Cópias enviadas a outras '
+            + 'equipes continuam com elas. A exclusão fica registrada na auditoria. Esta ação não pode ser desfeita.',
+        confirmar: 'Excluir documento',
+        cancelar: 'Cancelar',
+        perigo: true,
+    });
     if (!confirmado) {
         return;
     }

@@ -127,7 +127,7 @@ async function loadDocument() {
         }
 
         if (response.status === 404) {
-            alert('Você não tem permissão para acessar este documento.');
+            avisarDepois('Você não tem permissão para acessar este documento.');
             window.location.href = 'censurados.html';
             return;
         }
@@ -226,7 +226,7 @@ startRedactionBtn.addEventListener('click', async () => {
     }
 
     if (!podeDescensurar) {
-        alert('Seu cargo não permite acessar a versão original do documento.');
+        avisar('Seu cargo não permite acessar a versão original do documento.');
         return;
     }
 
@@ -241,7 +241,7 @@ startRedactionBtn.addEventListener('click', async () => {
         });
 
         if (response.status === 403) {
-            alert('Seu cargo não permite acessar a versão original do documento.');
+            avisar('Seu cargo não permite acessar a versão original do documento.');
             return;
         }
 
@@ -266,7 +266,7 @@ startRedactionBtn.addEventListener('click', async () => {
         URL.revokeObjectURL(url);
     } catch (error) {
         console.error(error);
-        alert('Não foi possível baixar a descensura do documento.');
+        avisar('Não foi possível baixar a descensura do documento.');
     } finally {
         startRedactionBtn.disabled = !podeDescensurar;
         startRedactionBtn.textContent = !podeDescensurar ? 'Sem permissão para descensura'

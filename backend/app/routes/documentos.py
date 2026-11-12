@@ -1,15 +1,17 @@
 import hashlib
 import logging
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.core import armazenamento, fila, politica_niveis, tenancy
+from app.core import armazenamento, fila, politica_niveis, revisao, tenancy
 from app.core.audit import (
     ACAO_EXCLUIR_DOCUMENTO,
     ACAO_LISTAR_DOCUMENTOS,
+    ACAO_REVISAR_TARJAS,
     ACAO_UPLOAD,
     ACAO_UPLOAD_CENSURADO,
     ACAO_VER_CENSURADO,
@@ -63,10 +65,14 @@ async def upload_documento(
     titulo: str = Form(...),
     nivel_seguranca: int = Form(1),
     teams: str = Form(...),  # JSON array de team_ids como string
+    ignorar: str = Form("[]"),  # revisao das tarjas: ids desmarcados
+    trechos_extras: str = Form("[]"),  # revisao das tarjas: textos a cobrir
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
 ):
     team_ids = normalizar_team_ids(teams)
+    ids_ignorados = revisao.ler_ignorados(ignorar)
+    trechos = revisao.ler_trechos(trechos_extras)
 
     if nivel_seguranca < 1 or nivel_seguranca > 4:
         raise HTTPException(
@@ -110,6 +116,8 @@ async def upload_documento(
             dir_censurado=CENSURADOS_DIR,
             # Nivel exigido de cada tipo de dado: politica da equipe de destino.
             niveis=niveis_principal,
+            ignorar=ids_ignorados,
+            trechos_extras=trechos,
         )
 
         # Compartilha o mesmo documento com as demais equipes selecionadas.
@@ -151,9 +159,19 @@ async def upload_documento(
         db.commit()
         # Um evento por documento criado: cada equipe de destino encontra o
         # seu no proprio historico.
+        # Ajustes da revisao: um evento por documento, so com contagens.
+        houve_revisao = bool(resultado.get("ignorados") or trechos)
+        detalhe = revisao.detalhe_da_revisao(
+            resultado.get("ignorados", 0), len(trechos), resultado.get("trechos_nao_encontrados", 0),
+        )
         for doc_criado in [db.get(Documento, resultado["doc_id"]), *docs_compartilhados]:
             if doc_criado is not None:
                 registrar(db, request, usuario_atual.user_id, ACAO_UPLOAD, documento=doc_criado)
+                if houve_revisao:
+                    registrar(
+                        db, request, usuario_atual.user_id, ACAO_REVISAR_TARJAS,
+                        documento=doc_criado, detalhe=detalhe,
+                    )
 
         return {
             "mensagem": "Documento processado e censurado com sucesso.",
@@ -161,7 +179,9 @@ async def upload_documento(
             "hash": resultado["hash"],
             "total_sensiveis": resultado["total_sensiveis"],
             "cpf_censurados": resultado["cpf_censurados"],
-            "status": resultado["status"]
+            "status": resultado["status"],
+            "desmarcados": resultado.get("ignorados", 0),
+            "trechos_nao_encontrados": resultado.get("trechos_nao_encontrados", 0),
         }
 
     except OcrIndisponivel as e:
@@ -179,6 +199,52 @@ async def upload_documento(
             detail="Erro ao processar documento."
         ) from e
 
+
+
+@router.post("/analisar")
+async def analisar_documento(
+    file: UploadFile = File(...),
+    usuario_atual: Usuario = Depends(get_current_user),
+):
+    """Mostra o que o upload vai tarjar, sem gravar nada (revisao das tarjas).
+
+    Mesmas recusas do upload. Cada achado sai MASCARADO, com o id que o envio
+    usa para desmarca-lo. O PDF fica numa pasta temporaria so durante a
+    analise: nada vai para o banco, para a pasta dos arquivos ou para a
+    auditoria. O evento e o do upload, quando o documento e salvo.
+    """
+    conteudo, _ = await ler_e_validar_upload(file, Path(file.filename or ""))
+    with tempfile.TemporaryDirectory(prefix="safemask-analise-") as pasta:
+        caminho = Path(pasta) / "analise.pdf"
+        caminho.write_bytes(conteudo)
+        try:
+            achados = get_scanner().detectar_achados(str(caminho))
+        except OcrIndisponivel as e:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+        except Exception as e:
+            logger.error("Erro ao analisar documento: %s", e)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Erro ao analisar o documento.",
+            ) from e
+    return {
+        "achados": [
+            {
+                "id": a["id"],
+                "tipo": a["tipo"],
+                "rotulo": politica_niveis.ROTULOS.get(a["tipo"], a["tipo"]),
+                "pagina": a["pagina"],
+                "valor_mascarado": revisao.mascarar(a["valor"], a["tipo"]),
+                "ocorrencias": a["ocorrencias"],
+            }
+            for a in achados
+        ],
+        "limites": {
+            "trechos": revisao.MAX_TRECHOS,
+            "tamanho_min": revisao.TAMANHO_MIN_TRECHO,
+            "tamanho_max": revisao.TAMANHO_MAX_TRECHO,
+        },
+    }
 
 def nome_para_download(nome: str, extensao: str | None) -> str:
     """Nome do arquivo entregue: `<titulo>.<extensao>`.

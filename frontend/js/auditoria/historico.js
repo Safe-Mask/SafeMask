@@ -26,6 +26,7 @@ const NIVEL_MIN_AUDITORIA = 2;
 
 // Acoes que aparecem na trilha das equipes (eventos com equipe).
 const ACOES = {
+    revisar_tarjas: 'Revisou as tarjas',
     upload_documento: 'Enviou documento',
     upload_documento_censurado: 'Salvou versão censurada',
     ver_censurado: 'Visualizou censurado',
@@ -182,7 +183,7 @@ function renderEvents(data) {
                     <td class="audit-when" data-label="Data e hora"><span>${escapeHtml(formatDate(evento.data_hora))}</span></td>
                     <td data-label="Usuário"><span>${escapeHtml(evento.usuario?.nome || '-')}</span></td>
                     <td data-label="Cargo"><span>${escapeHtml(evento.cargo || 'fora da equipe')}</span></td>
-                    <td data-label="Ação"><span>${escapeHtml(ACOES[evento.acao] || evento.acao)}</span></td>
+                    <td data-label="Ação"><span>${escapeHtml(ACOES[evento.acao] || evento.acao)}${descreverRevisao(evento)}</span></td>
                     <td data-label="Resultado"><span class="audit-result ${negado ? 'negado' : 'sucesso'}">${negado ? '⚠ Negado' : '✓ Sucesso'}</span></td>
                     <td data-label="Documento ou membro">${describeTarget(evento)}</td>
                     <td data-label="Equipe"><span>${escapeHtml(evento.equipe?.nome || '-')}</span></td>
@@ -327,3 +328,17 @@ async function init() {
 }
 
 init();
+
+// Revisao das tarjas: o detalhe so tem contagens, mostradas em texto legivel.
+const PARTES_DA_REVISAO = { desmarcados: 'desmarcado(s)', acrescentados: 'acrescentado(s)', nao_encontrados: 'não encontrado(s)' };
+
+function descreverRevisao(evento) {
+    if (evento.acao !== 'revisar_tarjas' || !evento.detalhe) {
+        return '';
+    }
+    const partes = evento.detalhe.split(';').map((parte) => {
+        const [chave, valor] = parte.split('=').map((s) => (s || '').trim());
+        return PARTES_DA_REVISAO[chave] ? `${valor} ${PARTES_DA_REVISAO[chave]}` : parte.trim();
+    });
+    return `<span class="audit-sub">${escapeHtml(partes.join(', '))}</span>`;
+}

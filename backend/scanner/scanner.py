@@ -21,10 +21,14 @@ from scanner.coordenadas import (
     para_pontos,
 )
 from scanner.patterns import (
+    CARTAO_PATTERN,
+    CEP_PATTERN,
     CID10_PATTERN,
+    CNH_PATTERN,
     CNS_PATTERN,
     CPF_PATTERN,
     CRM_PATTERN,
+    DATA_NASC_PATTERN,
     EMAIL_PATTERN,
     PHONE_DETECTION_PATTERN,
     RG_PATTERN,
@@ -183,13 +187,22 @@ def entidades_sem_mapa(model_folder: str = None) -> set:
             if e and e not in Known}
 
 
-def detectar_datas() -> bool:
-    """Datas por regex: desligadas, a menos que SAFEMASK_DETECTAR_DATAS=1.
+# Trecho acrescentado a mao na revisao das tarjas. Nivel 3 por padrao: a
+# pessoa marcou porque e sensivel, e a parcial so o revela ao lider.
+TIPO_MANUAL = "MANUAL"
+NIVEL_MANUAL = 3
 
-    O padrao de DATA_NASC casa qualquer data dd/mm/aaaa, e em documento
-    oficial a vigencia, a assinatura e a publicacao eram tarjadas como data
-    de nascimento. Fica desligado ate a deteccao pelo contexto ("nascido em",
-    "data de nascimento"). O nivel continua em `configuracoes_regex()`.
+# Modo antigo das datas: toda data dd/mm/aaaa, so com SAFEMASK_DETECTAR_DATAS=1.
+DATA_ANTIGA_PATTERN = r'\b\d{2}/\d{2}/\d{4}\b'
+
+
+def detectar_datas() -> bool:
+    """True quando SAFEMASK_DETECTAR_DATAS=1 liga o modo antigo (toda data).
+
+    O padrao antigo casava qualquer data dd/mm/aaaa, e em documento oficial a
+    vigencia, a assinatura e a publicacao eram tarjadas como data de
+    nascimento. Sem a variavel, vale a deteccao pelo contexto
+    (DATA_NASC_PATTERN), conferida por `data_nascimento_valida`.
     """
     return os.getenv("SAFEMASK_DETECTAR_DATAS", "").strip().lower() in {"1", "true", "sim"}
 
@@ -203,19 +216,29 @@ def configuracoes_regex() -> dict:
     """
     return {
         "CPF": {"pattern": CPF_PATTERN.pattern, "level": 3},
-        "CNPJ": {"pattern": r'\b\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}\b', "level": 1},
+        # CNPJ numerico ou alfanumerico: letras maiusculas nos 12 primeiros
+        # caracteres, DV sempre numerico (validadores.cnpj_valido).
+        "CNPJ": {"pattern": r'\b[0-9A-Z]{2}\.[0-9A-Z]{3}\.[0-9A-Z]{3}/[0-9A-Z]{4}-\d{2}\b', "level": 1},
         "EMAIL": {"pattern": EMAIL_PATTERN.pattern, "level": 2},
         "TELEFONE": {"pattern": PHONE_DETECTION_PATTERN.pattern, "level": 2},
         "CNS": {"pattern": CNS_PATTERN.pattern, "level": 3},
         "CID10": {"pattern": CID10_PATTERN.pattern, "level": 3},
         "CRM": {"pattern": CRM_PATTERN.pattern, "level": 3},
         "RG": {"pattern": RG_PATTERN.pattern, "level": 3},
+        # CNH (DV do Denatran) e cartao (Luhn), conferidos em validadores (#83).
+        # Nivel 3, o mesmo do CPF e do CNH que o NER ja emite.
+        "CNH": {"pattern": CNH_PATTERN.pattern, "level": 3},
+        "CARTAO": {"pattern": CARTAO_PATTERN.pattern, "level": 3},
         "PROCESSO": {"pattern": r'\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b|\b\d{3}/\d\.\d{2}\.\d{7}-\d\b', "level": 1},
-        "DATA_NASC": {"pattern": r'\b\d{2}/\d{2}/\d{4}\b', "level": 2},
-        # CEP canonico 00000-000. O NER deveria achar, mas na pratica nao emite
-        # a entidade CEP nesta versao do modelo; sem regex o CEP ficava visivel.
-        # `(?!\d)` exclui "98765-432..." (parte de um telefone com DDD).
-        "ENDERECO": {"pattern": r'(?<!\d)\d{5}-\d{3}(?!\d)', "level": 1},
+        # Pelo contexto; o modo antigo (toda data) so com a variavel.
+        "DATA_NASC": {
+            "pattern": DATA_ANTIGA_PATTERN if detectar_datas() else DATA_NASC_PATTERN.pattern,
+            "level": 2,
+        },
+        # CEP: 00000-000, 00.000-000 ou 8 digitos depois de "CEP" (#83). O NER
+        # deveria achar, mas na pratica nao emite a entidade CEP nesta versao
+        # do modelo; sem regex o CEP ficava visivel. Continua no tipo ENDERECO.
+        "ENDERECO": {"pattern": CEP_PATTERN.pattern, "level": 1},
     }
 
 
@@ -261,8 +284,6 @@ class DocumentScanner:
             )
 
         self.regex_config = configuracoes_regex()
-        if not detectar_datas():
-            del self.regex_config["DATA_NASC"]
 
     def _salvar_dado(self, db, doc_id, page, page_num, texto_secreto, entity_type, level, usando_ocr=False, ocr_data=None):
         """Persiste um dado sensivel e devolve (salvos, coordenadas).
@@ -378,7 +399,8 @@ class DocumentScanner:
     def scan_and_save(self, file_path: str, db: Session, user_team_id: int,
                       nome_original: str = None, nivel_seguranca: int = 1,
                       dir_original: Path = None, dir_censurado: Path = None,
-                      niveis: dict | None = None, documento: "Documento" = None) -> dict:
+                      niveis: dict | None = None, documento: "Documento" = None,
+                      ignorar: set | None = None, trechos_extras: list | None = None) -> dict:
         """Escaneia e persiste, garantindo que o Documento nao fique pendurado.
 
         Um PDF corrompido, um tesseract ausente ou um erro de OCR no meio do
@@ -396,7 +418,8 @@ class DocumentScanner:
         try:
             return self._scan(file_path, db, user_team_id, nome_original,
                               nivel_seguranca, dir_original, dir_censurado, niveis,
-                              documento=documento)
+                              documento=documento, ignorar=ignorar,
+                              trechos_extras=trechos_extras)
         except Exception:
             if documento is not None:
                 documento.status_processamento = "ERRO"
@@ -430,10 +453,16 @@ class DocumentScanner:
     def _scan(self, file_path: str, db: Session, user_team_id: int,
               nome_original: str = None, nivel_seguranca: int = 1,
               dir_original: Path = None, dir_censurado: Path = None,
-              niveis: dict | None = None, documento: "Documento" = None) -> dict:
+              niveis: dict | None = None, documento: "Documento" = None,
+              ignorar: set | None = None, trechos_extras: list | None = None) -> dict:
         # Politica da equipe de destino (tipo -> nivel exigido); tipo ausente
         # fica com o nivel padrao de configuracoes_regex() ou do mapa do NER.
         niveis = niveis or {}
+        # Revisao das tarjas: ids desmarcados e textos acrescentados (MANUAL).
+        ignorar = set(ignorar or ())
+        trechos_extras = [t for t in (trechos_extras or []) if t]
+        ignorados = 0
+        trechos_achados = set()
         if not os.path.exists(file_path):
             raise FileNotFoundError(f"Arquivo não encontrado: {file_path}")
 
@@ -492,45 +521,57 @@ class DocumentScanner:
 
                 segredos_encontrados = []
 
-                for tipo, config in self.regex_config.items():
-                    for match in re.finditer(config['pattern'], texto):
-                        segredo = valor_detectado(match)
-                        # CPF e CNPJ: o formato bateu, mas so e dado pessoal se
-                        # o digito verificador conferir (evita tarjar numeros
-                        # de exemplo, sequencias repetidas e outros codigos).
-                        validador = VALIDADORES.get(tipo)
-                        if validador is not None and not validador(segredo):
-                            logger.info(f"{tipo} com digito verificador incorreto ignorado (pagina {page_num})")
-                            continue
-                        if segredo not in segredos_encontrados:
-                            count, coords = self._salvar_dado(
-                                db, novo_doc.doc_id, page, page_num,
-                                segredo, tipo, niveis.get(tipo, config['level']),
-                                usando_ocr, ocr_data
-                            )
-                            sensitive_count += count
-                            cpf_censored_count = increment_cpf_count(
-                                cpf_censored_count,
-                                tipo,
-                                count,
-                            )
-                            segredos_encontrados.append(segredo)
+                for achado_id, tipo, segredo in self._achados_da_pagina(texto, page_num):
+                    # Desmarcado na revisao: nao e tarjado nem gravado, mas
+                    # continua fora do texto enviado ao NER.
+                    segredos_encontrados.append(segredo)
+                    if achado_id in ignorar:
+                        ignorados += 1
+                        continue
+                    count, coords = self._salvar_dado(
+                        db, novo_doc.doc_id, page, page_num,
+                        segredo, tipo, niveis.get(tipo, self.regex_config[tipo]['level']),
+                        usando_ocr, ocr_data
+                    )
+                    sensitive_count += count
+                    cpf_censored_count = increment_cpf_count(
+                        cpf_censored_count,
+                        tipo,
+                        count,
+                    )
 
-                            structured_mask = (
-                                mask_cpf(segredo)
-                                if tipo == "CPF"
-                                else mask_phone(segredo)
-                                if tipo == "TELEFONE"
-                                else None
-                            )
-                            espaco = ESPACO_PIXEL if usando_ocr else ESPACO_PDF
-                            for c in coords:
-                                self._desenhar_caixa_pil(
-                                    img_pagina,
-                                    c,
-                                    structured_mask=structured_mask,
-                                    espaco=espaco,
-                                )
+                    structured_mask = (
+                        mask_cpf(segredo)
+                        if tipo == "CPF"
+                        else mask_phone(segredo)
+                        if tipo == "TELEFONE"
+                        else None
+                    )
+                    espaco = ESPACO_PIXEL if usando_ocr else ESPACO_PDF
+                    for c in coords:
+                        self._desenhar_caixa_pil(
+                            img_pagina,
+                            c,
+                            structured_mask=structured_mask,
+                            espaco=espaco,
+                        )
+
+                # Trechos acrescentados na revisao: cobertos onde aparecerem,
+                # com o nivel mais alto da politica (so o lider ve na parcial).
+                for trecho in trechos_extras:
+                    count, coords = self._salvar_dado(
+                        db, novo_doc.doc_id, page, page_num,
+                        trecho, TIPO_MANUAL, niveis.get(TIPO_MANUAL, NIVEL_MANUAL),
+                        usando_ocr, ocr_data
+                    )
+                    if not count:
+                        continue
+                    trechos_achados.add(trecho)
+                    segredos_encontrados.append(trecho)
+                    sensitive_count += count
+                    espaco = ESPACO_PIXEL if usando_ocr else ESPACO_PDF
+                    for c in coords:
+                        self._desenhar_caixa_pil(img_pagina, c, structured_mask=None, espaco=espaco)
 
                 texto_limpo = texto
                 for segredo in segredos_encontrados:
@@ -622,8 +663,75 @@ class DocumentScanner:
             "caminho_censurado": novo_doc.caminho_storage,
             "total_sensiveis": sensitive_count,
             "cpf_censurados": cpf_censored_count,
-            "status": novo_doc.status_processamento
+            "status": novo_doc.status_processamento,
+            "ignorados": ignorados,
+            "trechos_nao_encontrados": len(set(trechos_extras) - trechos_achados),
         }
+
+    def _achados_da_pagina(self, texto: str, page_num: int) -> list[tuple[str, str, str]]:
+        """Dados achados pelos padroes numa pagina, na ordem de deteccao.
+
+        Cada item: (id, tipo, valor). O id (`p<pagina>-<tipo>-<n>`) e estavel
+        para o mesmo arquivo e a mesma configuracao: a revisao das tarjas
+        devolve os ids desmarcados, e o upload refaz a deteccao e pula esses.
+        Valor repetido na pagina vira um achado so, como antes.
+        """
+        achados = []
+        vistos = []
+        contagem = {}
+        for tipo, config in self.regex_config.items():
+            for match in re.finditer(config['pattern'], texto):
+                segredo = valor_detectado(match)
+                # CPF, CNPJ, CNH, cartao e data: o formato bateu, mas so e dado
+                # pessoal se a validacao conferir (evita tarjar numeros de
+                # exemplo, sequencias repetidas e outros codigos).
+                validador = VALIDADORES.get(tipo)
+                if validador is not None and not validador(segredo):
+                    logger.info(f"{tipo} com validacao incorreta ignorado (pagina {page_num})")
+                    continue
+                if segredo in vistos:
+                    continue
+                vistos.append(segredo)
+                contagem[tipo] = contagem.get(tipo, 0) + 1
+                achados.append((f"p{page_num}-{tipo}-{contagem[tipo]}", tipo, segredo))
+        return achados
+
+    @staticmethod
+    def _contar_ocorrencias(page, valor: str, usando_ocr: bool, ocr_data) -> int:
+        """Quantas vezes o valor aparece na pagina, sem gravar nada."""
+        if usando_ocr and ocr_data:
+            palavras = {p for p in valor.split() if len(p) > 2}
+            return sum(1 for w in ocr_data['text'] if w.strip(".,;:!?()[]") in palavras)
+        return len(page.search(re.escape(valor)))
+
+    def detectar_achados(self, file_path: str) -> list[dict]:
+        """O que o upload tarjaria, sem gravar nada (revisao das tarjas).
+
+        Mesmo caminho do scan (texto ou OCR, padroes e validacoes), sem banco
+        e sem arquivo de saida. Devolve o valor achado: quem chama decide como
+        mostrar (a rota mascara antes de responder).
+        """
+        achados = []
+        with pdfplumber.open(file_path) as pdf:
+            for page_num, page in enumerate(pdf.pages):
+                texto = page.extract_text()
+                usando_ocr, ocr_data = False, None
+                if not texto or len(texto.strip()) < 20:
+                    usando_ocr = True
+                    texto, ocr_data = _ocr(page.to_image(resolution=150).original)
+                if not texto:
+                    continue
+                for achado_id, tipo, valor in self._achados_da_pagina(texto, page_num):
+                    ocorrencias = self._contar_ocorrencias(page, valor, usando_ocr, ocr_data)
+                    if ocorrencias:
+                        achados.append({
+                            "id": achado_id,
+                            "tipo": tipo,
+                            "pagina": page_num + 1,
+                            "valor": valor,
+                            "ocorrencias": ocorrencias,
+                        })
+        return achados
 
     def gerar_pdf_parcial(self, file_path: str, itens_para_cobrir: dict,
                           dir_destino: Path, nome_saida: str) -> Path:

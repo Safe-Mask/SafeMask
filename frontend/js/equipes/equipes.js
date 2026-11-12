@@ -337,7 +337,7 @@ async function handleCreateTeam(event) {
         }
     } catch (error) {
         console.error(error);
-        alert(error.message || 'Falha ao criar equipe.');
+        avisar(error.message || 'Não foi possível criar a equipe.');
     }
 }
 

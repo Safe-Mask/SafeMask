@@ -161,12 +161,12 @@ document.getElementById('registerForm').addEventListener('submit', async (event)
 
     // Validações finais
     if (!emailInput.classList.contains('valid')) {
-        alert('Por favor, use um email válido e disponível.');
+        avisar('Use um e-mail válido e que ainda não esteja cadastrado.');
         return;
     }
 
     if (!senhaInput.classList.contains('valid')) {
-        alert('Por favor, use uma senha forte.');
+        avisar('Use uma senha forte: veja os requisitos abaixo do campo.');
         return;
     }
 
@@ -206,13 +206,13 @@ document.getElementById('registerForm').addEventListener('submit', async (event)
         } else {
             await loadingManager.failPuzzle();
             loadingManager.hide();
-            alert(data.detail || 'Erro ao realizar o cadastro.');
+            avisarDepois(data.detail || 'Não foi possível concluir o cadastro.');
             window.location.href = 'login.html';
         }
     } catch (error) {
         await loadingManager.failPuzzle();
         loadingManager.hide();
-        alert('Erro ao se comunicar com o servidor.');
+        avisarDepois('Não foi possível falar com o servidor. Tente de novo em instantes.');
         window.location.href = 'login.html';
         console.error(error);
     }

@@ -1,8 +1,10 @@
-"""Deteccao de datas desligada por padrao.
+"""Datas de documento nao sao tarjadas.
 
-O padrao de DATA_NASC casava qualquer data dd/mm/aaaa: vigencia, assinatura e
-publicacao de documentos oficiais eram tarjadas como data de nascimento.
-SAFEMASK_DETECTAR_DATAS=1 religa. Trazido do PI-III (CAMPUSCEUB/SafeMask#177).
+O padrao antigo de DATA_NASC casava qualquer data dd/mm/aaaa: vigencia,
+assinatura e publicacao de documentos oficiais eram tarjadas como data de
+nascimento (PI-III #177). Desde a deteccao pelo contexto (PI-III #178), a data
+so conta depois de um rotulo de nascimento; SAFEMASK_DETECTAR_DATAS=1 religa
+o modo antigo.
 """
 
 import pytest
@@ -10,17 +12,21 @@ import pytest
 from scanner.scanner import DocumentScanner, configuracoes_regex, detectar_datas
 
 
-def test_scanner_nao_procura_datas_por_padrao(monkeypatch):
+def test_por_padrao_a_data_depende_do_rotulo(monkeypatch):
+    from scanner.patterns import DATA_NASC_PATTERN
+
     monkeypatch.delenv("SAFEMASK_DETECTAR_DATAS", raising=False)
 
-    assert "DATA_NASC" not in DocumentScanner().regex_config
+    assert DocumentScanner().regex_config["DATA_NASC"]["pattern"] == DATA_NASC_PATTERN.pattern
 
 
 @pytest.mark.parametrize("valor", ["1", "true", "sim", " SIM "])
-def test_variavel_religa_as_datas(monkeypatch, valor):
+def test_variavel_religa_o_modo_antigo(monkeypatch, valor):
+    from scanner.scanner import DATA_ANTIGA_PATTERN
+
     monkeypatch.setenv("SAFEMASK_DETECTAR_DATAS", valor)
 
-    assert "DATA_NASC" in DocumentScanner().regex_config
+    assert DocumentScanner().regex_config["DATA_NASC"]["pattern"] == DATA_ANTIGA_PATTERN
 
 
 @pytest.mark.parametrize("valor", ["", "0", "nao", "false"])

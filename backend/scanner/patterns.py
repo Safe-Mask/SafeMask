@@ -40,6 +40,46 @@ RG_PATTERN = re.compile(
 )
 
 
+# Data de nascimento pelo contexto: so a data depois de um rotulo de
+# nascimento ("data de nascimento", "nascido(a) em", "DN:", "dt. nasc.",
+# "nasc."). A data de vigencia, assinatura ou publicacao nao tem rotulo e
+# fica de fora. O grupo `valor` e so a data: a tarja nao cobre o rotulo.
+DATA_NASC_PATTERN = re.compile(
+    r"(?i:\bnascid[oa]\s+(?:em|no\s+dia)|\bdata\s+de\s+nascimento|\bdt\.?\s*(?:de\s+)?nasc(?:imento)?\.?"
+    r"|\bnasc\.|\bd\.?n\.?(?=\s*:))"
+    r"\s*[:\-]?\s*(?:em\s+)?"
+    r"(?P<valor>\d{1,2}[/.\-]\d{1,2}[/.\-]\d{4}(?!\d)"
+    r"|\d{1,2}\s+de\s+(?i:janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+de\s+\d{4})"
+)
+
+# CEP (#83). Formato 00000-000 ou 00.000-000, ou 8 digitos seguidos depois
+# do rotulo "CEP". Sem rotulo, 8 digitos seguidos nao sao CEP (protocolo,
+# matricula). As travas impedem casar trecho de telefone (99876-5432 tem 4
+# digitos depois do traco), de processo e de numero maior.
+CEP_PATTERN = re.compile(
+    r"(?P<valor>(?<![\d.\-/])(?:\d{5}|\d{2}\.\d{3})-\d{3}(?![\d\-/])(?![.,]\d))"
+    r"|(?i:\bCEP\b)\s*(?:n[º°o]\.?\s*)?[:\-]?\s*(?P<valor_rotulado>(?<![\d.])\d{8}(?!\d)(?![.,]\d))"
+)
+
+# CNH (#83). Tem 11 digitos, como o CPF; para nao confundir, so vale depois
+# de um rotulo de habilitacao, e o digito verificador e conferido
+# (validadores.cnh_valida). O CPF continua exigindo pontos e traco.
+CNH_PATTERN = re.compile(
+    r"(?i:\bCNH\b|habilita[çc][ãa]o\b)[^\d\n]{0,25}?"
+    r"(?P<valor>(?<![\d.])\d{11}(?!\d)(?![.,]\d))"
+)
+
+# Cartao de pagamento (#83). Grupos 4-4-4-4 (ou 4-6-5 da Amex) com o mesmo
+# separador, ou 13 a 19 digitos seguidos depois de "cartao". Sempre conferido
+# pelo algoritmo de Luhn (validadores.cartao_valido): codigo de barras e
+# linha digitavel no mesmo formato quase nunca passam.
+CARTAO_PATTERN = re.compile(
+    r"(?P<valor>(?<![\d.\-])(?:\d{4}(?P<sep>[ \-])\d{4}(?P=sep)\d{4}(?P=sep)\d{4}"
+    r"|\d{4}(?P<sep_amex>[ \-])\d{6}(?P=sep_amex)\d{5})(?![\d\-]))"
+    r"|(?i:\bcart[ãa]o\b)[^\d\n]{0,25}?(?P<valor_rotulado>(?<![\d.])\d{13,19}(?!\d)(?![.,]\d))"
+)
+
+
 def valor_detectado(match: re.Match) -> str:
     """Valor a tarjar: o grupo `valor...` que casou, ou o trecho inteiro."""
     grupos = [v for nome, v in match.groupdict().items() if nome.startswith("valor") and v]

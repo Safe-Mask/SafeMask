@@ -9,7 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../../css/dashboard.css">
     <link rel="stylesheet" href="../../css/brand.css">
-    <link rel="stylesheet" href="../../css/documentos/censurar.css">
+    <link rel="stylesheet" href="../../css/documentos/censurar.css?v=2">
+    <link rel="stylesheet" href="../../css/avisos.css">
 </head>
 <body>
     <div id="appShell"></div>
@@ -132,10 +133,31 @@
                             <div class="preview-footer">
                                 <div>
                                     <span class="highlight-label">Estado</span>
-                                    <strong>Pronto para revisao manual</strong>
+                                    <strong>Aguardando envio</strong>
                                 </div>
-                                <p>Quando a IA for integrada, os dados sensiveis detectados vao aparecer aqui como marcacoes editaveis.</p>
+                                <p>Revise abaixo o que será tarjado. Nada é gravado antes de você clicar em enviar.</p>
                             </div>
+
+                            <section class="findings-review" id="findingsReview" aria-labelledby="findingsTitle">
+                                <div class="panel-header">
+                                    <h3 id="findingsTitle">Dados que serão tarjados</h3>
+                                    <span class="panel-action" id="findingsCount">analisando...</span>
+                                </div>
+                                <p class="panel-subtitle">Desmarque o que não é dado pessoal. Os valores aparecem mascarados: o dado inteiro não sai do servidor.</p>
+                                <p class="findings-status" id="findingsStatus" role="status">Analisando o documento...</p>
+                                <ul class="findings-list" id="findingsList"></ul>
+
+                                <div class="extra-snippets">
+                                    <label class="field field-full" for="extraSnippetInput">
+                                        <span>Acrescentar um trecho a cobrir (por exemplo, um nome)</span>
+                                    </label>
+                                    <div class="extra-input-row">
+                                        <input type="text" id="extraSnippetInput" maxlength="120" placeholder="Digite exatamente como está no documento" autocomplete="off">
+                                        <button type="button" class="ghost-button" id="addSnippetBtn">Acrescentar</button>
+                                    </div>
+                                    <ul class="extra-list" id="extraSnippetList"></ul>
+                                </div>
+                            </section>
 
                             <div class="file-summary" id="fileSummaryReview">
                                 <div class="empty-state small">
@@ -212,7 +234,8 @@
     <script src="../../js/session.js"></script>
     <script src="../../js/app-shell.js"></script>
     <script src="../../js/config.js"></script>
-    <script src="../../js/documentos/censurar.js"></script>
+    <script src="../../js/avisos.js"></script>
+    <script src="../../js/documentos/censurar.js?v=3"></script>
     <script src="../../js/brand.js"></script>
 </body>
 </html>

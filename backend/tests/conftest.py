@@ -290,7 +290,7 @@ class ScannerFalso:
 
     def scan_and_save(self, file_path, db, user_team_id, nome_original,
                       nivel_seguranca, dir_original, dir_censurado, niveis=None,
-                      documento=None):
+                      documento=None, ignorar=None, trechos_extras=None):
         from pathlib import Path
 
         self.chamadas += 1

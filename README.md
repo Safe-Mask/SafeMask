@@ -359,6 +359,23 @@ O arquivo é conferido pelo conteúdo antes de qualquer gravação (`backend/app
 | PDF protegido por senha | 400 |
 | Acima de `MAX_UPLOAD_BYTES` (padrão 20 MB) | 413 |
 
+### Revisão das tarjas antes de salvar
+
+Depois de escolher o arquivo, a tela **Novo Upload** chama `POST /documentos/analisar`, que roda a mesma detecção do envio **sem gravar nada** e devolve os dados encontrados **mascarados** (só a forma e os 2 últimos caracteres; 4 no cartão). A pessoa desmarca o que não é dado pessoal e acrescenta trechos que a detecção não pegou, como um nome (até 20, de 3 a 120 caracteres, tipo `MANUAL`, nível 3). O envio (`POST /documentos/upload`, campos `ignorar` e `trechos_extras`) aplica os ajustes, e a trilha de auditoria ganha o evento `revisar_tarjas`, com o detalhe só de contagens. O envio em lote (`/documentos/upload/lote`) continua sem revisão.
+
+### O que a detecção reconhece
+
+| Tipo | Como | Nível padrão |
+| --- | --- | --- |
+| CPF, CNPJ (inclusive o alfanumérico da IN RFB 2.229/2024) | formato e dígito verificador | 3 e 1 |
+| CNH | 11 dígitos depois de "CNH" ou "habilitação", com dígito verificador | 3 |
+| Cartão de pagamento | grupos 4-4-4-4 (ou 4-6-5) ou 13 a 19 dígitos depois de "cartão", conferido pelo algoritmo de Luhn | 3 |
+| CEP (tipo `ENDERECO`) | `00000-000`, `00.000-000` ou 8 dígitos depois de "CEP" | 1 |
+| Data de nascimento | só a data depois de "data de nascimento", "nascido(a) em", "DN:", "nasc."; a data precisa existir e não estar no futuro. `SAFEMASK_DETECTAR_DATAS=1` volta ao modo antigo (toda data) | 2 |
+| RG, telefone, e-mail, processo, CNS, CID-10, CRM | como antes | — |
+
+As telas usam avisos e janelas de confirmação do próprio site (`frontend/js/avisos.js`), e não as caixas do navegador (`alert`/`confirm`).
+
 ---
 
 ## 💻 Desenvolvimento
