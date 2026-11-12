@@ -3,13 +3,25 @@ import logging
 import tempfile
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+    status,
+)
 from sqlalchemy.orm import Session
 
-from app.core import armazenamento, fila, politica_niveis, revisao, tenancy
+from app.core import armazenamento, comprovante, fila, politica_niveis, revisao, tenancy
 from app.core.audit import (
     ACAO_EXCLUIR_DOCUMENTO,
+    ACAO_GERAR_COMPROVANTE,
     ACAO_LISTAR_DOCUMENTOS,
     ACAO_REVISAR_TARJAS,
     ACAO_UPLOAD,
@@ -27,7 +39,7 @@ from app.core.autorizacao import (
 )
 from app.core.current_user import get_current_user
 from app.core.datas import iso_utc
-from app.core.file_responses import responder_arquivo
+from app.core.file_responses import CSP_ARQUIVO, responder_arquivo
 from app.core.uploads import ler_e_validar_upload
 from app.database import get_db
 from app.models.dado_sensivel import DadoSensivel
@@ -666,6 +678,73 @@ def obter_documento_original(
         f"{documento.nome_original}_original.pdf",
     )
 
+
+
+@router.get("/{doc_id}/comprovante")
+def obter_comprovante(
+    request: Request,
+    doc_id: int,
+    db: Session = Depends(get_db),
+    usuario_atual: Usuario = Depends(get_current_user),
+):
+    """Comprovante de anonimizacao em PDF, gerado em memoria (PI-III #217).
+
+    Mesma regra de acesso da versao com tarja: qualquer membro da equipe
+    dona; quem esta fora recebe 404, e a tentativa de quem e da organizacao
+    fica na trilha. Nenhum dado pessoal do documento entra: so tipos,
+    quantidades, paginas e metadados.
+    """
+    documento = buscar_documento_autorizado(db, usuario_atual, doc_id)
+    if not documento:
+        registrar_acesso_negado(db, request, usuario_atual, doc_id, ACAO_GERAR_COMPROVANTE)
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Documento não encontrado ou sem acesso.",
+        )
+
+    equipe = equipe_do_documento(db, documento)
+    vinculo = db.query(UsuarioEquipe).filter(UsuarioEquipe.user_team_id == documento.user_team_id).first()
+    autor = db.get(Usuario, vinculo.user_id) if vinculo else None
+
+    # So tipo, pagina e quantidade: o conteudo_hash nem e lido.
+    por_tipo: dict[str, dict] = {}
+    for tipo, pagina in (
+        db.query(DadoSensivel.tipo_entidade, DadoSensivel.pagina)
+        .filter(DadoSensivel.doc_id == documento.doc_id)
+        .order_by(DadoSensivel.sensivel_id)
+    ):
+        item = por_tipo.setdefault(tipo, {"quantidade": 0, "paginas": set()})
+        item["quantidade"] += 1
+        item["paginas"].add(pagina or 0)
+    contagens = [(tipo, v["quantidade"], sorted(v["paginas"])) for tipo, v in por_tipo.items()]
+
+    revisao_evento = (
+        db.query(LogAuditoria.detalhe)
+        .filter(LogAuditoria.doc_id == documento.doc_id, LogAuditoria.acao == ACAO_REVISAR_TARJAS)
+        .order_by(LogAuditoria.log_id)
+        .first()
+    )
+
+    pdf = comprovante.montar(
+        documento,
+        equipe_nome=equipe.nome if equipe else None,
+        autor_nome=autor.nome if autor else None,
+        contagens=contagens,
+        ajustes=revisao_evento[0] if revisao_evento else None,
+        gerado_por=usuario_atual.nome,
+        rotulos=politica_niveis.ROTULOS,
+    )
+    registrar(db, request, usuario_atual.user_id, ACAO_GERAR_COMPROVANTE, documento=documento)
+    nome = quote(f"{documento.nome_original}_comprovante.pdf")
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f"attachment; filename*=utf-8''{nome}",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Security-Policy": CSP_ARQUIVO,
+        },
+    )
 
 def chave_dos_itens(itens_para_cobrir: dict) -> str:
     """Assinatura do conjunto de caixas a cobrir.

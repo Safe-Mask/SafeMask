@@ -38,6 +38,8 @@ ACAO_ALTERAR_CARGO = "alterar_cargo"
 ACAO_ALTERAR_POLITICA_NIVEIS = "alterar_politica_niveis"
 # Ajustes da revisao das tarjas no upload; o detalhe guarda so contagens.
 ACAO_REVISAR_TARJAS = "revisar_tarjas"
+# Comprovante de anonimizacao baixado (PI-III #217).
+ACAO_GERAR_COMPROVANTE = "gerar_comprovante"
 
 # Resultado: "negado" e a recusa por permissao (cargo insuficiente, ou pessoa
 # da mesma organizacao fora da equipe dona do documento). Uma trilha que so
