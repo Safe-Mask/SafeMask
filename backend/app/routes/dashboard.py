@@ -1,14 +1,22 @@
+from datetime import UTC, datetime, timedelta
+
 from fastapi import APIRouter, Depends
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
+from app.core import tenancy
+from app.core.audit import RESULTADO_NEGADO
 from app.core.current_user import get_current_user
 from app.core.datas import iso_utc
+from app.core.politica_niveis import ROTULOS
 from app.database import get_db
+from app.models.dado_sensivel import DadoSensivel
 from app.models.documentos import Documento
 from app.models.equipe import Equipe
+from app.models.log_auditoria import LogAuditoria
 from app.models.usuario import Usuario
 from app.models.usuario_equipe import UsuarioEquipe
+from app.routes.auditoria import equipes_auditaveis
 
 router = APIRouter(prefix="/dashboard", tags=["Dashboard"])
 
@@ -135,3 +143,104 @@ def get_dashboard_overview(
         "equipes": equipes,
         "documentos_recentes": documentos_recentes
     }
+
+
+# ------------------------------------------------- painel de conformidade
+
+DIAS_NEGADOS = 30
+MESES_PADRAO, MESES_MAXIMO = 6, 24
+
+
+def _meses_ate_hoje(quantidade: int) -> list[tuple[int, int]]:
+    hoje = datetime.now(UTC)
+    ano, mes = hoje.year, hoje.month
+    lista = []
+    for _ in range(quantidade):
+        lista.append((ano, mes))
+        mes -= 1
+        if mes == 0:
+            ano, mes = ano - 1, 12
+    return list(reversed(lista))
+
+
+@router.get("/conformidade", response_model=dict)
+def obter_conformidade(
+        meses: int = MESES_PADRAO,
+        db: Session = Depends(get_db),
+        current_user: Usuario = Depends(get_current_user)
+    ):
+    """Indicadores de conformidade das equipes do usuario (PI-III #228).
+
+    - tarjas por tipo de dado (todos os documentos das equipes do usuario,
+      so na organizacao dele);
+    - documentos e tarjas por mes, nos ultimos `meses` (1 a 24);
+    - acessos negados nos ultimos 30 dias, so das equipes em que o usuario
+      pode consultar a auditoria (supervisor ou lider, a mesma regra de
+      /auditoria).
+    Datas agrupadas em UTC, no Python, para valer igual no SQLite e no
+    PostgreSQL.
+    """
+    meses = min(max(int(MESES_PADRAO if meses is None else meses), 1), MESES_MAXIMO)
+    organizacao_id = tenancy.exigir_organizacao(current_user)
+    team_ids = sorted({
+        row.team_id
+        for row in (
+            db.query(UsuarioEquipe.team_id)
+            .join(Equipe, Equipe.team_id == UsuarioEquipe.team_id)
+            .filter(UsuarioEquipe.user_id == current_user.user_id, Equipe.organizacao_id == organizacao_id)
+            .all()
+        )
+    })
+    equipes_auditoria = equipes_auditaveis(db, current_user)
+
+    por_tipo = (
+        db.query(DadoSensivel.tipo_entidade, func.count(DadoSensivel.sensivel_id))
+        .join(Documento, Documento.doc_id == DadoSensivel.doc_id)
+        .join(UsuarioEquipe, UsuarioEquipe.user_team_id == Documento.user_team_id)
+        .filter(UsuarioEquipe.team_id.in_(team_ids))
+        .group_by(DadoSensivel.tipo_entidade)
+        .all()
+    ) if team_ids else []
+    tarjas_por_tipo = sorted(
+        ({"tipo": tipo, "rotulo": ROTULOS.get(tipo, tipo), "quantidade": int(qtd)} for tipo, qtd in por_tipo),
+        key=lambda t: (-t["quantidade"], t["rotulo"]),
+    )
+
+    janela = _meses_ate_hoje(meses)
+    inicio = datetime(janela[0][0], janela[0][1], 1)
+    contagem = {f"{a:04d}-{m:02d}": {"documentos": 0, "tarjas": 0} for a, m in janela}
+    if team_ids:
+        docs = (
+            db.query(Documento.doc_id, Documento.criado_em, func.count(DadoSensivel.sensivel_id))
+            .join(UsuarioEquipe, UsuarioEquipe.user_team_id == Documento.user_team_id)
+            .outerjoin(DadoSensivel, DadoSensivel.doc_id == Documento.doc_id)
+            .filter(UsuarioEquipe.team_id.in_(team_ids), Documento.criado_em >= inicio)
+            .group_by(Documento.doc_id, Documento.criado_em)
+            .all()
+        )
+        for _doc_id, criado_em, tarjas in docs:
+            chave = criado_em.strftime("%Y-%m") if criado_em else None
+            if chave in contagem:
+                contagem[chave]["documentos"] += 1
+                contagem[chave]["tarjas"] += int(tarjas)
+    por_mes = [{"mes": chave, **valores} for chave, valores in contagem.items()]
+
+    negados = {"visivel": bool(equipes_auditoria), "dias": DIAS_NEGADOS, "total": 0, "por_acao": []}
+    if equipes_auditoria:
+        desde = datetime.now(UTC).replace(tzinfo=None) - timedelta(days=DIAS_NEGADOS)
+        linhas = (
+            db.query(LogAuditoria.acao, func.count(LogAuditoria.log_id))
+            .filter(
+                LogAuditoria.team_id.in_(equipes_auditoria),
+                LogAuditoria.resultado == RESULTADO_NEGADO,
+                LogAuditoria.data_hora >= desde,
+            )
+            .group_by(LogAuditoria.acao)
+            .all()
+        )
+        negados["por_acao"] = sorted(
+            ({"acao": acao, "quantidade": int(qtd)} for acao, qtd in linhas), key=lambda n: -n["quantidade"],
+        )
+        negados["total"] = sum(n["quantidade"] for n in negados["por_acao"])
+
+    return {"meses": meses, "tarjas_por_tipo": tarjas_por_tipo, "por_mes": por_mes, "negados": negados}
