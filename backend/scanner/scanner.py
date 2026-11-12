@@ -206,7 +206,9 @@ def configuracoes_regex() -> dict:
     """
     return {
         "CPF": {"pattern": CPF_PATTERN.pattern, "level": 3},
-        "CNPJ": {"pattern": r'\b\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}\b', "level": 1},
+        # CNPJ numerico ou alfanumerico: letras maiusculas nos 12 primeiros
+        # caracteres, DV sempre numerico (validadores.cnpj_valido).
+        "CNPJ": {"pattern": r'\b[0-9A-Z]{2}\.[0-9A-Z]{3}\.[0-9A-Z]{3}/[0-9A-Z]{4}-\d{2}\b', "level": 1},
         "EMAIL": {"pattern": EMAIL_PATTERN.pattern, "level": 2},
         "TELEFONE": {"pattern": PHONE_DETECTION_PATTERN.pattern, "level": 2},
         "CNS": {"pattern": CNS_PATTERN.pattern, "level": 3},

@@ -62,21 +62,36 @@ _PESOS_CNPJ_DV1 = [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
 _PESOS_CNPJ_DV2 = [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
 
 
+_CNPJ_FORMATACAO = re.compile(r"[.\-/\s]")
+_CNPJ_BASE_ALFANUMERICA = re.compile(r"^[0-9A-Z]{12}[0-9]{2}$")
+
+
+def _dv_cnpj(base: str, pesos: list[int]) -> int:
+    """DV do CNPJ pelo módulo 11, com o valor de cada caractere = ASCII - 48.
+
+    Dígito vale ele mesmo ('0' = 48 - 48 = 0); 'A' = 65 - 48 = 17, ..., 'Z' = 42
+    (IN RFB 2.229/2024). Para CNPJ só numérico, é o cálculo de sempre.
+    """
+    resto = sum((ord(c) - 48) * p for c, p in zip(base, pesos, strict=True)) % 11
+    return 0 if resto < 2 else 11 - resto
+
+
 def cnpj_valido(valor: str) -> bool:
-    """Confere se o valor é um CNPJ com dígitos verificadores corretos.
+    """Confere se o valor é um CNPJ, numérico ou alfanumérico, com DV correto.
 
     Regras:
-    - exatamente 14 dígitos após remover a formatação;
+    - 14 caracteres após remover a formatação (pontos, barra, traço);
+    - os 12 primeiros são dígitos ou letras (CNPJ alfanumérico, IN RFB
+      2.229/2024); os 2 últimos são sempre dígitos;
     - não pode ser sequência repetida (00.000.000/0000-00);
-    - o 13º dígito é calculado a partir dos 12 primeiros;
-    - o 14º dígito é calculado a partir dos 13 primeiros.
+    - o 13º e o 14º são calculados pelo módulo 11 (ver `_dv_cnpj`).
     """
-    d = apenas_digitos(valor)
-    if len(d) != 14 or sequencia_repetida(d):
+    d = _CNPJ_FORMATACAO.sub("", valor or "").upper()
+    if not _CNPJ_BASE_ALFANUMERICA.match(d) or sequencia_repetida(d):
         return False
-    dv1 = _digito_verificador(d[:12], _PESOS_CNPJ_DV1)
-    dv2 = _digito_verificador(d[:13], _PESOS_CNPJ_DV2)
-    return d[12] == str(dv1) and d[13] == str(dv2)
+    dv1 = _dv_cnpj(d[:12], _PESOS_CNPJ_DV1)
+    dv2 = _dv_cnpj(d[:12] + str(dv1), _PESOS_CNPJ_DV2)
+    return d[12:] == f"{dv1}{dv2}"
 
 
 def cnh_valida(valor: str) -> bool:
