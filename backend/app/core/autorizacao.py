@@ -58,6 +58,45 @@ def nivel_min_descensura() -> int:
     return nivel
 
 
+# Nivel de seguranca do documento (1 Basico a 4 Protecao maxima), escolhido no
+# upload, passa a valer no acesso junto com o cargo (PI-III #176):
+#
+#   nivel do documento   parcial a partir de   original a partir de
+#   1 Basico             membro (1)            N
+#   2 Protecao media     supervisor (2)        maior entre N e 2
+#   3 Protecao alta      supervisor (2)        lider (3)
+#   4 Protecao maxima    lider (3)             lider (3)
+#
+# N = nivel_min_descensura(). O original nunca exige menos que a parcial do
+# mesmo documento: quem nao pode ver a parcial tambem nao ve o original.
+NIVEL_MIN_PARCIAL_POR_DOCUMENTO = {1: NIVEL_MEMBRO, 2: NIVEL_SUPERVISOR, 3: NIVEL_SUPERVISOR, 4: NIVEL_LIDER}
+NIVEL_MIN_ORIGINAL_POR_DOCUMENTO = {1: NIVEL_MEMBRO, 2: NIVEL_MEMBRO, 3: NIVEL_LIDER, 4: NIVEL_LIDER}
+
+
+def _nivel_do_documento(nivel_seguranca) -> int:
+    """Nivel valido (1 a 4); registro antigo sem valor conta como 1 (Basico)."""
+    try:
+        nivel = int(nivel_seguranca)
+    except (TypeError, ValueError):
+        return 1
+    return min(max(nivel, 1), 4)
+
+
+def nivel_min_parcial(nivel_seguranca) -> int:
+    """Nivel minimo do cargo para a descensura parcial deste documento."""
+    return NIVEL_MIN_PARCIAL_POR_DOCUMENTO[_nivel_do_documento(nivel_seguranca)]
+
+
+def nivel_min_original(nivel_seguranca) -> int:
+    """Nivel minimo do cargo para o original deste documento."""
+    nivel = _nivel_do_documento(nivel_seguranca)
+    return max(
+        nivel_min_descensura(),
+        NIVEL_MIN_PARCIAL_POR_DOCUMENTO[nivel],
+        NIVEL_MIN_ORIGINAL_POR_DOCUMENTO[nivel],
+    )
+
+
 def equipe_do_usuario(db: Session, usuario: Usuario, team_id: int):
     """Vinculo do usuario com a equipe, ja restrito ao tenant dele."""
     return (
