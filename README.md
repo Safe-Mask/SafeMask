@@ -214,6 +214,8 @@ SafeMask/
 
 ## 🚀 Instalação Local
 
+> **Atalho com Docker (5 minutos):** com o Docker Desktop aberto, `docker compose up -d --build --wait` sobe Postgres, API e telas (telas em `http://localhost:8080`, API em `http://localhost:8000`), e `docker compose run --rm api python -m app.tarefas.popular_demo` cria contas, equipe e documentos fictícios, com a senha mostrada só no terminal. Roteiro completo em [`documentation/como-testar.md`](documentation/como-testar.md).
+
 > ℹ️ **O projeto já está em produção!** Use esta seção apenas para desenvolvimento local.
 
 ### Pré-requisitos
