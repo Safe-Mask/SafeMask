@@ -18,6 +18,7 @@ Detecte e censure automaticamente informações confidenciais em documentos, gar
 [![Neon](https://img.shields.io/badge/Neon-Database-92E7DD?logo=postgresql&logoColor=white)](https://neon.tech/)
 [![Vercel](https://img.shields.io/badge/Vercel-Deploy-000000?logo=vercel&logoColor=white)](https://vercel.com/)
 [![JWT](https://img.shields.io/badge/JWT-Auth-000000?logo=json-web-tokens&logoColor=white)](https://jwt.io/)
+[![Cobertura](https://img.shields.io/badge/cobertura-88%25-brightgreen)](#testes-automatizados)
 
 </div>
 
@@ -417,6 +418,28 @@ usuarios = session.query(Usuario).all()
 for u in usuarios:
     print(u.email)
 ```
+
+---
+
+### Testes automatizados
+
+De dentro de `backend/`:
+
+```bash
+python -m pytest -q --cov=app --cov=scanner
+ruff check app scanner tests
+```
+
+A cobertura de `app/` e `scanner/` estava em **88%** em 11/11/2026; o CI publica a tabela no resumo de cada execução, e o selo no topo deste README é atualizado à mão.
+
+**Teste de interface.** `backend/tests_interface/` abre um navegador (Playwright) e percorre o fluxo principal: login, Novo Upload com a revisão das tarjas, Documentos Censurados (detalhes, "Fechar detalhes", nome longo), confirmação de exclusão e página da equipe, como líder e como membro. Ele sobe a própria API (com SQLite) e as telas em portas livres, com banco e pasta temporários, e roda num job próprio do CI (`interface (Playwright)`). Fica fora da suíte normal (`testpaths`), e localmente roda assim:
+
+```bash
+python -m playwright install chromium
+SAFEMASK_TESTE_INTERFACE=1 python -m pytest tests_interface -v
+```
+
+No PowerShell, defina `$env:SAFEMASK_TESTE_INTERFACE=1` antes. Para usar o Edge já instalado em vez de baixar o Chromium, `SAFEMASK_UI_NAVEGADOR=msedge`.
 
 ---
 
