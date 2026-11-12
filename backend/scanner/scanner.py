@@ -22,6 +22,7 @@ from scanner.coordenadas import (
 )
 from scanner.patterns import (
     CARTAO_PATTERN,
+    CEP_PATTERN,
     CID10_PATTERN,
     CNH_PATTERN,
     CNS_PATTERN,
@@ -218,10 +219,10 @@ def configuracoes_regex() -> dict:
         "CARTAO": {"pattern": CARTAO_PATTERN.pattern, "level": 3},
         "PROCESSO": {"pattern": r'\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b|\b\d{3}/\d\.\d{2}\.\d{7}-\d\b', "level": 1},
         "DATA_NASC": {"pattern": r'\b\d{2}/\d{2}/\d{4}\b', "level": 2},
-        # CEP canonico 00000-000. O NER deveria achar, mas na pratica nao emite
-        # a entidade CEP nesta versao do modelo; sem regex o CEP ficava visivel.
-        # `(?!\d)` exclui "98765-432..." (parte de um telefone com DDD).
-        "ENDERECO": {"pattern": r'(?<!\d)\d{5}-\d{3}(?!\d)', "level": 1},
+        # CEP: 00000-000, 00.000-000 ou 8 digitos depois de "CEP" (#83). O NER
+        # deveria achar, mas na pratica nao emite a entidade CEP nesta versao
+        # do modelo; sem regex o CEP ficava visivel. Continua no tipo ENDERECO.
+        "ENDERECO": {"pattern": CEP_PATTERN.pattern, "level": 1},
     }
 
 

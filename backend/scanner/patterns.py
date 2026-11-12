@@ -40,6 +40,15 @@ RG_PATTERN = re.compile(
 )
 
 
+# CEP (#83). Formato 00000-000 ou 00.000-000, ou 8 digitos seguidos depois
+# do rotulo "CEP". Sem rotulo, 8 digitos seguidos nao sao CEP (protocolo,
+# matricula). As travas impedem casar trecho de telefone (99876-5432 tem 4
+# digitos depois do traco), de processo e de numero maior.
+CEP_PATTERN = re.compile(
+    r"(?P<valor>(?<![\d.\-/])(?:\d{5}|\d{2}\.\d{3})-\d{3}(?![\d\-/])(?![.,]\d))"
+    r"|(?i:\bCEP\b)\s*(?:n[º°o]\.?\s*)?[:\-]?\s*(?P<valor_rotulado>(?<![\d.])\d{8}(?!\d)(?![.,]\d))"
+)
+
 # CNH (#83). Tem 11 digitos, como o CPF; para nao confundir, so vale depois
 # de um rotulo de habilitacao, e o digito verificador e conferido
 # (validadores.cnh_valida). O CPF continua exigindo pontos e traco.
