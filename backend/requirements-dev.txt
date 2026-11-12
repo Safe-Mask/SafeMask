@@ -23,6 +23,10 @@ psycopg2-binary==2.9.10
 pydantic==2.10.2
 pytest==8.3.4
 pytest-asyncio==0.25.0
+pytest-cov==6.0.0
+# Teste de interface (PI-III #16): o navegador e instalado a parte com
+#   python -m playwright install chromium
+playwright==1.49.1
 python-dotenv==1.1.0
 python-jose==3.4.0
 python-multipart==0.0.27
