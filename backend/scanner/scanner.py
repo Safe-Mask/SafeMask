@@ -28,6 +28,7 @@ from scanner.patterns import (
     CNS_PATTERN,
     CPF_PATTERN,
     CRM_PATTERN,
+    DATA_NASC_PATTERN,
     EMAIL_PATTERN,
     PHONE_DETECTION_PATTERN,
     RG_PATTERN,
@@ -186,13 +187,17 @@ def entidades_sem_mapa(model_folder: str = None) -> set:
             if e and e not in Known}
 
 
-def detectar_datas() -> bool:
-    """Datas por regex: desligadas, a menos que SAFEMASK_DETECTAR_DATAS=1.
+# Modo antigo das datas: toda data dd/mm/aaaa, so com SAFEMASK_DETECTAR_DATAS=1.
+DATA_ANTIGA_PATTERN = r'\b\d{2}/\d{2}/\d{4}\b'
 
-    O padrao de DATA_NASC casa qualquer data dd/mm/aaaa, e em documento
-    oficial a vigencia, a assinatura e a publicacao eram tarjadas como data
-    de nascimento. Fica desligado ate a deteccao pelo contexto ("nascido em",
-    "data de nascimento"). O nivel continua em `configuracoes_regex()`.
+
+def detectar_datas() -> bool:
+    """True quando SAFEMASK_DETECTAR_DATAS=1 liga o modo antigo (toda data).
+
+    O padrao antigo casava qualquer data dd/mm/aaaa, e em documento oficial a
+    vigencia, a assinatura e a publicacao eram tarjadas como data de
+    nascimento. Sem a variavel, vale a deteccao pelo contexto
+    (DATA_NASC_PATTERN), conferida por `data_nascimento_valida`.
     """
     return os.getenv("SAFEMASK_DETECTAR_DATAS", "").strip().lower() in {"1", "true", "sim"}
 
@@ -220,7 +225,11 @@ def configuracoes_regex() -> dict:
         "CNH": {"pattern": CNH_PATTERN.pattern, "level": 3},
         "CARTAO": {"pattern": CARTAO_PATTERN.pattern, "level": 3},
         "PROCESSO": {"pattern": r'\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b|\b\d{3}/\d\.\d{2}\.\d{7}-\d\b', "level": 1},
-        "DATA_NASC": {"pattern": r'\b\d{2}/\d{2}/\d{4}\b', "level": 2},
+        # Pelo contexto; o modo antigo (toda data) so com a variavel.
+        "DATA_NASC": {
+            "pattern": DATA_ANTIGA_PATTERN if detectar_datas() else DATA_NASC_PATTERN.pattern,
+            "level": 2,
+        },
         # CEP: 00000-000, 00.000-000 ou 8 digitos depois de "CEP" (#83). O NER
         # deveria achar, mas na pratica nao emite a entidade CEP nesta versao
         # do modelo; sem regex o CEP ficava visivel. Continua no tipo ENDERECO.
@@ -270,8 +279,6 @@ class DocumentScanner:
             )
 
         self.regex_config = configuracoes_regex()
-        if not detectar_datas():
-            del self.regex_config["DATA_NASC"]
 
     def _salvar_dado(self, db, doc_id, page, page_num, texto_secreto, entity_type, level, usando_ocr=False, ocr_data=None):
         """Persiste um dado sensivel e devolve (salvos, coordenadas).

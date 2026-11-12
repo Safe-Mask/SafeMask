@@ -135,6 +135,39 @@ def cartao_valido(valor: str) -> bool:
     return soma % 10 == 0
 
 
+_MESES = {
+    "janeiro": 1, "fevereiro": 2, "março": 3, "marco": 3, "abril": 4, "maio": 5, "junho": 6,
+    "julho": 7, "agosto": 8, "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12,
+}
+_DATA_NUMERICA = re.compile(r"^(\d{1,2})[/.\-](\d{1,2})[/.\-](\d{4})$")
+_DATA_POR_EXTENSO = re.compile(r"^(\d{1,2})\s+de\s+([a-zç]+)\s+de\s+(\d{4})$", re.IGNORECASE)
+
+
+def data_nascimento_valida(valor: str) -> bool:
+    """Confere se o texto é uma data que existe e pode ser de nascimento.
+
+    Aceita dd/mm/aaaa (ou com ponto ou traço) e "5 de março de 1979". O dia
+    precisa existir no mês (31/02 não vale; 29/02 só em ano bissexto), e o
+    ano fica entre 1900 e o ano atual: data no futuro não é nascimento.
+    """
+    from datetime import date
+
+    texto = (valor or "").strip()
+    numerica = _DATA_NUMERICA.match(texto)
+    if numerica:
+        dia, mes, ano = (int(x) for x in numerica.groups())
+    else:
+        extenso = _DATA_POR_EXTENSO.match(texto)
+        if not extenso or extenso.group(2).lower() not in _MESES:
+            return False
+        dia, mes, ano = int(extenso.group(1)), _MESES[extenso.group(2).lower()], int(extenso.group(3))
+    try:
+        data = date(ano, mes, dia)
+    except ValueError:
+        return False
+    return data.year >= 1900 and data <= date.today()
+
+
 # Mapa usado pelo scanner: tipo de entidade -> função que valida o valor.
 # Tipos ausentes daqui não passam por validação nenhuma (comportamento atual).
 VALIDADORES = {
@@ -142,4 +175,5 @@ VALIDADORES = {
     "CNPJ": cnpj_valido,
     "CNH": cnh_valida,
     "CARTAO": cartao_valido,
+    "DATA_NASC": data_nascimento_valida,
 }

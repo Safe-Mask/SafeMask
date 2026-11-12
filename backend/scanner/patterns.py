@@ -40,6 +40,18 @@ RG_PATTERN = re.compile(
 )
 
 
+# Data de nascimento pelo contexto: so a data depois de um rotulo de
+# nascimento ("data de nascimento", "nascido(a) em", "DN:", "dt. nasc.",
+# "nasc."). A data de vigencia, assinatura ou publicacao nao tem rotulo e
+# fica de fora. O grupo `valor` e so a data: a tarja nao cobre o rotulo.
+DATA_NASC_PATTERN = re.compile(
+    r"(?i:\bnascid[oa]\s+(?:em|no\s+dia)|\bdata\s+de\s+nascimento|\bdt\.?\s*(?:de\s+)?nasc(?:imento)?\.?"
+    r"|\bnasc\.|\bd\.?n\.?(?=\s*:))"
+    r"\s*[:\-]?\s*(?:em\s+)?"
+    r"(?P<valor>\d{1,2}[/.\-]\d{1,2}[/.\-]\d{4}(?!\d)"
+    r"|\d{1,2}\s+de\s+(?i:janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+de\s+\d{4})"
+)
+
 # CEP (#83). Formato 00000-000 ou 00.000-000, ou 8 digitos seguidos depois
 # do rotulo "CEP". Sem rotulo, 8 digitos seguidos nao sao CEP (protocolo,
 # matricula). As travas impedem casar trecho de telefone (99876-5432 tem 4

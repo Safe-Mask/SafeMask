@@ -122,8 +122,8 @@ class TestCnpjValido:
 
 class TestMapaValidadores:
     def test_cobre_os_tipos_com_digito_verificador(self):
-        # CNH e cartao entraram no #83.
-        assert set(VALIDADORES) == {"CPF", "CNPJ", "CNH", "CARTAO"}
+        # CNH e cartao entraram no #83; a data de nascimento, no #178.
+        assert set(VALIDADORES) == {"CPF", "CNPJ", "CNH", "CARTAO", "DATA_NASC"}
 
     def test_funcoes_corretas(self):
         from scanner.validadores import cartao_valido, cnh_valida
