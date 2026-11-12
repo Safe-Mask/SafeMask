@@ -40,6 +40,25 @@ RG_PATTERN = re.compile(
 )
 
 
+# CNH (#83). Tem 11 digitos, como o CPF; para nao confundir, so vale depois
+# de um rotulo de habilitacao, e o digito verificador e conferido
+# (validadores.cnh_valida). O CPF continua exigindo pontos e traco.
+CNH_PATTERN = re.compile(
+    r"(?i:\bCNH\b|habilita[çc][ãa]o\b)[^\d\n]{0,25}?"
+    r"(?P<valor>(?<![\d.])\d{11}(?!\d)(?![.,]\d))"
+)
+
+# Cartao de pagamento (#83). Grupos 4-4-4-4 (ou 4-6-5 da Amex) com o mesmo
+# separador, ou 13 a 19 digitos seguidos depois de "cartao". Sempre conferido
+# pelo algoritmo de Luhn (validadores.cartao_valido): codigo de barras e
+# linha digitavel no mesmo formato quase nunca passam.
+CARTAO_PATTERN = re.compile(
+    r"(?P<valor>(?<![\d.\-])(?:\d{4}(?P<sep>[ \-])\d{4}(?P=sep)\d{4}(?P=sep)\d{4}"
+    r"|\d{4}(?P<sep_amex>[ \-])\d{6}(?P=sep_amex)\d{5})(?![\d\-]))"
+    r"|(?i:\bcart[ãa]o\b)[^\d\n]{0,25}?(?P<valor_rotulado>(?<![\d.])\d{13,19}(?!\d)(?![.,]\d))"
+)
+
+
 def valor_detectado(match: re.Match) -> str:
     """Valor a tarjar: o grupo `valor...` que casou, ou o trecho inteiro."""
     grupos = [v for nome, v in match.groupdict().items() if nome.startswith("valor") and v]

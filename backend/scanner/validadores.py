@@ -79,9 +79,52 @@ def cnpj_valido(valor: str) -> bool:
     return d[12] == str(dv1) and d[13] == str(dv2)
 
 
+def cnh_valida(valor: str) -> bool:
+    """Confere o numero de registro da CNH (11 digitos) pelo DV do Denatran (#83).
+
+    - 1o DV: os 9 primeiros digitos com pesos 9..1; resto da divisao por 11.
+      Resto 10 vira 0 e gera um "desconto" de 2 no segundo digito.
+    - 2o DV: os 9 primeiros com pesos 1..9; resto por 11 menos o desconto
+      (resto 10 vira 0). Resultado negativo nao corresponde a nenhum digito.
+    """
+    d = apenas_digitos(valor)
+    if len(d) != 11 or sequencia_repetida(d):
+        return False
+    soma = sum(int(x) * peso for x, peso in zip(d[:9], range(9, 0, -1), strict=True))
+    dv1, desconto = soma % 11, 0
+    if dv1 >= 10:
+        dv1, desconto = 0, 2
+    resto = sum(int(x) * peso for x, peso in zip(d[:9], range(1, 10), strict=True)) % 11
+    dv2 = 0 if resto >= 10 else resto - desconto
+    return d[9:] == f"{dv1}{dv2}"
+
+
+def cartao_valido(valor: str) -> bool:
+    """Confere um numero de cartao de pagamento pelo algoritmo de Luhn (#83).
+
+    De 13 a 19 digitos, sem sequencia repetida. Da direita para a esquerda,
+    dobra um digito sim, outro nao (subtraindo 9 quando passa de 9); a soma
+    precisa terminar em 0.
+    """
+    d = apenas_digitos(valor)
+    if not 13 <= len(d) <= 19 or sequencia_repetida(d):
+        return False
+    soma = 0
+    for posicao, caractere in enumerate(reversed(d)):
+        n = int(caractere)
+        if posicao % 2 == 1:
+            n *= 2
+            if n > 9:
+                n -= 9
+        soma += n
+    return soma % 10 == 0
+
+
 # Mapa usado pelo scanner: tipo de entidade -> função que valida o valor.
 # Tipos ausentes daqui não passam por validação nenhuma (comportamento atual).
 VALIDADORES = {
     "CPF": cpf_valido,
     "CNPJ": cnpj_valido,
+    "CNH": cnh_valida,
+    "CARTAO": cartao_valido,
 }

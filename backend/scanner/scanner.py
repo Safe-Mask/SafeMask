@@ -21,7 +21,9 @@ from scanner.coordenadas import (
     para_pontos,
 )
 from scanner.patterns import (
+    CARTAO_PATTERN,
     CID10_PATTERN,
+    CNH_PATTERN,
     CNS_PATTERN,
     CPF_PATTERN,
     CRM_PATTERN,
@@ -210,6 +212,10 @@ def configuracoes_regex() -> dict:
         "CID10": {"pattern": CID10_PATTERN.pattern, "level": 3},
         "CRM": {"pattern": CRM_PATTERN.pattern, "level": 3},
         "RG": {"pattern": RG_PATTERN.pattern, "level": 3},
+        # CNH (DV do Denatran) e cartao (Luhn), conferidos em validadores (#83).
+        # Nivel 3, o mesmo do CPF e do CNH que o NER ja emite.
+        "CNH": {"pattern": CNH_PATTERN.pattern, "level": 3},
+        "CARTAO": {"pattern": CARTAO_PATTERN.pattern, "level": 3},
         "PROCESSO": {"pattern": r'\b\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}\b|\b\d{3}/\d\.\d{2}\.\d{7}-\d\b', "level": 1},
         "DATA_NASC": {"pattern": r'\b\d{2}/\d{2}/\d{4}\b', "level": 2},
         # CEP canonico 00000-000. O NER deveria achar, mas na pratica nao emite

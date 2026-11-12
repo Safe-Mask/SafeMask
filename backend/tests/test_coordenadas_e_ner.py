@@ -176,6 +176,7 @@ def test_nivel_do_ner_bate_com_o_do_regex():
     paridade = {
         "CPF": "CPF", "CNPJ": "CNPJ", "EMAIL": "EMAIL", "TELEFONE": "TELEFONE",
         "RG": "RG", "DATA_NASCIMENTO": "DATA_NASC", "NUMERO_PROCESSO": "PROCESSO",
+        "CNH": "CNH",
     }
     for entidade_ner, tipo_regex in paridade.items():
         nivel_ner, tipo_ner = MAPA_ENTIDADES_NER[entidade_ner]
@@ -193,7 +194,7 @@ def test_niveis_do_regex_sao_os_niveis_documentados():
     assert _niveis_do_regex() == {
         "CPF": 3, "CNPJ": 1, "EMAIL": 2, "TELEFONE": 2, "CNS": 3,
         "CID10": 3, "CRM": 3, "RG": 3, "PROCESSO": 1, "DATA_NASC": 2,
-        "ENDERECO": 1,
+        "ENDERECO": 1, "CNH": 3, "CARTAO": 3,
     }
 
 

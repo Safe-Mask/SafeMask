@@ -27,6 +27,8 @@ ROTULOS = {
     "CNPJ": "CNPJ",
     "PROCESSO": "Número de processo",
     "ENDERECO": "CEP",
+    "CNH": "CNH",
+    "CARTAO": "Cartão de pagamento",
 }
 
 NIVEL_MINIMO = 1
