@@ -235,7 +235,7 @@ detailDocumentList.addEventListener('click', (event) => {
     const isAllowed = docCard.classList.contains('allowed');
 
     if (!isAllowed) {
-        alert('Você não tem permissão para descensurar este documento.');
+        avisar('Você não tem permissão para descensurar este documento.');
         return;
     }
 
@@ -298,7 +298,13 @@ detailMemberList.addEventListener('click', async (event) => {
     if (!botao) {
         return;
     }
-    if (!window.confirm(`Remover ${botao.dataset.memberName} da equipe?`)) {
+    const confirmado = await confirmar({
+        titulo: `Remover ${botao.dataset.memberName} da equipe?`,
+        mensagem: 'A pessoa deixa de ver os documentos desta equipe. A remoção fica registrada na auditoria.',
+        confirmar: 'Remover',
+        perigo: true,
+    });
+    if (!confirmado) {
         return;
     }
     botao.disabled = true;

@@ -299,7 +299,7 @@ function handleFileChange(fileList) {
         : file.size === 0 ? 'O arquivo está vazio.'
         : null;
     if (recusa) {
-        alert(recusa);
+        avisar(recusa);
         if (documentInput) {
             documentInput.value = '';
         }
@@ -316,13 +316,13 @@ function setDragState(active) {
 
 async function startUpload() {
     if (!state.currentFile) {
-        alert('Selecione um arquivo para continuar.');
+        avisar('Selecione um arquivo para continuar.', 'info');
         return;
     }
 
     // Sem equipe escolhida nada e enviado (antes ia para a primeira da lista).
     if (!state.selectedTeams.size) {
-        alert('Selecione ao menos uma equipe para vincular o documento.');
+        avisar('Selecione ao menos uma equipe para vincular o documento.', 'info');
         return;
     }
 
@@ -435,7 +435,7 @@ dropzone.addEventListener('drop', (event) => {
 // O envio so acontece depois da revisao de equipe, titulo e nivel.
 censorStartBtn.addEventListener('click', () => {
     if (!state.currentFile) {
-        alert('Selecione um arquivo para continuar.');
+        avisar('Selecione um arquivo para continuar.', 'info');
         return;
     }
     setStep('review');
