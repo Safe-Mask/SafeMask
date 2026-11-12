@@ -641,6 +641,71 @@ class DocumentScanner:
             "status": novo_doc.status_processamento
         }
 
+    def _achados_da_pagina(self, texto: str, page_num: int) -> list[tuple[str, str, str]]:
+        """Dados achados pelos padroes numa pagina, na ordem de deteccao.
+
+        Cada item: (id, tipo, valor). O id (`p<pagina>-<tipo>-<n>`) e estavel
+        para o mesmo arquivo e a mesma configuracao: a revisao das tarjas
+        devolve os ids desmarcados, e o upload refaz a deteccao e pula esses.
+        Valor repetido na pagina vira um achado so, como antes.
+        """
+        achados = []
+        vistos = []
+        contagem = {}
+        for tipo, config in self.regex_config.items():
+            for match in re.finditer(config['pattern'], texto):
+                segredo = valor_detectado(match)
+                # CPF, CNPJ, CNH, cartao e data: o formato bateu, mas so e dado
+                # pessoal se a validacao conferir (evita tarjar numeros de
+                # exemplo, sequencias repetidas e outros codigos).
+                validador = VALIDADORES.get(tipo)
+                if validador is not None and not validador(segredo):
+                    logger.info(f"{tipo} com validacao incorreta ignorado (pagina {page_num})")
+                    continue
+                if segredo in vistos:
+                    continue
+                vistos.append(segredo)
+                contagem[tipo] = contagem.get(tipo, 0) + 1
+                achados.append((f"p{page_num}-{tipo}-{contagem[tipo]}", tipo, segredo))
+        return achados
+
+    @staticmethod
+    def _contar_ocorrencias(page, valor: str, usando_ocr: bool, ocr_data) -> int:
+        """Quantas vezes o valor aparece na pagina, sem gravar nada."""
+        if usando_ocr and ocr_data:
+            palavras = {p for p in valor.split() if len(p) > 2}
+            return sum(1 for w in ocr_data['text'] if w.strip(".,;:!?()[]") in palavras)
+        return len(page.search(re.escape(valor)))
+
+    def detectar_achados(self, file_path: str) -> list[dict]:
+        """O que o upload tarjaria, sem gravar nada (revisao das tarjas).
+
+        Mesmo caminho do scan (texto ou OCR, padroes e validacoes), sem banco
+        e sem arquivo de saida. Devolve o valor achado: quem chama decide como
+        mostrar (a rota mascara antes de responder).
+        """
+        achados = []
+        with pdfplumber.open(file_path) as pdf:
+            for page_num, page in enumerate(pdf.pages):
+                texto = page.extract_text()
+                usando_ocr, ocr_data = False, None
+                if not texto or len(texto.strip()) < 20:
+                    usando_ocr = True
+                    texto, ocr_data = _ocr(page.to_image(resolution=150).original)
+                if not texto:
+                    continue
+                for achado_id, tipo, valor in self._achados_da_pagina(texto, page_num):
+                    ocorrencias = self._contar_ocorrencias(page, valor, usando_ocr, ocr_data)
+                    if ocorrencias:
+                        achados.append({
+                            "id": achado_id,
+                            "tipo": tipo,
+                            "pagina": page_num + 1,
+                            "valor": valor,
+                            "ocorrencias": ocorrencias,
+                        })
+        return achados
+
     def gerar_pdf_parcial(self, file_path: str, itens_para_cobrir: dict,
                           dir_destino: Path, nome_saida: str) -> Path:
         """Regera um PDF a partir do original, tapando so o que deve ficar tapado.

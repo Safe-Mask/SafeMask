@@ -1,12 +1,13 @@
 import hashlib
 import logging
+import tempfile
 from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
-from app.core import armazenamento, fila, politica_niveis, tenancy
+from app.core import armazenamento, fila, politica_niveis, revisao, tenancy
 from app.core.audit import (
     ACAO_EXCLUIR_DOCUMENTO,
     ACAO_LISTAR_DOCUMENTOS,
@@ -179,6 +180,52 @@ async def upload_documento(
             detail="Erro ao processar documento."
         ) from e
 
+
+
+@router.post("/analisar")
+async def analisar_documento(
+    file: UploadFile = File(...),
+    usuario_atual: Usuario = Depends(get_current_user),
+):
+    """Mostra o que o upload vai tarjar, sem gravar nada (revisao das tarjas).
+
+    Mesmas recusas do upload. Cada achado sai MASCARADO, com o id que o envio
+    usa para desmarca-lo. O PDF fica numa pasta temporaria so durante a
+    analise: nada vai para o banco, para a pasta dos arquivos ou para a
+    auditoria. O evento e o do upload, quando o documento e salvo.
+    """
+    conteudo, _ = await ler_e_validar_upload(file, Path(file.filename or ""))
+    with tempfile.TemporaryDirectory(prefix="safemask-analise-") as pasta:
+        caminho = Path(pasta) / "analise.pdf"
+        caminho.write_bytes(conteudo)
+        try:
+            achados = get_scanner().detectar_achados(str(caminho))
+        except OcrIndisponivel as e:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(e)) from e
+        except Exception as e:
+            logger.error("Erro ao analisar documento: %s", e)
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Erro ao analisar o documento.",
+            ) from e
+    return {
+        "achados": [
+            {
+                "id": a["id"],
+                "tipo": a["tipo"],
+                "rotulo": politica_niveis.ROTULOS.get(a["tipo"], a["tipo"]),
+                "pagina": a["pagina"],
+                "valor_mascarado": revisao.mascarar(a["valor"], a["tipo"]),
+                "ocorrencias": a["ocorrencias"],
+            }
+            for a in achados
+        ],
+        "limites": {
+            "trechos": revisao.MAX_TRECHOS,
+            "tamanho_min": revisao.TAMANHO_MIN_TRECHO,
+            "tamanho_max": revisao.TAMANHO_MAX_TRECHO,
+        },
+    }
 
 def nome_para_download(nome: str, extensao: str | None) -> str:
     """Nome do arquivo entregue: `<titulo>.<extensao>`.
