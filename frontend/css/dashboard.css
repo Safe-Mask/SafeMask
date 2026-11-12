@@ -674,3 +674,8 @@ body {
     color: var(--text-muted);
     padding: 3rem 1rem;
 }
+
+/* Painel de conformidade: separa do bloco de equipes e documentos. */
+.compliance-panels {
+    margin-bottom: 0.9rem;
+}
