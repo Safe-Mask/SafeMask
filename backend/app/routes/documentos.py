@@ -11,6 +11,7 @@ from app.core import armazenamento, fila, politica_niveis, revisao, tenancy
 from app.core.audit import (
     ACAO_EXCLUIR_DOCUMENTO,
     ACAO_LISTAR_DOCUMENTOS,
+    ACAO_REVISAR_TARJAS,
     ACAO_UPLOAD,
     ACAO_UPLOAD_CENSURADO,
     ACAO_VER_CENSURADO,
@@ -64,10 +65,14 @@ async def upload_documento(
     titulo: str = Form(...),
     nivel_seguranca: int = Form(1),
     teams: str = Form(...),  # JSON array de team_ids como string
+    ignorar: str = Form("[]"),  # revisao das tarjas: ids desmarcados
+    trechos_extras: str = Form("[]"),  # revisao das tarjas: textos a cobrir
     db: Session = Depends(get_db),
     usuario_atual: Usuario = Depends(get_current_user)
 ):
     team_ids = normalizar_team_ids(teams)
+    ids_ignorados = revisao.ler_ignorados(ignorar)
+    trechos = revisao.ler_trechos(trechos_extras)
 
     if nivel_seguranca < 1 or nivel_seguranca > 4:
         raise HTTPException(
@@ -111,6 +116,8 @@ async def upload_documento(
             dir_censurado=CENSURADOS_DIR,
             # Nivel exigido de cada tipo de dado: politica da equipe de destino.
             niveis=niveis_principal,
+            ignorar=ids_ignorados,
+            trechos_extras=trechos,
         )
 
         # Compartilha o mesmo documento com as demais equipes selecionadas.
@@ -152,9 +159,19 @@ async def upload_documento(
         db.commit()
         # Um evento por documento criado: cada equipe de destino encontra o
         # seu no proprio historico.
+        # Ajustes da revisao: um evento por documento, so com contagens.
+        houve_revisao = bool(resultado.get("ignorados") or trechos)
+        detalhe = revisao.detalhe_da_revisao(
+            resultado.get("ignorados", 0), len(trechos), resultado.get("trechos_nao_encontrados", 0),
+        )
         for doc_criado in [db.get(Documento, resultado["doc_id"]), *docs_compartilhados]:
             if doc_criado is not None:
                 registrar(db, request, usuario_atual.user_id, ACAO_UPLOAD, documento=doc_criado)
+                if houve_revisao:
+                    registrar(
+                        db, request, usuario_atual.user_id, ACAO_REVISAR_TARJAS,
+                        documento=doc_criado, detalhe=detalhe,
+                    )
 
         return {
             "mensagem": "Documento processado e censurado com sucesso.",
@@ -162,7 +179,9 @@ async def upload_documento(
             "hash": resultado["hash"],
             "total_sensiveis": resultado["total_sensiveis"],
             "cpf_censurados": resultado["cpf_censurados"],
-            "status": resultado["status"]
+            "status": resultado["status"],
+            "desmarcados": resultado.get("ignorados", 0),
+            "trechos_nao_encontrados": resultado.get("trechos_nao_encontrados", 0),
         }
 
     except OcrIndisponivel as e:
