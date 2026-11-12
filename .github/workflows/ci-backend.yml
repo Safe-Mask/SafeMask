@@ -61,7 +61,45 @@ jobs:
         run: ruff check app scanner tests
 
       - name: Testes (pytest)
-        run: python -m pytest -q
+        run: python -m pytest -q --cov=app --cov=scanner --cov-report=term
+
+      # Cobertura de app/ e scanner/ no resumo da execucao (PI-III #16).
+      - name: Publicar a cobertura no resumo
+        if: always()
+        run: |
+          echo "## Cobertura dos testes" >> "$GITHUB_STEP_SUMMARY"
+          python -m coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY" || true
 
       - name: Verificar que a app importa
         run: python -c "from app.main import app; print(app.title)"
+
+  interface:
+    # Teste de interface (PI-III #16): navegador de verdade (Chromium do
+    # Playwright) contra a API e as telas, com banco e pasta descartaveis.
+    name: interface (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: Instalar dependencias e o navegador
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Teste de interface
+        env:
+          SAFEMASK_TESTE_INTERFACE: '1'
+        run: python -m pytest tests_interface -v
