@@ -26,6 +26,7 @@ const NIVEL_MIN_AUDITORIA = 2;
 
 // Acoes que aparecem na trilha das equipes (eventos com equipe).
 const ACOES = {
+    gerar_comprovante: 'Baixou comprovante',
     revisar_tarjas: 'Revisou as tarjas',
     upload_documento: 'Enviou documento',
     upload_documento_censurado: 'Salvou versão censurada',

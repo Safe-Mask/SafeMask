@@ -15,6 +15,7 @@ const detailPreviewFallback = document.getElementById('detailPreviewFallback');
 const undoRedactionBtn = document.getElementById('undoRedactionBtn');
 const closeDetailsBtn = document.getElementById('closeDetailsBtn');
 const deleteDocBtn = document.getElementById('deleteDocBtn');
+const receiptBtn = document.getElementById('receiptBtn');
 const pageFeedback = document.getElementById('pageFeedback');
 const loadingStep = document.getElementById('loadingStep');
 const loadingStepLabel = document.getElementById('loadingStepLabel');
@@ -389,3 +390,41 @@ deleteDocBtn.addEventListener('click', () => {
 window.addEventListener('beforeunload', clearPreviewUrl);
 
 loadDocuments();
+
+// Comprovante de anonimizacao: PDF gerado pela API, sem dado pessoal.
+receiptBtn.addEventListener('click', async () => {
+    if (!state.selectedDoc) {
+        avisar('Selecione um documento.', 'info');
+        return;
+    }
+    const documento = state.selectedDoc;
+    receiptBtn.disabled = true;
+    try {
+        const response = await fetch(`${API_ROOT}/documentos/${documento.doc_id}/comprovante`, {
+            headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+        });
+        if (response.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = '../auth/login.html';
+            return;
+        }
+        if (!response.ok) {
+            const corpo = await response.json().catch(() => ({}));
+            throw new Error(corpo.detail || 'Não foi possível gerar o comprovante.');
+        }
+        const url = URL.createObjectURL(await response.blob());
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `${documento.nome_original}_comprovante.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        avisar('Comprovante baixado.', 'sucesso');
+    } catch (error) {
+        console.error(error);
+        avisar(error.message);
+    } finally {
+        receiptBtn.disabled = false;
+    }
+});
