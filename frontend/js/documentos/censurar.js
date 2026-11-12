@@ -315,6 +315,10 @@ function setDragState(active) {
 }
 
 async function startUpload() {
+    if (revisao.analisando) {
+        avisar('Aguarde a análise do documento terminar.', 'info');
+        return;
+    }
     if (!state.currentFile) {
         avisar('Selecione um arquivo para continuar.', 'info');
         return;
@@ -342,6 +346,9 @@ async function startUpload() {
     formData.append('titulo', docTitleInput.value);
     formData.append('nivel_seguranca', securityLevelInput.value);
     formData.append('teams', JSON.stringify(Array.from(state.selectedTeams).map((teamId) => Number(teamId))));
+    // Ajustes da revisao das tarjas.
+    formData.append('ignorar', JSON.stringify(Array.from(revisao.ignorados)));
+    formData.append('trechos_extras', JSON.stringify(revisao.trechos));
 
     try {
         loadingStepLabel.textContent = 'Analisando dados sensíveis...';
@@ -371,6 +378,12 @@ async function startUpload() {
 
         loadingBadgeTeams.classList.add('active');
         loadingStepLabel.textContent = 'Concluído!';
+        if (data.trechos_nao_encontrados) {
+            avisarDepois(
+                `${data.trechos_nao_encontrados} trecho(s) acrescentado(s) não apareceram no documento e não foram tarjados. Confira a grafia.`,
+                'info',
+            );
+        }
 
         setTimeout(() => {
             window.location.href = `censurados.html?doc_id=${data.doc_id}`;
@@ -439,6 +452,7 @@ censorStartBtn.addEventListener('click', () => {
         return;
     }
     setStep('review');
+    analisarDocumento();
 });
 saveCensoredDocBtn.addEventListener('click', startUpload);
 
@@ -454,4 +468,163 @@ loadUserTeams();
 
 window.addEventListener('beforeunload', () => {
     clearTimeout(state.loadingTimeoutId);
+});
+
+// ------------------------------------------------------------------
+// Revisao das tarjas antes de salvar. A API analisa o arquivo sem
+// gravar nada e devolve os achados MASCARADOS, cada um com um id. A pessoa
+// desmarca falsos positivos e acrescenta trechos; o envio leva os ids
+// desmarcados (`ignorar`) e os trechos (`trechos_extras`).
+
+const API_ANALISAR = `${API_ROOT}/documentos/analisar`;
+const findingsList = document.getElementById('findingsList');
+const findingsCount = document.getElementById('findingsCount');
+const findingsStatus = document.getElementById('findingsStatus');
+const extraSnippetInput = document.getElementById('extraSnippetInput');
+const addSnippetBtn = document.getElementById('addSnippetBtn');
+const extraSnippetList = document.getElementById('extraSnippetList');
+
+const revisao = {
+    arquivo: null,
+    achados: [],
+    ignorados: new Set(),
+    trechos: [],
+    limites: { trechos: 20, tamanho_min: 3, tamanho_max: 120 },
+    analisando: false,
+};
+
+function limparRevisao() {
+    revisao.arquivo = null;
+    revisao.achados = [];
+    revisao.ignorados = new Set();
+    revisao.trechos = [];
+    renderAchados();
+    renderTrechos();
+}
+
+function renderAchados() {
+    const total = revisao.achados.length;
+    const marcados = total - revisao.ignorados.size;
+    findingsCount.textContent = revisao.analisando ? 'analisando...' : `${marcados} de ${total} marcados`;
+    findingsList.innerHTML = revisao.achados
+        .map((achado) => {
+            const desmarcado = revisao.ignorados.has(achado.id);
+            const vezes = achado.ocorrencias > 1 ? ` · ${achado.ocorrencias} vezes` : '';
+            return `
+                <li class="finding-item ${desmarcado ? 'desmarcado' : ''}">
+                    <label>
+                        <input type="checkbox" data-achado="${escapeHtml(achado.id)}" aria-label="Tarjar ${escapeHtml(achado.rotulo)} ${escapeHtml(achado.valor_mascarado)}" ${desmarcado ? '' : 'checked'}>
+                        <span class="finding-type">${escapeHtml(achado.rotulo)}</span>
+                        <span class="finding-value">${escapeHtml(achado.valor_mascarado)}</span>
+                        <span class="finding-page">pág. ${escapeHtml(achado.pagina)}${vezes}</span>
+                    </label>
+                </li>`;
+        })
+        .join('');
+}
+
+function renderTrechos() {
+    extraSnippetList.innerHTML = revisao.trechos
+        .map((trecho, indice) => `
+            <li class="extra-item">
+                <span>${escapeHtml(trecho)}</span>
+                <button type="button" class="ghost-button" data-remover-trecho="${indice}">Remover</button>
+            </li>`)
+        .join('');
+}
+
+async function analisarDocumento() {
+    const arquivo = state.currentFile;
+    if (!arquivo || revisao.arquivo === arquivo) {
+        return; // ja analisado: voltar para a revisao nao refaz o trabalho
+    }
+    const token = localStorage.getItem('token');
+    limparRevisao();
+    revisao.arquivo = arquivo;
+    revisao.analisando = true;
+    findingsStatus.textContent = 'Analisando o documento...';
+    renderAchados();
+
+    try {
+        const formData = new FormData();
+        formData.append('file', arquivo);
+        const response = await fetch(API_ANALISAR, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+        });
+        if (response.status === 401) {
+            localStorage.removeItem('token');
+            window.location.href = '../auth/login.html';
+            return;
+        }
+        const data = await response.json().catch(() => ({}));
+        if (revisao.arquivo !== arquivo) {
+            return; // outro arquivo foi escolhido enquanto este era analisado
+        }
+        if (!response.ok) {
+            throw new Error(data.detail || mensagemPorStatus(response.status));
+        }
+        revisao.achados = data.achados || [];
+        revisao.limites = data.limites || revisao.limites;
+        findingsStatus.textContent = revisao.achados.length
+            ? 'Tudo o que está marcado será coberto com tarja.'
+            : 'Nenhum dado pessoal reconhecido. Se houver algo a cobrir, acrescente o trecho abaixo.';
+    } catch (error) {
+        console.error('Erro ao analisar documento:', error);
+        revisao.arquivo = null;
+        findingsStatus.textContent = `Não foi possível analisar: ${error.message}`;
+        avisar(`Não foi possível analisar o documento: ${error.message}`);
+    } finally {
+        revisao.analisando = false;
+        renderAchados();
+    }
+}
+
+function acrescentarTrecho() {
+    const trecho = extraSnippetInput.value.split(/\s+/).filter(Boolean).join(' ');
+    const { trechos: maximo, tamanho_min: minimo, tamanho_max: tamanhoMaximo } = revisao.limites;
+    if (trecho.length < minimo || trecho.length > tamanhoMaximo) {
+        avisar(`O trecho precisa ter de ${minimo} a ${tamanhoMaximo} caracteres.`, 'info');
+        return;
+    }
+    if (revisao.trechos.includes(trecho)) {
+        avisar('Este trecho já foi acrescentado.', 'info');
+        return;
+    }
+    if (revisao.trechos.length >= maximo) {
+        avisar(`No máximo ${maximo} trechos por documento.`, 'info');
+        return;
+    }
+    revisao.trechos.push(trecho);
+    extraSnippetInput.value = '';
+    renderTrechos();
+}
+
+findingsList.addEventListener('change', (event) => {
+    const caixa = event.target.closest('[data-achado]');
+    if (!caixa) {
+        return;
+    }
+    if (caixa.checked) {
+        revisao.ignorados.delete(caixa.dataset.achado);
+    } else {
+        revisao.ignorados.add(caixa.dataset.achado);
+    }
+    renderAchados();
+});
+
+addSnippetBtn.addEventListener('click', acrescentarTrecho);
+extraSnippetInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        acrescentarTrecho();
+    }
+});
+extraSnippetList.addEventListener('click', (event) => {
+    const botao = event.target.closest('[data-remover-trecho]');
+    if (botao) {
+        revisao.trechos.splice(Number(botao.dataset.removerTrecho), 1);
+        renderTrechos();
+    }
 });

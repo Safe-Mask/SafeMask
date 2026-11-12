@@ -736,3 +736,126 @@
         align-items: stretch;
     }
 }
+
+/* Revisao das tarjas antes de salvar. */
+.findings-review {
+    display: grid;
+    gap: 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 0.95rem;
+    background: linear-gradient(160deg, var(--surface), var(--surface-2));
+}
+
+.findings-status {
+    color: var(--text-muted);
+    font-size: 0.86rem;
+    margin: 0;
+}
+
+.findings-list,
+.extra-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.45rem;
+}
+
+.finding-item,
+.extra-item {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-width: 0;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    background: rgba(0, 230, 118, 0.04);
+}
+
+.finding-item label {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    flex: 1;
+    min-width: 0;
+    cursor: pointer;
+}
+
+.finding-item input[type="checkbox"] {
+    width: 1.1rem;
+    height: 1.1rem;
+    accent-color: var(--primary);
+    flex: none;
+}
+
+.finding-item.desmarcado {
+    opacity: 0.55;
+    background: transparent;
+}
+
+.finding-item.desmarcado .finding-value {
+    text-decoration: line-through;
+}
+
+.finding-type {
+    flex: none;
+    border-radius: 999px;
+    padding: 0.15rem 0.6rem;
+    background: rgba(0, 230, 118, 0.12);
+    color: var(--primary);
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.finding-value {
+    flex: 1;
+    min-width: 0;
+    font-family: var(--font-mono, monospace);
+    font-size: 0.86rem;
+    overflow-wrap: anywhere;
+}
+
+.finding-page {
+    flex: none;
+    color: var(--text-muted);
+    font-size: 0.78rem;
+}
+
+.extra-snippets {
+    display: grid;
+    gap: 0.45rem;
+    margin-top: 0.3rem;
+}
+
+.extra-input-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.extra-input-row input {
+    flex: 1 1 14rem;
+    min-width: 0;
+}
+
+.extra-item span {
+    flex: 1;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    font-size: 0.86rem;
+}
+
+.extra-item button {
+    flex: none;
+}
+
+.extra-input-row input {
+    border: 1px solid var(--gray);
+    border-radius: 12px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    padding: 0.7rem 0.85rem;
+}

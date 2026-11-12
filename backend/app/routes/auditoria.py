@@ -136,6 +136,8 @@ def _serializar(evento, usuario_nome, cargo_nome, documento_nome, equipe_nome, a
         "equipe": {"team_id": evento.team_id, "nome": equipe_nome},
         "alvo": {"user_id": evento.alvo_user_id, "nome": alvo_nome} if evento.alvo_user_id else None,
         "ip_origem": evento.ip_origem,
+        # Codigos fixos e contagens (ex.: revisao das tarjas), nunca dado pessoal.
+        "detalhe": evento.detalhe,
     }
 
 
@@ -177,7 +179,7 @@ def consultar_historico(
 
 COLUNAS_CSV = [
     "ID do evento", "Data e hora (UTC)", "Ação", "Resultado", "Usuário",
-    "Cargo", "Equipe", "Documento", "Alvo", "IP de origem",
+    "Cargo", "Equipe", "Documento", "Alvo", "IP de origem", "Detalhe",
 ]
 
 # Texto que comeca com estes caracteres vira formula ao abrir na planilha
@@ -225,6 +227,7 @@ def exportar_historico(
             _texto_seguro(documento_nome),
             _texto_seguro(alvo_nome),
             evento.ip_origem,
+            evento.detalhe or "",
         ])
 
     nome = f"auditoria-safemask-{datetime.now(UTC):%Y-%m-%d}.csv"
