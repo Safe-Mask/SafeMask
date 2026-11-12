@@ -103,3 +103,46 @@ jobs:
         env:
           SAFEMASK_TESTE_INTERFACE: '1'
         run: python -m pytest tests_interface -v
+
+  docker:
+    # Docker Compose (PI-III #232): monta a imagem, sobe Postgres, API e telas,
+    # cria os dados de demonstracao, faz login e confere que eles sobrevivem
+    # a um reinicio da API.
+    name: docker compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Subir Postgres, API e telas
+        run: docker compose up -d --build --wait
+
+      - name: Conferir API e telas
+        run: |
+          curl -fsS http://localhost:8000/ | grep -q online
+          curl -fsS http://localhost:8080/frontend/js/config.js | grep -q "http://localhost:8000"
+          curl -fsS http://localhost:8080/frontend/html/auth/login.html | grep -q SafeMask
+          docker compose exec -T api sh -c "tesseract --list-langs 2>&1" | grep -q por
+
+      - name: Dados de demonstracao e login
+        run: |
+          docker compose run --rm -T api python -m app.tarefas.popular_demo | tee demo.txt
+          grep -q "Documentos criados agora: 2" demo.txt
+          SENHA=$(sed -n 's/^Senha das contas: //p' demo.txt)
+          curl -fsS -X POST http://localhost:8000/auth/login -H "Content-Type: application/json" \
+            -d "{\"email\":\"lider.demo@safemask.example.com\",\"senha_hash\":\"$SENHA\"}" | grep -q access_token
+
+      - name: Dados persistem depois de reiniciar
+        run: |
+          docker compose restart api
+          docker compose up -d --wait
+          docker compose run --rm -T api python -m app.tarefas.popular_demo | grep -q "já existem: 2"
+
+      - name: Logs em caso de falha
+        if: failure()
+        run: docker compose logs --tail 100
+
+      - name: Derrubar
+        if: always()
+        run: docker compose down -v
