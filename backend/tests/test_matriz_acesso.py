@@ -16,6 +16,7 @@ import pytest
 
 from app.core import autorizacao
 from app.core.security import criar_token_jwt
+from app.models.log_auditoria import LogAuditoria
 from app.models.usuario import Usuario
 from app.models.usuario_equipe import UsuarioEquipe
 from tests.conftest import CONTEUDO_CENSURADO
@@ -199,3 +200,104 @@ def test_listagem_da_equipe_responde_404_para_quem_esta_fora(cenario, quem, seed
     )
 
     assert resp.status_code == 404
+
+
+# --- nivel do documento (PI-III #176) ---------------------------------------
+#
+# O nivel de seguranca do documento vale no acesso (PI-III #176).
+#
+# O nivel escolhido no upload (1 Basico a 4 Protecao maxima) era so um rotulo.
+# Agora entra junto com o cargo (documentation/decisoes/matriz-de-acesso.md):
+#
+# | Nivel do documento | Parcial a partir de | Original a partir de |
+# | 1 Basico           | membro              | N                    |
+# | 2 Protecao media   | supervisor          | maior entre N e 2    |
+# | 3 Protecao alta    | supervisor          | lider                |
+# | 4 Protecao maxima  | lider               | lider                |
+#
+# N = SAFEMASK_NIVEL_MIN_DESCENSURA (padrao 3). Abaixo do minimo, 403 e evento
+# negado; quem esta fora continua recebendo 404.
+
+NIVEL_DO_CARGO = {"membro": 1, "supervisor": 2, "lider": 3}
+MIN_PARCIAL = {1: 1, 2: 2, 3: 2, 4: 3}
+
+
+def _min_original(nivel_doc, minimo=3):
+    return max(minimo, MIN_PARCIAL[nivel_doc], {1: 1, 2: 1, 3: 3, 4: 3}[nivel_doc])
+
+
+def _classificar(cenario, seed, nivel_doc):
+    cenario["doc"].nivel_seguranca = nivel_doc
+    seed["db"].commit()
+
+
+def _esperado(versao, quem, nivel_doc, minimo=3):
+    nivel = NIVEL_DO_CARGO[quem]
+    if nivel >= _min_original(nivel_doc, minimo):
+        return ORIGINAL
+    if versao == "parcial" and nivel >= MIN_PARCIAL[nivel_doc]:
+        return PARCIAL
+    return 403
+
+
+def _negados(seed, quem_usuario):
+    return seed["db"].query(LogAuditoria).filter_by(user_id=quem_usuario.user_id, resultado="negado").count()
+
+
+@pytest.mark.parametrize("nivel_doc", [1, 2, 3, 4])
+@pytest.mark.parametrize("quem", DA_EQUIPE)
+@pytest.mark.parametrize("versao", ["parcial", "original"])
+def test_nivel_do_documento(cenario, seed, monkeypatch, versao, quem, nivel_doc):
+    monkeypatch.delenv(autorizacao.VARIAVEL_NIVEL_MIN_DESCENSURA, raising=False)
+    _classificar(cenario, seed, nivel_doc)
+    antes = _negados(seed, cenario["pessoas"][quem])
+
+    resp = _get(cenario, quem, "/documentos/{id}/" + versao)
+    esperado = _esperado(versao, quem, nivel_doc)
+
+    if esperado == 403:
+        assert resp.status_code == 403, resp.text
+        assert _negados(seed, cenario["pessoas"][quem]) == antes + 1
+    else:
+        assert resp.status_code == 200, resp.text
+        assert resp.content == esperado
+
+
+@pytest.mark.parametrize("nivel_doc", [1, 2, 3, 4])
+@pytest.mark.parametrize("quem", DE_FORA)
+def test_fora_da_equipe_continua_404(cenario, seed, quem, nivel_doc):
+    _classificar(cenario, seed, nivel_doc)
+    for rota in ("/documentos/{id}/parcial", "/documentos/{id}/original"):
+        assert _get(cenario, quem, rota).status_code == 404
+
+
+@pytest.mark.parametrize("nivel_doc", [1, 2, 3, 4])
+def test_detalhe_segue_o_nivel_do_documento(cenario, seed, monkeypatch, nivel_doc):
+    monkeypatch.delenv(autorizacao.VARIAVEL_NIVEL_MIN_DESCENSURA, raising=False)
+    _classificar(cenario, seed, nivel_doc)
+    for quem in DA_EQUIPE:
+        d = _get(cenario, quem, "/documentos/censurados/{id}").json()
+        nivel = NIVEL_DO_CARGO[quem]
+        assert d["pode_descensura_parcial"] is (nivel >= MIN_PARCIAL[nivel_doc])
+        assert d["pode_descensurar"] is (nivel >= _min_original(nivel_doc))
+        assert d["acesso_minimo"] == {"parcial": MIN_PARCIAL[nivel_doc], "original": _min_original(nivel_doc)}
+
+
+@pytest.mark.parametrize("minimo", [1, 2])
+@pytest.mark.parametrize("nivel_doc", [1, 2, 3, 4])
+def test_original_nunca_exige_menos_que_a_parcial(cenario, seed, monkeypatch, minimo, nivel_doc):
+    monkeypatch.setenv(autorizacao.VARIAVEL_NIVEL_MIN_DESCENSURA, str(minimo))
+    _classificar(cenario, seed, nivel_doc)
+    for quem in DA_EQUIPE:
+        for versao in ("parcial", "original"):
+            resp = _get(cenario, quem, "/documentos/{id}/" + versao)
+            esperado = _esperado(versao, quem, nivel_doc, minimo)
+            if esperado == 403:
+                assert resp.status_code == 403, (quem, versao, resp.text)
+            else:
+                assert resp.status_code == 200 and resp.content == esperado, (quem, versao)
+
+
+@pytest.mark.parametrize(("valor", "esperado"), [(None, 1), ("abc", 1), (0, 1), (7, 4), (2, 2)])
+def test_nivel_invalido_ou_ausente(valor, esperado):
+    assert autorizacao.nivel_min_parcial(valor) == MIN_PARCIAL[esperado]
