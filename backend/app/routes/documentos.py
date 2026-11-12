@@ -20,7 +20,11 @@ from app.core.audit import (
     RESULTADO_NEGADO,
     registrar,
 )
-from app.core.autorizacao import cargo_na_equipe, nivel_min_descensura
+from app.core.autorizacao import (
+    cargo_na_equipe,
+    nivel_min_original,
+    nivel_min_parcial,
+)
 from app.core.current_user import get_current_user
 from app.core.datas import iso_utc
 from app.core.file_responses import responder_arquivo
@@ -562,8 +566,13 @@ def obter_documento_censurado(
         # Mesmo campo da listagem: a tela preenche "Equipe" com ele (PI-III #187).
         "equipe_nome": equipe.nome if equipe else None,
         "cargo_usuario": cargo,
-        "pode_descensurar": bool(cargo and cargo["nivel"] >= nivel_min_descensura()),
-        "pode_descensura_parcial": bool(cargo),
+        # O nivel de seguranca do documento entra no calculo (PI-III #176).
+        "pode_descensurar": bool(cargo and cargo["nivel"] >= nivel_min_original(documento.nivel_seguranca)),
+        "pode_descensura_parcial": bool(cargo and cargo["nivel"] >= nivel_min_parcial(documento.nivel_seguranca)),
+        "acesso_minimo": {
+            "parcial": nivel_min_parcial(documento.nivel_seguranca),
+            "original": nivel_min_original(documento.nivel_seguranca),
+        },
         # Exclusao: so o lider da equipe dona; a tela mostra o botao por isto.
         "pode_excluir": bool(cargo and cargo["nivel"] >= NIVEL_MIN_EXCLUSAO),
         "preview_url": f"/documentos/censurados/{documento.doc_id}/arquivo",
@@ -629,14 +638,14 @@ def obter_documento_original(
 
     equipe = equipe_do_documento(db, documento)
     cargo = cargo_na_equipe(db, usuario_atual, equipe.team_id) if equipe else None
-    if not cargo or cargo["nivel"] < nivel_min_descensura():
+    if not cargo or cargo["nivel"] < nivel_min_original(documento.nivel_seguranca):
         registrar(
             db, request, usuario_atual.user_id, ACAO_VER_ORIGINAL,
             documento=documento, resultado=RESULTADO_NEGADO,
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Seu cargo nao permite acessar a versao original do documento.",
+            detail="Seu cargo nao permite acessar a versao original deste documento.",
         )
 
     # O original foi salvo como {hash_arquivo}{extensao} em ORIGINAIS_DIR.
@@ -707,8 +716,21 @@ def obter_documento_parcial(
             detail="Voce nao faz parte da equipe deste documento.",
         )
 
-    # Lider (ou cargo de nivel suficiente) recebe o original integral.
-    if cargo["nivel"] >= nivel_min_descensura():
+    # Nivel de seguranca do documento: abaixo do minimo da parcial, nem a
+    # parcial e entregue; so a versao com tarja.
+    if cargo["nivel"] < nivel_min_parcial(documento.nivel_seguranca):
+        registrar(
+            db, request, usuario_atual.user_id, ACAO_VER_PARCIAL,
+            documento=documento, resultado=RESULTADO_NEGADO,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="O nivel de seguranca deste documento nao permite a descensura para o seu cargo.",
+        )
+
+    # Quem alcanca o minimo do original (cargo e nivel do documento) recebe
+    # o original integral.
+    if cargo["nivel"] >= nivel_min_original(documento.nivel_seguranca):
         candidatos = list(ORIGINAIS_DIR.glob(f"{documento.hash_documento}*"))
         if not candidatos:
             raise HTTPException(

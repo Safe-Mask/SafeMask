@@ -52,9 +52,11 @@ def _distribuir_cargo(db, seed, cargo):
 def doc_nivel_supervisor(client, seed, scanner_registrado):
     """Documento na Equipe B (Ana e membro la) com um item que exige nivel 2."""
     scanner = scanner_registrado([(2, 0)])
+    # Nivel Basico (1): o nivel do documento tambem decide a parcial (PI-III
+    # #176), e a partir do 2 o membro nao recebe mais a parcial.
     upload = client.post(
         "/documentos/upload",
-        data={"titulo": "ata", "nivel_seguranca": "3",
+        data={"titulo": "ata", "nivel_seguranca": "1",
               "teams": f'[{seed["equipe_b"].team_id}]'},
         files={"file": ("ata.pdf", PDF_PADRAO, "application/pdf")},
         headers=_auth(seed["usuario"]),
